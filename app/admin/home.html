@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Page Manager | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading home page settings…</div>
+<script type="module">
+  import { requireAdmin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireAdmin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Home Page');
+
+  let anns = [], settings = {};
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  async function load() {
+    const [a, s] = await Promise.all([
+      supabase.from('announcements').select('*').order('sort'),
+      supabase.from('site_settings').select('*'),
+    ]);
+    anns = a.data || [];
+    settings = Object.fromEntries((s.data || []).map(r => [r.key, r.value]));
+    render();
+  }
+
+  function render() {
+    page.innerHTML = `
+      <div class="card">
+        <h2>E-Board teaser video</h2>
+        <p style="color:var(--muted); font-size:.86rem; margin-bottom:14px">
+          Paste a YouTube link (or a direct .mp4 URL) and the "Meet Your New E-Board" section appears on the homepage. Clear the URL to hide it.
+        </p>
+        <div class="notice" id="v-notice"></div>
+        <div class="field"><label>Section title</label>
+          <input id="v-title" value="${esc(settings.eboard_video_title)}" placeholder="Meet Your New E-Board · 2026–27"></div>
+        <div class="field"><label>Video URL (YouTube or .mp4)</label>
+          <input id="v-url" value="${esc(settings.eboard_video_url)}" placeholder="https://www.youtube.com/watch?v=…"></div>
+        <button class="btn" id="v-save">Save video settings</button>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:14px">
+          <div>
+            <h2 style="margin-bottom:2px">Announcements</h2>
+            <p style="color:var(--muted); font-size:.86rem">Active announcements show on the homepage instantly.</p>
+          </div>
+          <button class="btn" id="new">+ New announcement</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Title</th><th>Body</th><th>Link</th><th></th></tr></thead>
+            <tbody>
+              ${anns.map((a, i) => `
+                <tr style="${a.active ? '' : 'opacity:.45'}">
+                  <td><strong>${esc(a.title)}</strong>${a.active ? '' : ' <span class="badge">hidden</span>'}</td>
+                  <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted)">${esc(a.body)}</td>
+                  <td style="color:var(--muted); font-size:.85rem">${a.link_url ? esc(a.link_label || 'link') : '—'}</td>
+                  <td class="actions">
+                    <button class="btn sm ghost" data-mv="${a.id}" data-d="-1" ${i === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="btn sm ghost" data-mv="${a.id}" data-d="1" ${i === anns.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button class="btn sm secondary" data-edit="${a.id}">Edit</button>
+                    <button class="btn sm ghost" data-del="${a.id}">✕</button>
+                  </td>
+                </tr>`).join('') || '<tr><td colspan="4" style="color:var(--muted)">No announcements yet.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+
+    // video settings
+    document.getElementById('v-save').onclick = async () => {
+      const n = document.getElementById('v-notice');
+      const rows = [
+        { key: 'eboard_video_title', value: document.getElementById('v-title').value.trim() },
+        { key: 'eboard_video_url', value: document.getElementById('v-url').value.trim() },
+      ];
+      const { error } = await supabase.from('site_settings').upsert(rows);
+      n.textContent = error ? error.message : 'Saved — the homepage updates immediately.';
+      n.className = `notice ${error ? 'error' : 'ok'}`;
+    };
+
+    document.getElementById('new').onclick = () => openModal();
+    page.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openModal(anns.find(a => a.id === +b.dataset.edit)));
+    page.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const a = anns.find(x => x.id === +b.dataset.del);
+      if (!await confirmModal(`Delete announcement "${a.title}"?`)) return;
+      await supabase.from('announcements').delete().eq('id', a.id);
+      load();
+    });
+    page.querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
+      const i = anns.findIndex(a => a.id === +b.dataset.mv);
+      const j = i + Number(b.dataset.d);
+      if (j < 0 || j >= anns.length) return;
+      await Promise.all([
+        supabase.from('announcements').update({ sort: j }).eq('id', anns[i].id),
+        supabase.from('announcements').update({ sort: i }).eq('id', anns[j].id),
+      ]);
+      load();
+    });
+  }
+
+  function confirmModal(msg) {
+    return new Promise((resolve) => {
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `<div class="modal pop"><h2>Are you sure?</h2>
+        <p style="font-size:.92rem; color:var(--muted)">${esc(msg)}</p>
+        <div class="row-btns"><button class="btn ghost" id="c-no">Cancel</button><button class="btn" id="c-yes">Delete</button></div></div>`;
+      document.body.appendChild(back);
+      back.addEventListener('click', (e) => { if (e.target === back) { back.remove(); resolve(false); } });
+      back.querySelector('#c-no').onclick = () => { back.remove(); resolve(false); };
+      back.querySelector('#c-yes').onclick = () => { back.remove(); resolve(true); };
+    });
+  }
+
+  function openModal(a) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${a ? 'Edit announcement' : 'New announcement'}</h2>
+        <div class="notice" id="m-notice"></div>
+        <form id="f">
+          <div class="field"><label>Title</label><input id="f-title" required value="${esc(a?.title)}"></div>
+          <div class="field"><label>Body (optional)</label><textarea id="f-body">${esc(a?.body)}</textarea></div>
+          <div class="field-row">
+            <div class="field"><label>Link URL (optional)</label><input id="f-url" value="${esc(a?.link_url)}" placeholder="https://…"></div>
+            <div class="field"><label>Link label</label><input id="f-label" value="${esc(a?.link_label)}" placeholder="Get tickets"></div>
+          </div>
+          <div class="check-list">
+            <label><input type="checkbox" id="f-active" ${a ? (a.active ? 'checked' : '') : 'checked'}> Visible on homepage</label>
+          </div>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
+            <button type="submit" class="btn">${a ? 'Save' : 'Publish'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(back);
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+
+    back.querySelector('#f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: back.querySelector('#f-title').value.trim(),
+        body: back.querySelector('#f-body').value.trim() || null,
+        link_url: back.querySelector('#f-url').value.trim() || null,
+        link_label: back.querySelector('#f-label').value.trim() || null,
+        active: back.querySelector('#f-active').checked,
+      };
+      const { error } = a
+        ? await supabase.from('announcements').update(payload).eq('id', a.id)
+        : await supabase.from('announcements').insert({ ...payload, sort: anns.length });
+      if (error) {
+        const n = back.querySelector('#m-notice');
+        n.textContent = error.message; n.className = 'notice error';
+        return;
+      }
+      back.remove();
+      load();
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>
