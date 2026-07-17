@@ -688,12 +688,14 @@ footer {
   margin: -1px auto 0;
   border-radius: 2px;
   background: linear-gradient(90deg,
-    transparent, var(--gold-bright) 18%, var(--red) 40%, #ffe9bd 50%, var(--red) 60%, var(--gold-bright) 82%, transparent);
+    var(--gold-bright) 0%, var(--red) 28%, #ffe9bd 50%, var(--red) 72%, var(--gold-bright) 100%);
   background-size: 200% 100%;
   animation: flowBar 7s linear infinite;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #fff 14%, #fff 86%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #fff 14%, #fff 86%, transparent);
   box-shadow:
-    0 0 14px rgba(224, 180, 92, .6),
-    0 0 44px rgba(224, 180, 92, .28);
+    0 0 16px rgba(224, 180, 92, .65),
+    0 0 48px rgba(224, 180, 92, .3);
 }
 
 /* sponsors strip */
