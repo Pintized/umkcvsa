@@ -20,6 +20,8 @@ const ICONS = {
   note: SVG('<rect x="5" y="3.6" width="14" height="16.8" rx="2"/><path d="M9 8.4h6M9 12h6M9 15.6h3.6"/>'),
   scope: SVG('<circle cx="11" cy="11" r="6.2"/><path d="M15.6 15.6 20.4 20.4"/><path d="M8.6 11h4.8M11 8.6v4.8"/>'),
   camera: SVG('<path d="M4 7.6h3l1.6-2.4h6.8L17 7.6h3a1.4 1.4 0 0 1 1.4 1.4v9a1.4 1.4 0 0 1-1.4 1.4H4A1.4 1.4 0 0 1 2.6 18V9A1.4 1.4 0 0 1 4 7.6Z"/><circle cx="12" cy="13.4" r="3.6"/>'),
+  crown: SVG('<path d="M4 8.4 7.6 11 12 5.6 16.4 11 20 8.4l-1.6 9H5.6L4 8.4Z"/><path d="M5.6 20.4h12.8"/>'),
+  tag: SVG('<path d="M3.6 11.4V4.6a1 1 0 0 1 1-1h6.8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8l-5.8 5.8a2 2 0 0 1-2.8 0l-7.2-7.2a2 2 0 0 1-.6-1.4Z"/><circle cx="8.4" cy="8.4" r="1.5" fill="currentColor" stroke="none"/>'),
   shield: SVG('<path d="M12 3.6 18.8 6v5.2c0 4.4-2.9 7.3-6.8 9.2-3.9-1.9-6.8-4.8-6.8-9.2V6L12 3.6Z"/><path d="m9.2 11.6 2 2 3.6-3.8"/>'),
 };
 
@@ -37,9 +39,15 @@ const OFFICER_LINKS = [
   { href: '/app/officer/tasks.html',     label: 'Tasks',     icon: 'board' },
   { href: '/app/officer/inventory.html', label: 'Inventory', icon: 'box' },
   { href: '/app/officer/notes.html',     label: 'Notes',     icon: 'note' },
-  { href: '/app/officer/gallery.html',   label: 'Gallery',   icon: 'camera' },
   { href: '/app/officer/audit.html',     label: 'Audit Log', icon: 'scope' },
   { href: '/app/officer/roles.html',     label: 'Roles',     icon: 'shield' },
+];
+
+// site content managers — admins only
+const ADMIN_LINKS = [
+  { href: '/app/admin/eboard.html',    label: 'E-Board',  icon: 'crown' },
+  { href: '/app/admin/store.html',     label: 'Store',    icon: 'tag' },
+  { href: '/app/officer/gallery.html', label: 'Gallery',  icon: 'camera' },
 ];
 
 function navLink({ href, label, icon, soon }, officerLink = false) {
@@ -90,6 +98,7 @@ export function renderShell(ctx, pageTitle) {
           <div class="nav-label">Member</div>
           ${MEMBER_LINKS.map(l => navLink(l)).join('')}
           ${officer ? `<div class="nav-label">Officer</div>${OFFICER_LINKS.map(l => navLink(l, true)).join('')}` : ''}
+          ${ctx.roles.includes('admin') ? `<div class="nav-label">Admin</div>${ADMIN_LINKS.map(l => navLink(l, true)).join('')}` : ''}
         </nav>
         <div class="foot">Vietnamese Student Association<br>at UMKC</div>
       </aside>

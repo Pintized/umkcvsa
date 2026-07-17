@@ -30,6 +30,15 @@ export async function requireOfficer() {
   return ctx;
 }
 
+export async function requireAdmin() {
+  const ctx = await requireLogin();
+  if (!ctx.roles.includes('admin')) {
+    location.replace('/app/');
+    return new Promise(() => {});
+  }
+  return ctx;
+}
+
 export async function logout() {
   await supabase.auth.signOut();
   location.replace('/app/login.html');

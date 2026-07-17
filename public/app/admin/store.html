@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Store Manager | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading store…</div>
+<script type="module">
+  import { requireAdmin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const IMG_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+  const ctx = await requireAdmin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Store Manager');
+
+  let products = [];
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  async function load() {
+    const { data } = await supabase.from('store_products').select('*').order('sort');
+    products = data || [];
+    render();
+  }
+
+  function render() {
+    const row = (p, i, arr) => `
+      <tr style="${p.active ? '' : 'opacity:.45'}">
+        <td style="width:56px">
+          <img src="${p.photo_path ? IMG_BASE + p.photo_path : '/assets/img/logo-128.png'}"
+               style="width:44px; height:44px; border-radius:10px; object-fit:cover; border:1px solid var(--line)">
+        </td>
+        <td><strong>${esc(p.name)}</strong>${p.badge ? ` <span class="badge admin">${esc(p.badge)}</span>` : ''}${p.active ? '' : ' <span class="badge">hidden</span>'}</td>
+        <td style="font-family:var(--serif); font-weight:700; color:var(--gold)">$${Number(p.price).toFixed(2).replace(/\.00$/, '')}</td>
+        <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted)">${esc(p.description)}</td>
+        <td class="actions">
+          <button class="btn sm ghost" data-mv="${p.id}" data-d="-1" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button class="btn sm ghost" data-mv="${p.id}" data-d="1" ${i === arr.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="btn sm secondary" data-edit="${p.id}">Edit</button>
+          <button class="btn sm ghost" data-del="${p.id}">✕</button>
+        </td>
+      </tr>`;
+
+    page.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:14px">
+          <div>
+            <h2 style="margin-bottom:2px">Public Store page</h2>
+            <p style="color:var(--muted); font-size:.86rem">Changes appear on umkcvsa.org/store/ instantly.</p>
+          </div>
+          <button class="btn" id="new">+ Add product</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th></th><th>Product</th><th>Price</th><th>Description</th><th></th></tr></thead>
+            <tbody>${products.map((p, i) => row(p, i, products)).join('') || '<tr><td colspan="5" style="color:var(--muted)">No products yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>`;
+
+    document.getElementById('new').onclick = () => openModal();
+    page.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openModal(products.find(p => p.id === +b.dataset.edit)));
+    page.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const p = products.find(x => x.id === +b.dataset.del);
+      if (!await confirmModal(`Remove "${p.name}" from the store?`)) return;
+      await supabase.from('store_products').delete().eq('id', p.id);
+      load();
+    });
+    page.querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
+      const i = products.findIndex(p => p.id === +b.dataset.mv);
+      const j = i + Number(b.dataset.d);
+      if (j < 0 || j >= products.length) return;
+      await Promise.all([
+        supabase.from('store_products').update({ sort: j }).eq('id', products[i].id),
+        supabase.from('store_products').update({ sort: i }).eq('id', products[j].id),
+      ]);
+      load();
+    });
+  }
+
+  function confirmModal(msg) {
+    return new Promise((resolve) => {
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `<div class="modal pop"><h2>Are you sure?</h2>
+        <p style="font-size:.92rem; color:var(--muted)">${esc(msg)}</p>
+        <div class="row-btns"><button class="btn ghost" id="c-no">Cancel</button><button class="btn" id="c-yes">Remove</button></div></div>`;
+      document.body.appendChild(back);
+      back.addEventListener('click', (e) => { if (e.target === back) { back.remove(); resolve(false); } });
+      back.querySelector('#c-no').onclick = () => { back.remove(); resolve(false); };
+      back.querySelector('#c-yes').onclick = () => { back.remove(); resolve(true); };
+    });
+  }
+
+  function openModal(p) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${p ? 'Edit product' : 'Add product'}</h2>
+        <div class="notice" id="m-notice"></div>
+        <form id="f">
+          <div class="field"><label>Name</label><input id="f-name" required value="${esc(p?.name)}"></div>
+          <div class="field-row">
+            <div class="field"><label>Price ($)</label><input type="number" id="f-price" min="0" step="0.01" required value="${p?.price ?? ''}"></div>
+            <div class="field"><label>Badge (optional)</label><input id="f-badge" value="${esc(p?.badge)}" placeholder="New / Popular / Limited"></div>
+          </div>
+          <div class="field"><label>Description</label><textarea id="f-desc">${esc(p?.description)}</textarea></div>
+          <div class="field"><label>Photo (square works best, max 4 MB)</label><input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp"></div>
+          <div class="check-list">
+            <label><input type="checkbox" id="f-active" ${p ? (p.active ? 'checked' : '') : 'checked'}> Visible on site</label>
+          </div>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
+            <button type="submit" class="btn">${p ? 'Save' : 'Add'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(back);
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+
+    back.querySelector('#f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const say = (t) => { const n = back.querySelector('#m-notice'); n.textContent = t; n.className = 'notice error'; };
+      const payload = {
+        name: back.querySelector('#f-name').value.trim(),
+        price: +back.querySelector('#f-price').value || 0,
+        badge: back.querySelector('#f-badge').value.trim() || null,
+        description: back.querySelector('#f-desc').value.trim() || null,
+        active: back.querySelector('#f-active').checked,
+      };
+      const file = back.querySelector('#f-photo').files[0];
+      if (file) {
+        if (file.size > 4 * 1024 * 1024) return say('Photo is larger than 4 MB.');
+        const path = `store-${crypto.randomUUID()}.${file.name.split('.').pop().toLowerCase()}`;
+        const { error } = await supabase.storage.from('site-images').upload(path, file);
+        if (error) return say(error.message);
+        if (p?.photo_path) await supabase.storage.from('site-images').remove([p.photo_path]);
+        payload.photo_path = path;
+      }
+      const { error } = p
+        ? await supabase.from('store_products').update(payload).eq('id', p.id)
+        : await supabase.from('store_products').insert({ ...payload, sort: products.length });
+      if (error) return say(error.message);
+      back.remove();
+      load();
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>
