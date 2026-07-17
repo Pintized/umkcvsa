@@ -22,109 +22,536 @@
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Notes');
 
-  let folders = [], notes = [];
-  let selFolder = null, selNote = null;
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const EMOJIS = ['📝','📁','📌','🎉','💰','🍜','🎓','📷','🧧','🏮','⭐','🗳️','🎨','🏐','🤝','📣'];
+  const COLORS = ['#e0b45c','#c8202f','#3f7fbf','#2f9e63','#8b5cf6','#e8a33d'];
 
-  async function load(keepSel = false) {
-    const [f, n] = await Promise.all([
+  let folders = [], notes = [], roster = [];
+  let attMap = new Map();          // note_id -> Set(user_id)
+  let selFolder = null, selNote = null;
+  let mode = 'view';
+  let dirty = false, attendeesDirty = false, saveTimer = null;
+  let searchQ = '', sortBy = 'updated';
+
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const stripHtml = (h) => { const d = document.createElement('div'); d.innerHTML = h || ''; return d.textContent || ''; };
+  const noteById = (id) => notes.find(n => n.id === id);
+  const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+  window.addEventListener('beforeunload', (e) => {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (selNote) saveNote(); }
+  });
+
+  // ---------- data ----------
+  async function load() {
+    const [f, n, a, ur, pr] = await Promise.all([
       supabase.from('note_folders').select('*').order('name'),
       supabase.from('notes').select('*').order('updated_at', { ascending: false }),
+      supabase.from('note_attendees').select('*'),
+      supabase.from('user_roles').select('user_id, role').in('role', ['officer', 'intern']),
+      supabase.from('profiles').select('id, full_name'),
     ]);
     folders = f.data || []; notes = n.data || [];
-    if (!keepSel) { selFolder = folders[0]?.id ?? null; selNote = null; }
-    render();
+    attMap = new Map();
+    (a.data || []).forEach(x => {
+      if (!attMap.has(x.note_id)) attMap.set(x.note_id, new Set());
+      attMap.get(x.note_id).add(x.user_id);
+    });
+    const uids = [...new Set((ur.data || []).map(x => x.user_id))];
+    roster = (pr.data || []).filter(p => uids.includes(p.id))
+      .sort((x, y) => (x.full_name || '').localeCompare(y.full_name || ''));
+    if (selFolder === null && folders.length) selFolder = folders[0].id;
+    renderAll();
   }
 
-  const notesIn = (fid) => notes.filter(n => n.folder_id === fid);
-
-  function render() {
-    const note = notes.find(n => n.id === selNote);
+  // ---------- rendering ----------
+  function renderAll() {
     page.innerHTML = `
       <div class="card">
-        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px">
-          <h2>Officer notes</h2>
-          <div style="display:flex; gap:8px">
+        <div class="notes-head">
+          <div class="grp">
+            <h2 style="margin:0">Officer notes</h2>
+            <span class="saved-ind" id="saved-ind"></span>
+          </div>
+          <div class="grp">
+            <input class="searchbar" id="q" type="search" placeholder="Search all notes…" value="${esc(searchQ)}" style="margin:0; max-width:220px">
+            <select id="sort" class="rt-btn" style="height:38px">
+              <option value="updated" ${sortBy === 'updated' ? 'selected' : ''}>Recently edited</option>
+              <option value="meeting" ${sortBy === 'meeting' ? 'selected' : ''}>Meeting date</option>
+              <option value="title" ${sortBy === 'title' ? 'selected' : ''}>Title A–Z</option>
+            </select>
             <button class="btn secondary" id="new-folder">+ Folder</button>
             <button class="btn" id="new-note" ${selFolder == null ? 'disabled' : ''}>+ Note</button>
           </div>
         </div>
         <div class="notes-layout">
-          <div class="pane" id="folders">
-            ${folders.map(f => `
-              <div class="item ${f.id === selFolder ? 'sel' : ''}" data-f="${f.id}">
-                <span>📁 ${esc(f.name)} <small>(${notesIn(f.id).length})</small></span>
-                <span class="del" data-delf="${f.id}" title="Delete folder">✕</span>
-              </div>`).join('') || '<p style="color:var(--muted); font-size:.85rem">No folders yet.</p>'}
-          </div>
-          <div class="pane" id="notelist">
-            ${selFolder == null ? '' : notesIn(selFolder).map(n => `
-              <div class="item ${n.id === selNote ? 'sel' : ''}" data-n="${n.id}">
-                <span>📝 ${esc(n.title)}</span>
-                <span class="del" data-deln="${n.id}" title="Delete note">✕</span>
-              </div>`).join('') || '<p style="color:var(--muted); font-size:.85rem">No notes in this folder.</p>'}
-          </div>
-          <div class="note-editor">
-            ${note ? `
-              <input id="n-title" value="${esc(note.title)}">
-              <textarea id="n-content" placeholder="Write your note…">${esc(note.content)}</textarea>
-              <div style="display:flex; justify-content:space-between; align-items:center">
-                <small style="color:var(--muted)">Last saved ${new Date(note.updated_at).toLocaleString()}</small>
-                <button class="btn" id="n-save">Save note</button>
-              </div>
-            ` : '<p style="color:var(--muted); padding:20px">Select or create a note to start writing.</p>'}
-          </div>
+          <div class="pane" id="folders-pane"></div>
+          <div class="pane" id="notes-pane"></div>
+          <div class="note-editor" id="editor-pane"></div>
         </div>
       </div>`;
 
-    document.getElementById('new-folder').onclick = async () => {
-      const name = prompt('Folder name:');
-      if (!name?.trim()) return;
-      const { data, error } = await supabase.from('note_folders')
-        .insert({ name: name.trim(), created_by: ctx.user.id }).select('id').single();
-      if (error) return alert(error.message);
-      selFolder = data.id; selNote = null;
-      load(true);
-    };
-    document.getElementById('new-note').onclick = async () => {
-      const { data, error } = await supabase.from('notes')
-        .insert({ folder_id: selFolder, title: 'Untitled note', content: '', created_by: ctx.user.id })
-        .select('id').single();
-      if (error) return alert(error.message);
-      selNote = data.id;
-      load(true);
-    };
-    page.querySelectorAll('[data-f]').forEach(el => el.onclick = (e) => {
-      if (e.target.dataset.delf) return;
-      selFolder = +el.dataset.f; selNote = null; render();
+    document.getElementById('new-folder').onclick = () => folderModal();
+    document.getElementById('new-note').onclick = () => noteModal();
+    document.getElementById('q').oninput = (e) => { searchQ = e.target.value; renderList(); };
+    document.getElementById('sort').onchange = (e) => { sortBy = e.target.value; renderList(); };
+    renderFolders();
+    renderList();
+    buildEditor();
+  }
+
+  function renderFolders() {
+    const pane = document.getElementById('folders-pane');
+    pane.innerHTML = folders.map(f => `
+      <div class="item ${f.id === selFolder && !searchQ ? 'sel' : ''}" data-f="${f.id}"
+           style="border-left:3px solid ${f.color || 'transparent'}">
+        <span><span class="ic">${f.icon || '📁'}</span> ${esc(f.name)} <small>(${notes.filter(n => n.folder_id === f.id).length})</small></span>
+        <span class="acts"><span data-editf="${f.id}" title="Edit folder">✎</span></span>
+      </div>`).join('')
+      || '<p class="empty-state"><span class="big">📁</span>No folders yet.<br>Create one to get started.</p>';
+
+    pane.querySelectorAll('[data-f]').forEach(el => el.onclick = async (e) => {
+      if (e.target.dataset.editf) return;
+      await flushSave();
+      selFolder = +el.dataset.f; selNote = null; searchQ = '';
+      renderAll();
     });
-    page.querySelectorAll('[data-n]').forEach(el => el.onclick = (e) => {
-      if (e.target.dataset.deln) return;
-      selNote = +el.dataset.n; render();
+    pane.querySelectorAll('[data-editf]').forEach(el => el.onclick = () =>
+      folderModal(folders.find(x => x.id === +el.dataset.editf)));
+  }
+
+  function sortNotes(list) {
+    const arr = [...list];
+    arr.sort((a, b) => {
+      if (a.starred !== b.starred) return a.starred ? -1 : 1;
+      if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
+      if (sortBy === 'meeting') return (b.meeting_date || '').localeCompare(a.meeting_date || '');
+      return (b.updated_at || '').localeCompare(a.updated_at || '');
     });
-    page.querySelectorAll('[data-delf]').forEach(el => el.onclick = async () => {
-      const f = folders.find(x => x.id === +el.dataset.delf);
-      if (!confirm(`Delete folder "${f.name}" and ALL its notes?`)) return;
-      const { error } = await supabase.from('note_folders').delete().eq('id', f.id);
-      if (error) return alert(error.message);
+    return arr;
+  }
+
+  function renderList() {
+    const pane = document.getElementById('notes-pane');
+    let list;
+    if (searchQ.trim()) {
+      const q = searchQ.trim().toLowerCase();
+      list = notes.filter(n =>
+        (n.title || '').toLowerCase().includes(q)
+        || stripHtml(n.content).toLowerCase().includes(q)
+        || (n.tags || []).some(t => t.toLowerCase().includes(q)));
+    } else {
+      list = notes.filter(n => n.folder_id === selFolder);
+    }
+    list = sortNotes(list);
+
+    pane.innerHTML = list.map(n => {
+      const folder = folders.find(f => f.id === n.folder_id);
+      const preview = stripHtml(n.content).slice(0, 64);
+      return `
+        <div class="note-item ${n.id === selNote ? 'sel' : ''}" data-n="${n.id}"
+             style="border-left-color:${n.id === selNote ? '' : (n.color || 'transparent')}">
+          <div class="trow">
+            <span class="ic">${n.icon || '📝'}</span>
+            <span class="t">${esc(n.title)}</span>
+            <button class="star-btn ${n.starred ? 'on' : ''}" data-star="${n.id}" title="Star">${n.starred ? '⭐' : '☆'}</button>
+            <span class="acts"><span data-deln="${n.id}" title="Delete note">✕</span></span>
+          </div>
+          <div class="meta">
+            ${searchQ && folder ? `<span class="fold">${folder.icon || '📁'} ${esc(folder.name)} · </span>` : ''}
+            ${n.meeting_date ? fmtDate(n.meeting_date) + ' · ' : ''}${esc(preview)}
+          </div>
+          ${(n.tags || []).length ? `<div class="chips">${n.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : ''}
+        </div>`;
+    }).join('')
+      || `<p class="empty-state"><span class="big">🔎</span>${searchQ ? 'No notes match your search.' : 'No notes in this folder yet.'}</p>`;
+
+    pane.querySelectorAll('[data-n]').forEach(el => el.onclick = async (e) => {
+      if (e.target.dataset.star || e.target.dataset.deln) return;
+      await flushSave();
+      selNote = +el.dataset.n; mode = 'view';
+      renderList(); buildEditor();
+    });
+    pane.querySelectorAll('[data-star]').forEach(el => el.onclick = async () => {
+      const n = noteById(+el.dataset.star);
+      n.starred = !n.starred;
+      await supabase.from('notes').update({ starred: n.starred }).eq('id', n.id);
+      renderList(); if (n.id === selNote) buildEditor();
+    });
+    pane.querySelectorAll('[data-deln]').forEach(el => el.onclick = async () => {
+      const n = noteById(+el.dataset.deln);
+      if (!await confirmModal(`Delete note "${n.title}"? This can't be undone.`)) return;
+      await supabase.from('notes').delete().eq('id', n.id);
+      if (selNote === n.id) { selNote = null; dirty = false; }
+      load();
+    });
+  }
+
+  // ---------- editor ----------
+  function buildEditor() {
+    const pane = document.getElementById('editor-pane');
+    const n = noteById(selNote);
+    if (!n) {
+      pane.innerHTML = '<p class="empty-state"><span class="big">🖋️</span>Select a note to read it,<br>or create a new one.</p>';
+      return;
+    }
+    const editing = mode === 'edit';
+    const att = [...(attMap.get(n.id) || [])];
+
+    pane.innerHTML = `
+      <div class="note-ed-head">
+        <button class="icon-btn" id="ed-icon" title="${editing ? 'Change icon & color' : 'Icon'}" ${editing ? '' : 'disabled'}>${n.icon || '📝'}</button>
+        ${editing
+          ? `<input class="title-edit" id="ed-title" value="${esc(n.title)}" maxlength="180">`
+          : `<div class="title-view">${esc(n.title)}</div>`}
+        <button class="star-btn ${n.starred ? 'on' : ''}" id="ed-star" title="Star" style="font-size:1.3rem">${n.starred ? '⭐' : '☆'}</button>
+        <span class="mode-toggle">
+          <button id="md-view" class="${editing ? '' : 'on'}">View</button>
+          <button id="md-edit" class="${editing ? 'on' : ''}">Edit</button>
+        </span>
+      </div>
+      <div class="note-ed-sub">
+        <span>📅</span>
+        ${editing
+          ? `<input type="date" id="ed-date" value="${n.meeting_date || ''}">`
+          : `<span>${n.meeting_date ? fmtDate(n.meeting_date) : 'No date'}</span>`}
+        <span style="margin-left:8px">👥</span>
+        <span id="ed-att-chips">${att.length
+          ? att.map(uid => `<span class="chip person">${esc(roster.find(r => r.id === uid)?.full_name || 'Member')}</span>`).join(' ')
+          : '<span style="opacity:.6">No attendees</span>'}</span>
+        ${editing ? '<button class="btn ghost sm" id="ed-att">Edit attendees</button>' : ''}
+      </div>
+      <div class="note-ed-sub" id="ed-tags-row">
+        <span>🏷️</span>
+        <span id="ed-tags">${(n.tags || []).map(t =>
+          `<span class="chip">${esc(t)}${editing ? ` <span class="x" data-rmtag="${esc(t)}">×</span>` : ''}</span>`).join(' ')
+          || '<span style="opacity:.6">No tags</span>'}</span>
+        ${editing ? '<input id="ed-newtag" placeholder="add tag ⏎" style="border:1px solid var(--line); background:var(--surface); color:var(--text); border-radius:8px; padding:4px 9px; font-size:.8rem; width:110px">' : ''}
+      </div>
+      ${editing ? `
+      <div class="rt-toolbar">
+        <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button class="rt-btn" data-cmd="h2" title="Heading">H</button>
+        <button class="rt-btn" data-cmd="insertUnorderedList" title="Bullet list">•≡</button>
+        <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">1≡</button>
+        <button class="rt-btn" data-cmd="cklist" title="Checklist">☑</button>
+        <button class="rt-btn" data-cmd="table" title="Insert table">⊞</button>
+        <button class="rt-btn" data-cmd="image" title="Insert image">🖼</button>
+      </div>` : ''}
+      <div class="rt-content" id="ed-content" contenteditable="${editing}">${n.content || ''}</div>
+      <input type="file" id="ed-img-file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
+      ${editing ? '<div style="margin-top:10px; text-align:right"><button class="btn ghost sm" id="ed-del">Delete note</button></div>' : ''}`;
+
+    // mode toggle
+    document.getElementById('md-view').onclick = async () => { await flushSave(); mode = 'view'; buildEditor(); };
+    document.getElementById('md-edit').onclick = () => { mode = 'edit'; buildEditor(); };
+
+    // star
+    document.getElementById('ed-star').onclick = async () => {
+      n.starred = !n.starred;
+      await supabase.from('notes').update({ starred: n.starred }).eq('id', n.id);
+      renderList(); buildEditor();
+    };
+
+    // checklist toggle works in BOTH modes (the one allowed view-mode interaction)
+    document.getElementById('ed-content').addEventListener('click', (e) => {
+      const li = e.target.closest('ul.cklist li');
+      if (li && document.getElementById('ed-content').contains(li)) {
+        li.classList.toggle('done');
+        markDirty();
+      }
+    });
+
+    if (!editing) return;
+
+    // dirty tracking
+    document.getElementById('ed-content').addEventListener('input', markDirty);
+    document.getElementById('ed-title').addEventListener('input', markDirty);
+    document.getElementById('ed-date').addEventListener('change', markDirty);
+
+    // toolbar
+    pane.querySelectorAll('.rt-btn[data-cmd]').forEach(b => {
+      b.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
+      b.addEventListener('click', () => {
+        const cmd = b.dataset.cmd;
+        const content = document.getElementById('ed-content');
+        content.focus();
+        if (cmd === 'h2') {
+          const isH2 = document.queryCommandValue('formatBlock').toLowerCase() === 'h2';
+          document.execCommand('formatBlock', false, isH2 ? 'p' : 'h2');
+        } else if (cmd === 'cklist') {
+          document.execCommand('insertHTML', false, '<ul class="cklist"><li>New item</li></ul><p></p>');
+        } else if (cmd === 'table') {
+          document.execCommand('insertHTML', false,
+            '<table><tr><th>Column 1</th><th>Column 2</th><th>Column 3</th></tr>'
+            + '<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>'
+            + '<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>');
+        } else if (cmd === 'image') {
+          document.getElementById('ed-img-file').click();
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+        markDirty();
+      });
+    });
+
+    // image upload
+    document.getElementById('ed-img-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 4 * 1024 * 1024) { setInd('unsaved', 'Image > 4 MB'); return; }
+      setInd('saving', 'Uploading…');
+      const ext = file.name.split('.').pop().toLowerCase();
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from('note-images').upload(path, file);
+      if (error) { setInd('unsaved', 'Upload failed'); return; }
+      const url = supabase.storage.from('note-images').getPublicUrl(path).data.publicUrl;
+      const content = document.getElementById('ed-content');
+      content.focus();
+      document.execCommand('insertImage', false, url);
+      markDirty();
+      e.target.value = '';
+    });
+
+    // tags
+    document.getElementById('ed-newtag').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const t = e.target.value.trim().toLowerCase();
+      if (t && !(n.tags || []).includes(t)) {
+        n.tags = [...(n.tags || []), t];
+        markDirty(); buildEditor();
+      }
+      e.target.value = '';
+    });
+    pane.querySelectorAll('[data-rmtag]').forEach(el => el.onclick = () => {
+      n.tags = (n.tags || []).filter(t => t !== el.dataset.rmtag);
+      markDirty(); buildEditor();
+    });
+
+    // attendees
+    document.getElementById('ed-att').onclick = () => attendeesModal(n);
+
+    // icon & color
+    document.getElementById('ed-icon').onclick = () => iconModal(n);
+
+    // delete
+    document.getElementById('ed-del').onclick = async () => {
+      if (!await confirmModal(`Delete note "${n.title}"? This can't be undone.`)) return;
+      await supabase.from('notes').delete().eq('id', n.id);
+      selNote = null; dirty = false;
+      load();
+    };
+  }
+
+  // ---------- saving ----------
+  function setInd(cls, text) {
+    const el = document.getElementById('saved-ind');
+    if (el) { el.className = `saved-ind ${cls}`; el.textContent = text; }
+  }
+  function markDirty() {
+    dirty = true;
+    setInd('unsaved', 'Unsaved changes…');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNote, 1400);
+  }
+  async function flushSave() {
+    clearTimeout(saveTimer);
+    if (dirty) await saveNote();
+  }
+  async function saveNote() {
+    const n = noteById(selNote);
+    if (!n) { dirty = false; return; }
+    clearTimeout(saveTimer);
+    setInd('saving', 'Saving…');
+    const payload = {
+      content: document.getElementById('ed-content')?.innerHTML ?? n.content,
+      tags: n.tags || [], icon: n.icon, color: n.color, starred: n.starred,
+    };
+    const titleEl = document.getElementById('ed-title');
+    if (titleEl) payload.title = titleEl.value.trim() || 'Untitled note';
+    const dateEl = document.getElementById('ed-date');
+    if (dateEl && dateEl.value) payload.meeting_date = dateEl.value;
+
+    const { error } = await supabase.from('notes').update(payload).eq('id', n.id);
+    if (error) { setInd('unsaved', 'Save failed — retrying'); saveTimer = setTimeout(saveNote, 3000); return; }
+
+    if (attendeesDirty) {
+      await supabase.from('note_attendees').delete().eq('note_id', n.id);
+      const set = [...(attMap.get(n.id) || [])];
+      if (set.length) await supabase.from('note_attendees').insert(set.map(u => ({ note_id: n.id, user_id: u })));
+      attendeesDirty = false;
+    }
+    Object.assign(n, payload);
+    n.updated_at = new Date().toISOString();
+    dirty = false;
+    setInd('saved', `Saved ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`);
+    renderList();
+  }
+
+  // ---------- modals ----------
+  function baseModal(inner, narrow = true) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal ${narrow ? 'pop' : ''}">${inner}</div>`;
+    document.body.appendChild(back);
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    return back;
+  }
+
+  function confirmModal(msg) {
+    return new Promise((resolve) => {
+      const back = baseModal(`
+        <h2>Are you sure?</h2>
+        <p style="font-size:.92rem; color:var(--muted)">${esc(msg)}</p>
+        <div class="row-btns">
+          <button class="btn ghost" id="c-no">Cancel</button>
+          <button class="btn" id="c-yes">Delete</button>
+        </div>`);
+      back.querySelector('#c-no').onclick = () => { back.remove(); resolve(false); };
+      back.querySelector('#c-yes').onclick = () => { back.remove(); resolve(true); };
+    });
+  }
+
+  function pickerRows(currentIcon, currentColor) {
+    return `
+      <label style="font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)">Icon</label>
+      <div class="icon-grid">${EMOJIS.map(e =>
+        `<button type="button" data-ic="${e}" class="${currentIcon === e ? 'on' : ''}">${e}</button>`).join('')}</div>
+      <label style="font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)">Color</label>
+      <div class="swatch-row">${COLORS.map(c =>
+        `<button type="button" data-sw="${c}" class="${currentColor === c ? 'on' : ''}" style="background:${c}"></button>`).join('')}
+        <button type="button" data-sw="" title="No color" style="background:transparent; border:2px dashed var(--line)"></button>
+      </div>`;
+  }
+  function bindPicker(back, state) {
+    back.querySelectorAll('[data-ic]').forEach(b => b.onclick = () => {
+      state.icon = b.dataset.ic;
+      back.querySelectorAll('[data-ic]').forEach(x => x.classList.toggle('on', x === b));
+    });
+    back.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => {
+      state.color = b.dataset.sw || null;
+      back.querySelectorAll('[data-sw]').forEach(x => x.classList.toggle('on', x === b));
+    });
+  }
+
+  function folderModal(f) {
+    const state = { icon: f?.icon || '📁', color: f?.color || null };
+    const back = baseModal(`
+      <h2>${f ? 'Edit folder' : 'New folder'}</h2>
+      <div class="field"><label>Name</label><input id="fm-name" required value="${esc(f?.name)}" maxlength="120"></div>
+      ${pickerRows(state.icon, state.color)}
+      <div class="row-btns">
+        ${f ? '<button class="btn ghost" id="fm-del" style="margin-right:auto">Delete</button>' : ''}
+        <button class="btn ghost" id="fm-cancel">Cancel</button>
+        <button class="btn" id="fm-save">${f ? 'Save' : 'Create'}</button>
+      </div>`);
+    bindPicker(back, state);
+    back.querySelector('#fm-cancel').onclick = () => back.remove();
+    back.querySelector('#fm-del')?.addEventListener('click', async () => {
+      back.remove();
+      if (!await confirmModal(`Delete folder "${f.name}" and ALL notes inside it?`)) return;
+      await supabase.from('note_folders').delete().eq('id', f.id);
       if (selFolder === f.id) { selFolder = null; selNote = null; }
-      load(true);
+      load();
     });
-    page.querySelectorAll('[data-deln]').forEach(el => el.onclick = async () => {
-      const n = notes.find(x => x.id === +el.dataset.deln);
-      if (!confirm(`Delete note "${n.title}"?`)) return;
-      const { error } = await supabase.from('notes').delete().eq('id', n.id);
-      if (error) return alert(error.message);
-      if (selNote === n.id) selNote = null;
-      load(true);
-    });
-    document.getElementById('n-save')?.addEventListener('click', async () => {
-      const { error } = await supabase.from('notes').update({
-        title: document.getElementById('n-title').value.trim() || 'Untitled note',
-        content: document.getElementById('n-content').value,
-      }).eq('id', selNote);
-      if (error) return alert(error.message);
-      load(true);
+    back.querySelector('#fm-save').onclick = async () => {
+      const name = back.querySelector('#fm-name').value.trim();
+      if (!name) return;
+      if (f) {
+        await supabase.from('note_folders').update({ name, icon: state.icon, color: state.color }).eq('id', f.id);
+      } else {
+        const { data } = await supabase.from('note_folders')
+          .insert({ name, icon: state.icon, color: state.color, created_by: ctx.user.id }).select('id').single();
+        if (data) { selFolder = data.id; selNote = null; }
+      }
+      back.remove(); load();
+    };
+  }
+
+  function iconModal(n) {
+    const state = { icon: n.icon || '📝', color: n.color || null };
+    const back = baseModal(`
+      <h2>Note icon & color</h2>
+      ${pickerRows(state.icon, state.color)}
+      <div class="row-btns">
+        <button class="btn ghost" id="im-cancel">Cancel</button>
+        <button class="btn" id="im-save">Apply</button>
+      </div>`);
+    bindPicker(back, state);
+    back.querySelector('#im-cancel').onclick = () => back.remove();
+    back.querySelector('#im-save').onclick = () => {
+      n.icon = state.icon; n.color = state.color;
+      markDirty(); back.remove(); buildEditor(); renderList();
+    };
+  }
+
+  function attendeesModal(n) {
+    const set = attMap.get(n.id) || new Set();
+    const back = baseModal(`
+      <h2>Attendees</h2>
+      <p style="font-size:.85rem; color:var(--muted); margin-bottom:10px">Officers & interns present at this meeting.</p>
+      <div class="check-list" style="flex-direction:column; align-items:stretch">
+        ${roster.map(r => `
+          <label><input type="checkbox" value="${r.id}" ${set.has(r.id) ? 'checked' : ''}> ${esc(r.full_name)}</label>`).join('')
+          || '<p style="color:var(--muted)">No officers or interns found.</p>'}
+      </div>
+      <div class="row-btns">
+        <button class="btn ghost" id="am-cancel">Cancel</button>
+        <button class="btn" id="am-save">Save</button>
+      </div>`);
+    back.querySelector('#am-cancel').onclick = () => back.remove();
+    back.querySelector('#am-save').onclick = () => {
+      const picked = [...back.querySelectorAll('input[type="checkbox"]:checked')].map(i => i.value);
+      attMap.set(n.id, new Set(picked));
+      attendeesDirty = true;
+      markDirty(); back.remove(); buildEditor();
+    };
+  }
+
+  function noteModal() {
+    const today = new Date().toISOString().slice(0, 10);
+    const back = baseModal(`
+      <h2>New note</h2>
+      <form id="nm-form">
+        <div class="field"><label>Title *</label><input id="nm-title" required maxlength="180"></div>
+        <div class="field"><label>Date *</label><input type="date" id="nm-date" required value="${today}"></div>
+        <div class="field"><label>Attendees</label>
+          <div class="check-list" style="flex-direction:column; align-items:stretch; max-height:180px; overflow-y:auto">
+            ${roster.map(r => `<label><input type="checkbox" value="${r.id}"> ${esc(r.full_name)}</label>`).join('')
+              || '<p style="color:var(--muted); font-size:.85rem">No officers or interns found.</p>'}
+          </div>
+        </div>
+        <div class="field"><label>Body</label><textarea id="nm-body" placeholder="Meeting notes…"></textarea></div>
+        <div class="row-btns">
+          <button type="button" class="btn ghost" id="nm-cancel">Cancel</button>
+          <button type="submit" class="btn">Create note</button>
+        </div>
+      </form>`, false);
+    back.querySelector('#nm-cancel').onclick = () => back.remove();
+    back.querySelector('#nm-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = back.querySelector('#nm-body').value.trim();
+      const { data, error } = await supabase.from('notes').insert({
+        folder_id: selFolder,
+        title: back.querySelector('#nm-title').value.trim(),
+        meeting_date: back.querySelector('#nm-date').value,
+        content: body ? `<p>${esc(body).replace(/\n/g, '</p><p>')}</p>` : '',
+        icon: '📝',
+        created_by: ctx.user.id,
+      }).select('id').single();
+      if (error) { alert(error.message); return; }
+      const picked = [...back.querySelectorAll('input[type="checkbox"]:checked')].map(i => i.value);
+      if (picked.length) {
+        await supabase.from('note_attendees').insert(picked.map(u => ({ note_id: data.id, user_id: u })));
+      }
+      back.remove();
+      selNote = data.id; mode = 'edit';
+      await load();
     });
   }
 
