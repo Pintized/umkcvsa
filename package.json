@@ -1,0 +1,27 @@
+{
+  "name": "umkcvsa",
+  "version": "1.0.0",
+  "description": "Website and member/officer portal for the UMKC Vietnamese Student Association.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pintized/umkcvsa.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Pintized/umkcvsa/issues"
+  },
+  "homepage": "https://github.com/Pintized/umkcvsa#readme",
+  "devDependencies": {
+    "supabase": "^2.109.1"
+  }
+}
