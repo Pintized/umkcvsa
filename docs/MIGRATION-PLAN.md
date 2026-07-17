@@ -3,7 +3,9 @@
 
 - **Created:** 2026-07-16
 - **Source analyzed:** `E:\UMKCVSA` (full DreamHost webroot export + phpMyAdmin DB dump)
-- **Status:** PLAN — no changes made yet. This is the blueprint for all future sessions.
+- **Status:** Phase 0 ✅ (2026-07-17) · Phase 1 ✅ (2026-07-17) · Next: Phase 2 (GitHub Pages deploy)
+- **Repo:** https://github.com/Pintized/umkcvsa · **Supabase:** ref `wrlpsetbkeyoyamkopgf` (us-east-2)
+- ⚠️ 2026-07-17: The Coming Soon splash (`index.html`) + `index-backup.html` vanished from the local export before git import, and umkcvsa.org now returns 404 (DreamHost apparently already emptied). No Wayback snapshot. Splash is unrecoverable — accepted loss, it was obsolete. The `legacy/coming-soon/` folder keeps only the Apache htaccess for reference.
 
 ---
 
