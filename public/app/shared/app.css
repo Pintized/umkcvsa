@@ -658,8 +658,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   max-width: 540px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: var(--shadow-lg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
+.modal::-webkit-scrollbar { width: 8px; }
+.modal::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.modal::-webkit-scrollbar-track { background: transparent; }
 .modal h2 { margin-bottom: 18px; font-size: 1.25rem; }
 .modal .row-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 
@@ -867,14 +873,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .rt-content ul.cklist li.done { color: var(--muted); text-decoration: line-through; }
 .rt-content ul.cklist li.done::before { content: "●"; color: var(--ok); }
 
-.icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin: 10px 0; }
-.icon-grid button { font-size: 1.15rem; padding: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.icon-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
+.icon-grid button { min-width: 0; font-size: 1.1rem; padding: 6px 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .icon-grid button:hover, .icon-grid button.on { border-color: var(--gold); background: rgba(201, 155, 63, .15); }
 .swatch-row { display: flex; gap: 8px; margin: 10px 0; }
 .swatch-row button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
 .swatch-row button.on, .swatch-row button:hover { border-color: var(--text); }
 
-.modal.pop { max-width: 360px; }
+.modal.pop { max-width: 400px; }
 .empty-state { color: var(--muted); text-align: center; padding: 48px 20px; font-size: .92rem; }
 .empty-state .big { font-size: 2rem; display: block; margin-bottom: 10px; }
 
