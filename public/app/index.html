@@ -34,9 +34,9 @@
   ]);
 
   page.innerHTML = `
-    <div class="card">
-      <h2>Hi, ${ctx.profile?.first_name || 'member'} 👋</h2>
-      <p style="color:var(--muted); margin-bottom:14px">
+    <div class="card hero">
+      <h2>Chào ${ctx.profile?.first_name || 'member'} 👋</h2>
+      <p style="margin:2px 0 16px">
         ${ctx.roles.map(r => `<span class="badge ${r}">${r}</span>`).join('')}
       </p>
       <div class="stat-grid">
