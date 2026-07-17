@@ -40,6 +40,59 @@
   window.addEventListener('beforeunload', (e) => {
     if (dirty) { e.preventDefault(); e.returnValue = ''; }
   });
+
+  // ----- toolbar active-state tracking (bold/lists/table/etc. light up at the cursor) -----
+  function updateToolbarState() {
+    const content = document.getElementById('ed-content');
+    if (!content || content.getAttribute('contenteditable') !== 'true') return;
+    const sel = document.getSelection();
+    if (!sel || !sel.anchorNode || !content.contains(sel.anchorNode)) return;
+    const setOn = (cmd, on) => {
+      const b = document.querySelector(`.rt-btn[data-cmd="${cmd}"]`);
+      if (b) b.classList.toggle('on', on);
+    };
+    setOn('bold', document.queryCommandState('bold'));
+    setOn('italic', document.queryCommandState('italic'));
+    setOn('underline', document.queryCommandState('underline'));
+    setOn('insertUnorderedList', document.queryCommandState('insertUnorderedList'));
+    setOn('insertOrderedList', document.queryCommandState('insertOrderedList'));
+    setOn('h2', (document.queryCommandValue('formatBlock') || '').toLowerCase() === 'h2');
+    const node = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
+    setOn('cklist', !!node?.closest('ul.cklist'));
+    setOn('table', !!node?.closest('table'));
+  }
+  document.addEventListener('selectionchange', updateToolbarState);
+
+  // ----- floating image resize bar -----
+  const imgBar = document.createElement('div');
+  imgBar.className = 'img-bar';
+  imgBar.style.display = 'none';
+  imgBar.innerHTML =
+    ['25', '50', '75', '100'].map(p => `<button class="rt-btn" data-w="${p}" title="Width ${p}%">${p}%</button>`).join('')
+    + '<button class="rt-btn" data-rm title="Remove image">✕</button>';
+  document.body.appendChild(imgBar);
+  let curImg = null;
+  function positionImgBar() {
+    if (!curImg) return;
+    const r = curImg.getBoundingClientRect();
+    imgBar.style.display = 'flex';
+    imgBar.style.left = Math.max(8, r.left) + 'px';
+    imgBar.style.top = (r.top - 46 < 8 ? r.bottom + 8 : r.top - 46) + 'px';
+  }
+  function hideImgBar() {
+    imgBar.style.display = 'none';
+    curImg?.classList.remove('img-sel');
+    curImg = null;
+  }
+  imgBar.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b || !curImg) return;
+    if ('rm' in b.dataset) { curImg.remove(); hideImgBar(); markDirty(); return; }
+    curImg.style.width = b.dataset.w + '%';
+    markDirty();
+    positionImgBar();
+  });
+  window.addEventListener('scroll', hideImgBar, true);
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (selNote) saveNote(); }
   });
@@ -232,6 +285,21 @@
       </div>
       ${editing ? `
       <div class="rt-toolbar">
+        <select class="rt-sel" id="rt-font" title="Font">
+          <option value="">Font</option>
+          <option value="'Source Sans 3', sans-serif">Sans</option>
+          <option value="'Playfair Display', serif">Playfair</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Courier New', monospace">Mono</option>
+          <option value="Arial, sans-serif">Arial</option>
+        </select>
+        <select class="rt-sel" id="rt-size" title="Text size">
+          <option value="">Size</option>
+          <option value="2">Small</option>
+          <option value="3">Normal</option>
+          <option value="5">Large</option>
+          <option value="6">Huge</option>
+        </select>
         <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
         <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
         <button class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
@@ -257,16 +325,31 @@
       renderList(); buildEditor();
     };
 
-    // checklist toggle works in BOTH modes (the one allowed view-mode interaction)
+    // content clicks: checklist circles (both modes) + image selection (edit mode)
+    hideImgBar();
     document.getElementById('ed-content').addEventListener('click', (e) => {
+      const content = document.getElementById('ed-content');
+      // checklist: only the circle (left 26px of the row) toggles — not the text
       const li = e.target.closest('ul.cklist li');
-      if (li && document.getElementById('ed-content').contains(li)) {
-        li.classList.toggle('done');
-        markDirty();
+      if (li && content.contains(li)) {
+        if (e.clientX - li.getBoundingClientRect().left <= 26) {
+          li.classList.toggle('done');
+          markDirty();
+        }
+      }
+      // image selection for resizing (edit mode only)
+      if (mode === 'edit' && e.target.tagName === 'IMG') {
+        curImg?.classList.remove('img-sel');
+        curImg = e.target;
+        curImg.classList.add('img-sel');
+        positionImgBar();
+      } else if (!e.target.closest('.img-bar')) {
+        hideImgBar();
       }
     });
 
     if (!editing) return;
+    document.execCommand('styleWithCSS', false, true);
 
     // dirty tracking
     document.getElementById('ed-content').addEventListener('input', markDirty);
@@ -296,8 +379,22 @@
           document.execCommand(cmd, false, null);
         }
         markDirty();
+        updateToolbarState();
       });
     });
+
+    // font family / size selects (apply to selection, then reset to placeholder)
+    const applySel = (selEl, cmd) => selEl.addEventListener('change', () => {
+      if (!selEl.value) return;
+      const content = document.getElementById('ed-content');
+      content.focus();
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand(cmd, false, selEl.value);
+      markDirty();
+      selEl.value = '';
+    });
+    applySel(document.getElementById('rt-font'), 'fontName');
+    applySel(document.getElementById('rt-size'), 'fontSize');
 
     // image upload
     document.getElementById('ed-img-file').addEventListener('change', async (e) => {
