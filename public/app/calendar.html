@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading calendar…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Calendar');
+
+  let current = new Date();
+  current.setDate(1);
+  let events = [];
+  let myRsvps = new Map(); // event_id -> status
+
+  const fmtTime = (t) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
+  async function loadMonth() {
+    const y = current.getFullYear(), m = current.getMonth();
+    const from = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    const to = new Date(y, m + 1, 0);
+    const toS = `${y}-${String(m + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`;
+    const [evRes, rsvpRes] = await Promise.all([
+      supabase.from('events').select('*').gte('event_date', from).lte('event_date', toS).order('event_date'),
+      supabase.from('rsvps').select('event_id, status').eq('user_id', ctx.user.id),
+    ]);
+    events = evRes.data || [];
+    myRsvps = new Map((rsvpRes.data || []).map(r => [r.event_id, r.status]));
+    render();
+  }
+
+  function render() {
+    const y = current.getFullYear(), m = current.getMonth();
+    const monthName = current.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const firstDow = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const todayS = new Date().toISOString().slice(0, 10);
+
+    const byDay = {};
+    events.forEach(ev => { (byDay[ev.event_date] ||= []).push(ev); });
+
+    let cells = '';
+    for (let i = 0; i < firstDow; i++) cells += '<div class="cal-cell out"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const evs = (byDay[ds] || []).map(ev =>
+        `<span class="cal-ev" data-ev="${ev.id}">${ev.name}</span>`).join('');
+      cells += `<div class="cal-cell ${ds === todayS ? 'today' : ''}"><div class="d">${d}</div>${evs}</div>`;
+    }
+
+    page.innerHTML = `
+      <div class="card">
+        <div class="cal-head">
+          <h2>${monthName}</h2>
+          <div class="cal-nav">
+            <button class="btn ghost" id="prev">‹ Prev</button>
+            <button class="btn ghost" id="today">Today</button>
+            <button class="btn ghost" id="next">Next ›</button>
+          </div>
+        </div>
+        <div class="cal-grid">
+          ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="cal-dow">${d}</div>`).join('')}
+          ${cells}
+        </div>
+        <div class="ev-detail" id="detail">
+          ${events.length
+            ? '<p style="color:var(--muted); font-size:.9rem">Click an event on the calendar to see details and RSVP.</p>'
+            : '<p style="color:var(--muted); font-size:.9rem">No events this month.</p>'}
+        </div>
+      </div>`;
+
+    document.getElementById('prev').onclick = () => { current.setMonth(m - 1); loadMonth(); };
+    document.getElementById('next').onclick = () => { current.setMonth(m + 1); loadMonth(); };
+    document.getElementById('today').onclick = () => { current = new Date(); current.setDate(1); loadMonth(); };
+    page.querySelectorAll('.cal-ev').forEach(el => {
+      el.addEventListener('click', () => showDetail(Number(el.dataset.ev)));
+    });
+  }
+
+  function showDetail(evId) {
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    const mine = myRsvps.get(ev.id);
+    const btn = (status, label) =>
+      `<button class="btn ${status === 'cancelled' ? 'ghost' : status === 'maybe' ? 'secondary' : ''} ${mine === status ? 'on' : ''}"
+        data-rsvp="${status}">${label}${mine === status ? ' ✓' : ''}</button>`;
+
+    document.getElementById('detail').innerHTML = `
+      <h3 style="margin-bottom:6px">${ev.name}</h3>
+      <p style="color:var(--muted); font-size:.9rem">
+        ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        ${ev.start_time ? ' · ' + fmtTime(ev.start_time) : ''}${ev.end_time ? '–' + fmtTime(ev.end_time) : ''}
+        ${ev.location ? ' · ' + ev.location : ''}
+      </p>
+      ${ev.description ? `<p style="margin-top:8px; font-size:.92rem">${ev.description}</p>` : ''}
+      <div class="rsvp-row">
+        ${btn('going', 'Going')}
+        ${btn('maybe', 'Maybe')}
+        ${btn('cancelled', "Can't go")}
+      </div>
+      <p id="rsvp-msg" style="color:var(--muted); font-size:.82rem; margin-top:8px"></p>`;
+
+    document.querySelectorAll('#detail [data-rsvp]').forEach(b => {
+      b.addEventListener('click', async () => {
+        const status = b.dataset.rsvp;
+        const { error } = await supabase.from('rsvps').upsert(
+          { user_id: ctx.user.id, event_id: ev.id, status },
+          { onConflict: 'user_id,event_id' },
+        );
+        const msg = document.getElementById('rsvp-msg');
+        if (error) { msg.textContent = error.message; msg.style.color = 'var(--red)'; return; }
+        myRsvps.set(ev.id, status);
+        showDetail(ev.id);
+        document.getElementById('rsvp-msg').textContent = 'RSVP saved!';
+      });
+    });
+  }
+
+  await loadMonth();
+</script>
+</body>
+</html>

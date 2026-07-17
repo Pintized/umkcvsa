@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Members | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading members…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const AVATAR_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Members');
+
+  const { data: members, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, first_name, avatar_path, points, created_at')
+    .order('points', { ascending: false });
+
+  const card = (m) => `
+    <div class="member-card" data-name="${(m.full_name || '').toLowerCase()}">
+      <img src="${m.avatar_path ? AVATAR_BASE + m.avatar_path : '/assets/img/logo-128.png'}" alt="">
+      <div>
+        <div class="mname">${m.full_name || 'Member'}</div>
+        <div class="msub">${m.points} pts · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+      </div>
+    </div>`;
+
+  page.innerHTML = `
+    <div class="card">
+      <h2>Member directory</h2>
+      <input class="searchbar" id="search" type="search" placeholder="Search members…">
+      ${error ? `<p style="color:var(--red)">${error.message}</p>` : `
+        <div class="member-list" id="list">${(members || []).map(card).join('')}</div>
+        <p style="color:var(--muted); font-size:.85rem; margin-top:14px">${(members || []).length} member${members?.length === 1 ? '' : 's'}</p>
+      `}
+    </div>`;
+
+  document.getElementById('search')?.addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('#list .member-card').forEach(el => {
+      el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+</script>
+</body>
+</html>

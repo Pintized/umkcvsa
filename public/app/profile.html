@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading profile…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const AVATAR_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'My Profile');
+
+  const p = ctx.profile || {};
+  const avatarUrl = p.avatar_path ? AVATAR_BASE + p.avatar_path : '/assets/img/logo-128.png';
+  const joined = p.created_at
+    ? new Date(p.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—';
+
+  page.innerHTML = `
+    <div class="card">
+      <div class="profile-head">
+        <img class="avatar-lg" id="avatar" src="${avatarUrl}" alt="Your avatar">
+        <div>
+          <h2 style="margin-bottom:4px">${p.full_name || 'Member'}</h2>
+          <p style="color:var(--muted); font-size:.9rem">${ctx.user.email} · member since ${joined}</p>
+          <p style="margin-top:8px">${ctx.roles.map(r => `<span class="badge ${r}">${r}</span>`).join('')}</p>
+        </div>
+      </div>
+      <div class="notice" id="notice"></div>
+      <form id="profile-form" style="max-width:460px">
+        <div class="field-row">
+          <div class="field">
+            <label for="first">First name</label>
+            <input type="text" id="first" value="${p.first_name || ''}" required>
+          </div>
+          <div class="field">
+            <label for="last">Last name</label>
+            <input type="text" id="last" value="${p.last_name || ''}" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="pic">Profile picture (JPG/PNG, max 2 MB)</label>
+          <input type="file" id="pic" accept="image/png,image/jpeg,image/webp">
+        </div>
+        <button class="btn" id="save" type="submit">Save changes</button>
+      </form>
+    </div>`;
+
+  const notice = document.getElementById('notice');
+  const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
+
+  document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const first = document.getElementById('first').value.trim();
+      const last = document.getElementById('last').value.trim();
+      const updates = { first_name: first, last_name: last, full_name: `${first} ${last}`.trim() };
+
+      const file = document.getElementById('pic').files[0];
+      if (file) {
+        if (file.size > 2 * 1024 * 1024) throw new Error('Image is larger than 2 MB.');
+        const ext = file.name.split('.').pop().toLowerCase();
+        const path = `${ctx.user.id}/avatar-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        if (ctx.profile?.avatar_path) {
+          await supabase.storage.from('avatars').remove([ctx.profile.avatar_path]);
+        }
+        updates.avatar_path = path;
+      }
+
+      const { error } = await supabase.from('profiles').update(updates).eq('id', ctx.user.id);
+      if (error) throw error;
+
+      say('Profile saved!', 'ok');
+      if (updates.avatar_path) {
+        document.getElementById('avatar').src = AVATAR_BASE + updates.avatar_path;
+        ctx.profile.avatar_path = updates.avatar_path;
+      }
+    } catch (err) {
+      say(err.message || String(err), 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save changes';
+    }
+  });
+</script>
+</body>
+</html>

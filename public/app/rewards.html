@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rewards | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading rewards…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Rewards');
+
+  const { data: rewards } = await supabase
+    .from('rewards')
+    .select('*')
+    .eq('active', true)
+    .order('point_cost');
+
+  const pts = ctx.profile?.points ?? 0;
+
+  const tile = (r) => {
+    const affordable = pts >= r.point_cost;
+    return `
+      <div class="tile ${affordable ? 'earned' : ''}">
+        ${affordable ? '<span class="earned-tag">Affordable</span>' : ''}
+        <h3>🎁 ${r.name}</h3>
+        <p>${r.description || ''}</p>
+        <span class="pts">${r.point_cost} pts</span>
+      </div>`;
+  };
+
+  page.innerHTML = `
+    <div class="card">
+      <h2>Your balance</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="num">${pts}</div><div class="lbl">Points available</div></div>
+      </div>
+      <p style="color:var(--muted); font-size:.88rem; margin-top:12px">
+        To redeem a reward, see an officer at any event — they'll deduct the points and hand it over.
+      </p>
+    </div>
+    <div class="card">
+      <h2>Reward catalog</h2>
+      ${(rewards && rewards.length)
+        ? `<div class="tile-grid">${rewards.map(tile).join('')}</div>`
+        : '<p style="color:var(--muted)">No rewards available right now.</p>'}
+    </div>`;
+</script>
+</body>
+</html>
