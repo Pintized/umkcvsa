@@ -277,10 +277,10 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   left: 0; right: 0; bottom: -2px;
   height: 2px;
   background: linear-gradient(90deg,
-    var(--gold-bright) 0%, var(--red) 25%, var(--navy) 50%, var(--red) 75%, var(--gold-bright) 100%);
+    var(--gold-bright) 0%, var(--red) 28%, #ffe9bd 50%, var(--red) 72%, var(--gold-bright) 100%);
   background-size: 200% 100%;
   animation: flowBar 7s linear infinite;
-  opacity: .85;
+  box-shadow: 0 0 8px rgba(224, 180, 92, .45);
   pointer-events: none;
 }
 @keyframes flowBar {
