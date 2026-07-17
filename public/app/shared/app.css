@@ -451,11 +451,12 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   border-radius: 12px;
   padding: 18px;
   position: relative;
+  overflow: hidden;
 }
 .stat::before {
   content: "";
-  position: absolute; left: 0; top: 12px; bottom: 12px;
-  width: 3px; border-radius: 2px;
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
   background: linear-gradient(180deg,
     var(--gold-bright) 0%, var(--red) 28%, #ffe9bd 50%, var(--red) 72%, var(--gold-bright) 100%);
   background-size: 100% 200%;
