@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notes | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading notes…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Notes');
+
+  let folders = [], notes = [];
+  let selFolder = null, selNote = null;
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  async function load(keepSel = false) {
+    const [f, n] = await Promise.all([
+      supabase.from('note_folders').select('*').order('name'),
+      supabase.from('notes').select('*').order('updated_at', { ascending: false }),
+    ]);
+    folders = f.data || []; notes = n.data || [];
+    if (!keepSel) { selFolder = folders[0]?.id ?? null; selNote = null; }
+    render();
+  }
+
+  const notesIn = (fid) => notes.filter(n => n.folder_id === fid);
+
+  function render() {
+    const note = notes.find(n => n.id === selNote);
+    page.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px">
+          <h2>Officer notes</h2>
+          <div style="display:flex; gap:8px">
+            <button class="btn secondary" id="new-folder">+ Folder</button>
+            <button class="btn" id="new-note" ${selFolder == null ? 'disabled' : ''}>+ Note</button>
+          </div>
+        </div>
+        <div class="notes-layout">
+          <div class="pane" id="folders">
+            ${folders.map(f => `
+              <div class="item ${f.id === selFolder ? 'sel' : ''}" data-f="${f.id}">
+                <span>📁 ${esc(f.name)} <small>(${notesIn(f.id).length})</small></span>
+                <span class="del" data-delf="${f.id}" title="Delete folder">✕</span>
+              </div>`).join('') || '<p style="color:var(--muted); font-size:.85rem">No folders yet.</p>'}
+          </div>
+          <div class="pane" id="notelist">
+            ${selFolder == null ? '' : notesIn(selFolder).map(n => `
+              <div class="item ${n.id === selNote ? 'sel' : ''}" data-n="${n.id}">
+                <span>📝 ${esc(n.title)}</span>
+                <span class="del" data-deln="${n.id}" title="Delete note">✕</span>
+              </div>`).join('') || '<p style="color:var(--muted); font-size:.85rem">No notes in this folder.</p>'}
+          </div>
+          <div class="note-editor">
+            ${note ? `
+              <input id="n-title" value="${esc(note.title)}">
+              <textarea id="n-content" placeholder="Write your note…">${esc(note.content)}</textarea>
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <small style="color:var(--muted)">Last saved ${new Date(note.updated_at).toLocaleString()}</small>
+                <button class="btn" id="n-save">Save note</button>
+              </div>
+            ` : '<p style="color:var(--muted); padding:20px">Select or create a note to start writing.</p>'}
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('new-folder').onclick = async () => {
+      const name = prompt('Folder name:');
+      if (!name?.trim()) return;
+      const { data, error } = await supabase.from('note_folders')
+        .insert({ name: name.trim(), created_by: ctx.user.id }).select('id').single();
+      if (error) return alert(error.message);
+      selFolder = data.id; selNote = null;
+      load(true);
+    };
+    document.getElementById('new-note').onclick = async () => {
+      const { data, error } = await supabase.from('notes')
+        .insert({ folder_id: selFolder, title: 'Untitled note', content: '', created_by: ctx.user.id })
+        .select('id').single();
+      if (error) return alert(error.message);
+      selNote = data.id;
+      load(true);
+    };
+    page.querySelectorAll('[data-f]').forEach(el => el.onclick = (e) => {
+      if (e.target.dataset.delf) return;
+      selFolder = +el.dataset.f; selNote = null; render();
+    });
+    page.querySelectorAll('[data-n]').forEach(el => el.onclick = (e) => {
+      if (e.target.dataset.deln) return;
+      selNote = +el.dataset.n; render();
+    });
+    page.querySelectorAll('[data-delf]').forEach(el => el.onclick = async () => {
+      const f = folders.find(x => x.id === +el.dataset.delf);
+      if (!confirm(`Delete folder "${f.name}" and ALL its notes?`)) return;
+      const { error } = await supabase.from('note_folders').delete().eq('id', f.id);
+      if (error) return alert(error.message);
+      if (selFolder === f.id) { selFolder = null; selNote = null; }
+      load(true);
+    });
+    page.querySelectorAll('[data-deln]').forEach(el => el.onclick = async () => {
+      const n = notes.find(x => x.id === +el.dataset.deln);
+      if (!confirm(`Delete note "${n.title}"?`)) return;
+      const { error } = await supabase.from('notes').delete().eq('id', n.id);
+      if (error) return alert(error.message);
+      if (selNote === n.id) selNote = null;
+      load(true);
+    });
+    document.getElementById('n-save')?.addEventListener('click', async () => {
+      const { error } = await supabase.from('notes').update({
+        title: document.getElementById('n-title').value.trim() || 'Untitled note',
+        content: document.getElementById('n-content').value,
+      }).eq('id', selNote);
+      if (error) return alert(error.message);
+      load(true);
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>
