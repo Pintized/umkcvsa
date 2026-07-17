@@ -17,6 +17,7 @@
   import { requireAdmin } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
+  import { compressImage, outExt } from '/app/shared/img.js';
 
   const IMG_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
   const ctx = await requireAdmin();
@@ -141,8 +142,10 @@
       const file = back.querySelector('#f-photo').files[0];
       if (file) {
         if (file.size > 11 * 1024 * 1024) return say('Photo is larger than 11 MB.');
-        const path = `eboard-${crypto.randomUUID()}.${file.name.split('.').pop().toLowerCase()}`;
-        const { error } = await supabase.storage.from('site-images').upload(path, file);
+        const up = await compressImage(file, 1200, .85); // auto-shrink for fast page loads
+        const path = `eboard-${crypto.randomUUID()}.${outExt(up, file)}`;
+        const { error } = await supabase.storage.from('site-images')
+          .upload(path, up, { contentType: up.type });
         if (error) return say(error.message);
         if (m?.photo_path) await supabase.storage.from('site-images').remove([m.photo_path]);
         payload.photo_path = path;

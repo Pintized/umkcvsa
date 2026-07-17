@@ -17,6 +17,7 @@
   import { requireOfficer } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
+  import { compressImage, outExt } from '/app/shared/img.js';
 
   const ctx = await requireOfficer();
   document.getElementById('loading').remove();
@@ -37,7 +38,7 @@
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:6px">
           <div>
             <h2 style="margin-bottom:2px">Public gallery</h2>
-            <p style="color:var(--muted); font-size:.86rem">These photos appear on the public site's Gallery page instantly. Max 8 MB each.</p>
+            <p style="color:var(--muted); font-size:.86rem">These photos appear on the public site's Gallery page instantly. Max 11 MB each — they're auto-compressed for fast loading.</p>
           </div>
           <button class="btn" id="upload-btn">⬆ Upload photos</button>
           <input type="file" id="files" accept="image/png,image/jpeg,image/webp,image/gif" multiple style="display:none">
@@ -69,10 +70,10 @@
       let done = 0, failed = 0;
       say(`Uploading 0/${files.length}…`, 'ok');
       for (const file of files) {
-        if (file.size > 8 * 1024 * 1024) { failed++; continue; }
-        const ext = file.name.split('.').pop().toLowerCase();
+        if (file.size > 11 * 1024 * 1024) { failed++; continue; }
+        const up = await compressImage(file, 1600, .85); // auto-shrink, keeps event detail
         const { error } = await supabase.storage.from('gallery')
-          .upload(`${crypto.randomUUID()}.${ext}`, file);
+          .upload(`${crypto.randomUUID()}.${outExt(up, file)}`, up, { contentType: up.type });
         error ? failed++ : done++;
         say(`Uploading ${done}/${files.length}…`, 'ok');
       }
