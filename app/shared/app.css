@@ -271,6 +271,22 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
 @supports not (background: color-mix(in srgb, red 50%, blue)) {
   .topbar { background: var(--surface); }
 }
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 2px;
+  background: linear-gradient(90deg,
+    var(--gold-bright) 0%, var(--red) 25%, var(--navy) 50%, var(--red) 75%, var(--gold-bright) 100%);
+  background-size: 200% 100%;
+  animation: flowBar 7s linear infinite;
+  opacity: .85;
+  pointer-events: none;
+}
+@keyframes flowBar {
+  from { background-position: 0% 0; }
+  to   { background-position: 200% 0; }
+}
 .topbar .page-title {
   font-family: var(--serif);
   font-weight: 700;
