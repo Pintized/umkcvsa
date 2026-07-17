@@ -335,23 +335,17 @@ nav.site-nav::after {
   position: absolute; inset: 0;
   border-radius: 16px;
   padding: 2px;
-  background: linear-gradient(115deg,
-    var(--gold-bright), var(--red) 30%, #ffe9bd 50%, var(--red) 70%, var(--gold-bright));
-  background-size: 300% 100%;
-  animation: ringFlow 7s linear infinite;
+  background: linear-gradient(135deg,
+    var(--gold-bright), var(--red) 45%, #ffe9bd 60%, var(--red) 75%, var(--gold-bright));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  opacity: .5;
+  opacity: .55;
   transition: opacity .3s;
   pointer-events: none;
 }
 .member:hover::after { opacity: 1; }
-@keyframes ringFlow {
-  from { background-position: 0% 0; }
-  to   { background-position: 300% 0; }
-}
 .member .photo { aspect-ratio: 5 / 6; }
 .member .photo .ph { width: 100%; height: 100%; border: none; border-radius: 0; }
 .member .info { padding: 16px 18px 20px; text-align: center; }
