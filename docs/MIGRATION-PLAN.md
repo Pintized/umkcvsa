@@ -3,7 +3,9 @@
 
 - **Created:** 2026-07-16
 - **Source analyzed:** `E:\UMKCVSA` (full DreamHost webroot export + phpMyAdmin DB dump)
-- **Status:** Phase 0 ✅ (2026-07-17) · Phase 1 ✅ (2026-07-17) · Next: Phase 2 (GitHub Pages deploy)
+- **Status:** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ site live at https://pintized.github.io/umkcvsa/ (2026-07-17) · Next: DNS cutover (pulled forward from Phase 6 — umkcvsa.org is 404ing), then Phase 3 (Supabase schema)
+- **Deploy method:** repo made public (Free-plan Pages); Pages serves the `gh-pages` branch (subtree of `public/`). Actions workflow is written (`.github/workflows/deploy-pages.yml`, uncommitted) but blocked until the gh token gets `workflow` scope (`gh auth refresh -h github.com -s workflow`); until then redeploy via `git subtree split --prefix=public HEAD` + push to `gh-pages`.
+- **Known caveat:** absolute links (`/about/`, `/assets/…`) 404 when browsing the github.io **subpath** preview — they are correct for the real domain and will work once umkcvsa.org points at Pages.
 - **Repo:** https://github.com/Pintized/umkcvsa · **Supabase:** ref `wrlpsetbkeyoyamkopgf` (us-east-2)
 - ⚠️ 2026-07-17: The Coming Soon splash (`index.html`) + `index-backup.html` vanished from the local export before git import, and umkcvsa.org now returns 404 (DreamHost apparently already emptied). No Wayback snapshot. Splash is unrecoverable — accepted loss, it was obsolete. The `legacy/coming-soon/` folder keeps only the Apache htaccess for reference.
 
