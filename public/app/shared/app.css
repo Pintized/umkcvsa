@@ -456,7 +456,14 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   content: "";
   position: absolute; left: 0; top: 12px; bottom: 12px;
   width: 3px; border-radius: 2px;
-  background: linear-gradient(180deg, var(--gold), var(--red));
+  background: linear-gradient(180deg,
+    var(--gold-bright) 0%, var(--red) 28%, #ffe9bd 50%, var(--red) 72%, var(--gold-bright) 100%);
+  background-size: 100% 200%;
+  animation: flowBarV 7s linear infinite;
+}
+@keyframes flowBarV {
+  from { background-position: 0 0; }
+  to   { background-position: 0 200%; }
 }
 .stat .num { font-size: 1.85rem; font-weight: 700; font-family: var(--serif); color: var(--navy); }
 html.dark-mode .stat .num { color: var(--gold); }
