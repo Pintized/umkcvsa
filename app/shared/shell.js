@@ -43,8 +43,8 @@ const OFFICER_LINKS = [
 function navLink({ href, label, icon, soon }) {
   const active = location.pathname === href
     || (href === '/app/' && location.pathname === '/app/index.html');
-  return `<a href="${href}" class="${active ? 'active' : ''}${soon ? ' disabled' : ''}"
-    >${ICONS[icon] || ''} ${label}${soon ? ' <small>(soon)</small>' : ''}</a>`;
+  return `<a href="${href}" title="${label}" class="${active ? 'active' : ''}${soon ? ' disabled' : ''}"
+    >${ICONS[icon] || ''} <span class="nav-lb">${label}${soon ? ' <small>(soon)</small>' : ''}</span></a>`;
 }
 
 // Count-up animation for stat numerals as pages inject them
@@ -80,7 +80,7 @@ export function renderShell(ctx, pageTitle) {
       <aside class="sidebar">
         <a class="brand" href="/app/">
           <img src="/assets/img/logo-128.png" alt="UMKC VSA logo">
-          <span>UMKC VSA</span>
+          <span class="brand-name">UMKC VSA</span>
         </a>
         <nav>
           <div class="nav-label">Member</div>
@@ -88,6 +88,9 @@ export function renderShell(ctx, pageTitle) {
           ${officer ? `<div class="nav-label">Officer</div>${OFFICER_LINKS.map(navLink).join('')}` : ''}
         </nav>
         <div class="foot">Vietnamese Student Association<br>at UMKC</div>
+        <button class="side-toggle" id="side-toggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6 9 12l5.5 6"/></svg>
+        </button>
       </aside>
       <div class="main">
         <header class="topbar">
@@ -111,6 +114,18 @@ export function renderShell(ctx, pageTitle) {
     try { localStorage.setItem('vsa-theme', dark ? 'dark' : 'light'); } catch (e) {}
   });
   document.getElementById('logout-btn').addEventListener('click', logout);
+
+  // collapsible sidebar (state persists; class applied pre-paint = no flash)
+  const shellEl = document.querySelector('.shell');
+  try {
+    if (localStorage.getItem('vsa-sidebar') === 'collapsed') shellEl.classList.add('side-collapsed');
+  } catch (e) {}
+  document.getElementById('side-toggle').addEventListener('click', () => {
+    const collapsed = shellEl.classList.toggle('side-collapsed');
+    try { localStorage.setItem('vsa-sidebar', collapsed ? 'collapsed' : 'open'); } catch (e) {}
+    document.getElementById('side-toggle').setAttribute('aria-label',
+      collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  });
 
   const content = document.getElementById('page-content');
   new MutationObserver(() => animateStats(content))

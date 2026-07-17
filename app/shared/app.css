@@ -191,7 +191,39 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   top: 0;
   height: 100vh;
   overflow: hidden;
+  transition: width .32s cubic-bezier(.4, 0, .2, 1);
 }
+
+/* ---------- collapse toggle ---------- */
+.side-toggle {
+  position: absolute;
+  top: 50%; right: 0;
+  transform: translateY(-50%);
+  width: 20px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(224, 180, 92, .13);
+  border: 1px solid rgba(224, 180, 92, .4);
+  border-right: none;
+  border-radius: 9px 0 0 9px;
+  color: var(--gold-bright);
+  cursor: pointer;
+  padding: 0;
+  z-index: 3;
+  transition: background .2s, width .2s;
+}
+.side-toggle:hover { background: rgba(224, 180, 92, .3); width: 25px; }
+.side-toggle svg { width: 14px; height: 14px; transition: transform .32s cubic-bezier(.4, 0, .2, 1); }
+.shell.side-collapsed .side-toggle svg { transform: rotate(180deg); }
+
+/* collapsed: slim icon rail */
+.shell.side-collapsed .sidebar { width: 76px; }
+.shell.side-collapsed .brand-name,
+.shell.side-collapsed .nav-lb,
+.shell.side-collapsed .sidebar .foot,
+.shell.side-collapsed .sidebar .nav-label { display: none; }
+.shell.side-collapsed .sidebar .brand { justify-content: center; padding: 0; }
+.shell.side-collapsed .sidebar nav { padding: 14px 8px; }
+.shell.side-collapsed .sidebar nav a { justify-content: center; padding: 11px 0; }
 .sidebar::after {
   content: "";
   position: absolute; left: 0; right: 0; bottom: 0; height: 240px;
@@ -200,22 +232,15 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   mask-image: linear-gradient(to top, black, transparent);
   pointer-events: none;
 }
-/* vertical energy strip — continues the topbar's flow bar down the edge */
+/* solid gold hairline along the sidebar's edge */
 .sidebar::before {
   content: "";
   position: absolute; top: 0; bottom: 0; right: 0;
   width: 2px;
-  background: linear-gradient(180deg,
-    var(--gold-bright) 0%, var(--red) 28%, #ffe9bd 50%, var(--red) 72%, var(--gold-bright) 100%);
-  background-size: 100% 200%;
-  animation: flowBarV 7s linear infinite;
-  box-shadow: 0 0 8px rgba(224, 180, 92, .45);
+  background: var(--gold);
+  opacity: .5;
   z-index: 2;
   pointer-events: none;
-}
-@keyframes flowBarV {
-  from { background-position: 0 0; }
-  to   { background-position: 0 200%; }
 }
 .sidebar .brand {
   display: flex;
@@ -225,21 +250,6 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   padding: 0 20px;
   flex-shrink: 0;
   border-bottom: 1px solid rgba(224, 180, 92, .22);
-  position: relative;
-  overflow: hidden;
-}
-/* periodic gold glint across the brand block */
-.sidebar .brand::after {
-  content: "";
-  position: absolute; inset: 0;
-  background: linear-gradient(115deg, transparent 35%, rgba(224, 180, 92, .2) 50%, transparent 65%);
-  transform: translateX(-130%);
-  animation: brandGlint 8s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes brandGlint {
-  0%, 68%   { transform: translateX(-130%); }
-  86%, 100% { transform: translateX(130%); }
 }
 .sidebar .brand img {
   width: 42px; height: 42px; border-radius: 50%;
@@ -781,8 +791,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 @media (max-width: 860px) {
   .shell { flex-direction: column; }
   .sidebar { width: 100%; height: auto; position: static; }
+  .shell.side-collapsed .sidebar { width: 100%; }
   .sidebar::after { display: none; }
   .sidebar::before { display: none; }
+  .side-toggle { display: none; }
+  .shell.side-collapsed .brand-name,
+  .shell.side-collapsed .nav-lb,
+  .shell.side-collapsed .sidebar .nav-label { display: revert; }
   .sidebar nav { display: flex; flex-wrap: wrap; }
   .sidebar .nav-label { width: 100%; }
   .sidebar .foot { display: none; }
