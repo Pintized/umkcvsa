@@ -322,13 +322,36 @@ nav.site-nav::after {
 .team-grid.leads { margin-bottom: 34px; }
 .team-grid.leads .member { width: 300px; }
 .member {
+  position: relative;
   background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
-  transition: transform .3s, border-color .3s;
+  transition: transform .3s;
 }
-.member:hover { transform: translateY(-6px); border-color: rgba(201, 155, 63, .5); }
+.member:hover { transform: translateY(-6px); }
+/* flowing gradient ring — same energy as the nav bar */
+.member::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 16px;
+  padding: 2px;
+  background: linear-gradient(115deg,
+    var(--gold-bright), var(--red) 30%, #ffe9bd 50%, var(--red) 70%, var(--gold-bright));
+  background-size: 300% 100%;
+  animation: ringFlow 7s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: .5;
+  transition: opacity .3s;
+  pointer-events: none;
+}
+.member:hover::after { opacity: 1; }
+@keyframes ringFlow {
+  from { background-position: 0% 0; }
+  to   { background-position: 300% 0; }
+}
 .member .photo { aspect-ratio: 5 / 6; }
 .member .photo .ph { width: 100%; height: 100%; border: none; border-radius: 0; }
 .member .info { padding: 16px 18px 20px; text-align: center; }
