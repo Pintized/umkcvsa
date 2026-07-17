@@ -8,7 +8,7 @@
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <script src="/app/shared/theme-init.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Roboto+Mono:wght@400;700&family=Dancing+Script:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
 </head>
 <body>
@@ -60,7 +60,12 @@
     const node = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
     setOn('cklist', !!node?.closest('ul.cklist'));
     setOn('table', !!node?.closest('table'));
+    // table tools appear while the cursor is inside a table
+    curCell = node?.closest('td, th') || null;
+    const tools = document.getElementById('tbl-tools');
+    if (tools) tools.style.display = curCell ? 'flex' : 'none';
   }
+  let curCell = null;
   document.addEventListener('selectionchange', updateToolbarState);
 
   // ----- floating image resize bar -----
@@ -68,7 +73,8 @@
   imgBar.className = 'img-bar';
   imgBar.style.display = 'none';
   imgBar.innerHTML =
-    ['25', '50', '75', '100'].map(p => `<button class="rt-btn" data-w="${p}" title="Width ${p}%">${p}%</button>`).join('')
+    '<input type="range" id="img-range" min="10" max="100" step="2" title="Image width">'
+    + '<span id="img-pct">–</span>'
     + '<button class="rt-btn" data-rm title="Remove image">✕</button>';
   document.body.appendChild(imgBar);
   let curImg = null;
@@ -77,20 +83,29 @@
     const r = curImg.getBoundingClientRect();
     imgBar.style.display = 'flex';
     imgBar.style.left = Math.max(8, r.left) + 'px';
-    imgBar.style.top = (r.top - 46 < 8 ? r.bottom + 8 : r.top - 46) + 'px';
+    imgBar.style.top = (r.top - 52 < 8 ? r.bottom + 8 : r.top - 52) + 'px';
+    const holder = curImg.closest('.rt-content');
+    const pct = curImg.style.width && curImg.style.width.endsWith('%')
+      ? parseInt(curImg.style.width, 10)
+      : Math.min(100, Math.round(r.width / ((holder?.clientWidth || r.width)) * 100));
+    imgBar.querySelector('#img-range').value = pct;
+    imgBar.querySelector('#img-pct').textContent = pct + '%';
   }
   function hideImgBar() {
     imgBar.style.display = 'none';
     curImg?.classList.remove('img-sel');
     curImg = null;
   }
+  imgBar.querySelector('#img-range').addEventListener('input', (e) => {
+    if (!curImg) return;
+    curImg.style.width = e.target.value + '%';
+    imgBar.querySelector('#img-pct').textContent = e.target.value + '%';
+    markDirty();
+  });
   imgBar.addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b || !curImg) return;
-    if ('rm' in b.dataset) { curImg.remove(); hideImgBar(); markDirty(); return; }
-    curImg.style.width = b.dataset.w + '%';
-    markDirty();
-    positionImgBar();
+    if ('rm' in b.dataset) { curImg.remove(); hideImgBar(); markDirty(); }
   });
   window.addEventListener('scroll', hideImgBar, true);
   document.addEventListener('keydown', (e) => {
@@ -287,18 +302,27 @@
       <div class="rt-toolbar">
         <select class="rt-sel" id="rt-font" title="Font">
           <option value="">Font</option>
-          <option value="'Source Sans 3', sans-serif">Sans</option>
-          <option value="'Playfair Display', serif">Playfair</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="'Courier New', monospace">Mono</option>
-          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Source Sans 3', sans-serif" style="font-family:'Source Sans 3'">Source Sans</option>
+          <option value="'Playfair Display', serif" style="font-family:'Playfair Display'">Playfair Display</option>
+          <option value="Lora, serif" style="font-family:Lora">Lora</option>
+          <option value="Merriweather, serif" style="font-family:Merriweather">Merriweather</option>
+          <option value="Montserrat, sans-serif" style="font-family:Montserrat">Montserrat</option>
+          <option value="Georgia, serif" style="font-family:Georgia">Georgia</option>
+          <option value="'Times New Roman', serif" style="font-family:'Times New Roman'">Times New Roman</option>
+          <option value="Arial, sans-serif" style="font-family:Arial">Arial</option>
+          <option value="Verdana, sans-serif" style="font-family:Verdana">Verdana</option>
+          <option value="'Trebuchet MS', sans-serif" style="font-family:'Trebuchet MS'">Trebuchet MS</option>
+          <option value="Tahoma, sans-serif" style="font-family:Tahoma">Tahoma</option>
+          <option value="'Roboto Mono', monospace" style="font-family:'Roboto Mono'">Roboto Mono</option>
+          <option value="'Courier New', monospace" style="font-family:'Courier New'">Courier New</option>
+          <option value="'Dancing Script', cursive" style="font-family:'Dancing Script'">Dancing Script</option>
+          <option value="'Comic Sans MS', cursive" style="font-family:'Comic Sans MS'">Comic Sans</option>
+          <option value="Impact, sans-serif" style="font-family:Impact">Impact</option>
         </select>
-        <select class="rt-sel" id="rt-size" title="Text size">
+        <select class="rt-sel" id="rt-size" title="Text size (px)">
           <option value="">Size</option>
-          <option value="2">Small</option>
-          <option value="3">Normal</option>
-          <option value="5">Large</option>
-          <option value="6">Huge</option>
+          ${Array.from({ length: 18 }, (_, i) => 6 + i * 2).map(px =>
+            `<option value="${px}">${px}</option>`).join('')}
         </select>
         <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
         <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
@@ -309,6 +333,15 @@
         <button class="rt-btn" data-cmd="cklist" title="Checklist">☑</button>
         <button class="rt-btn" data-cmd="table" title="Insert table">⊞</button>
         <button class="rt-btn" data-cmd="image" title="Insert image">🖼</button>
+      </div>
+      <div class="rt-toolbar" id="tbl-tools" style="display:none; padding-top:0; border-bottom:none; margin-bottom:6px">
+        <button class="rt-btn" data-tbl="row-above" title="Add row above">⬆ Row</button>
+        <button class="rt-btn" data-tbl="row-below" title="Add row below">⬇ Row</button>
+        <button class="rt-btn" data-tbl="col-left" title="Add column left">⬅ Col</button>
+        <button class="rt-btn" data-tbl="col-right" title="Add column right">➡ Col</button>
+        <button class="rt-btn" data-tbl="del-row" title="Delete this row">− Row</button>
+        <button class="rt-btn" data-tbl="del-col" title="Delete this column">− Col</button>
+        <button class="rt-btn" data-tbl="del-table" title="Delete entire table">✕ Table</button>
       </div>` : ''}
       <div class="rt-content" id="ed-content" contenteditable="${editing}">${n.content || ''}</div>
       <input type="file" id="ed-img-file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
@@ -383,18 +416,72 @@
       });
     });
 
-    // font family / size selects (apply to selection, then reset to placeholder)
-    const applySel = (selEl, cmd) => selEl.addEventListener('change', () => {
-      if (!selEl.value) return;
+    // font family select (apply to selection, then reset to placeholder)
+    document.getElementById('rt-font').addEventListener('change', (e) => {
+      if (!e.target.value) return;
       const content = document.getElementById('ed-content');
       content.focus();
       document.execCommand('styleWithCSS', false, true);
-      document.execCommand(cmd, false, selEl.value);
+      document.execCommand('fontName', false, e.target.value);
       markDirty();
-      selEl.value = '';
+      e.target.value = '';
     });
-    applySel(document.getElementById('rt-font'), 'fontName');
-    applySel(document.getElementById('rt-size'), 'fontSize');
+
+    // pixel font sizes: execCommand only knows 1-7, so apply 7 then
+    // rewrite the generated font tags to the exact px value
+    document.getElementById('rt-size').addEventListener('change', (e) => {
+      const px = e.target.value;
+      if (!px) return;
+      const content = document.getElementById('ed-content');
+      content.focus();
+      document.execCommand('styleWithCSS', false, false);
+      document.execCommand('fontSize', false, '7');
+      content.querySelectorAll('font[size="7"]').forEach(f => {
+        f.removeAttribute('size');
+        f.style.fontSize = px + 'px';
+      });
+      document.execCommand('styleWithCSS', false, true);
+      markDirty();
+      e.target.value = '';
+    });
+
+    // table operations (act on the cell the cursor is in)
+    pane.querySelectorAll('[data-tbl]').forEach(b => {
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      b.addEventListener('click', () => {
+        if (!curCell || !document.contains(curCell)) return;
+        const row = curCell.closest('tr');
+        const table = curCell.closest('table');
+        const idx = [...row.children].indexOf(curCell);
+        const act = b.dataset.tbl;
+        const makeCell = (tag) => {
+          const el = document.createElement(tag);
+          el.innerHTML = '&nbsp;';
+          return el;
+        };
+        if (act === 'row-above' || act === 'row-below') {
+          const tr = document.createElement('tr');
+          for (let i = 0; i < row.children.length; i++) tr.appendChild(makeCell('td'));
+          row.parentElement.insertBefore(tr, act === 'row-above' ? row : row.nextSibling);
+        } else if (act === 'col-left' || act === 'col-right') {
+          table.querySelectorAll('tr').forEach(tr => {
+            const ref = tr.children[idx];
+            const el = makeCell(ref?.tagName === 'TH' ? 'th' : 'td');
+            if (act === 'col-left') tr.insertBefore(el, ref || null);
+            else ref ? ref.after(el) : tr.appendChild(el);
+          });
+        } else if (act === 'del-row') {
+          row.remove();
+          if (!table.querySelector('tr')) table.remove();
+        } else if (act === 'del-col') {
+          table.querySelectorAll('tr').forEach(tr => tr.children[idx]?.remove());
+          if (!table.querySelector('td, th')) table.remove();
+        } else if (act === 'del-table') {
+          table.remove();
+        }
+        markDirty();
+      });
+    });
 
     // image upload
     document.getElementById('ed-img-file').addEventListener('change', async (e) => {
