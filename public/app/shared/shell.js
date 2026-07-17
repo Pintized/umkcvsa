@@ -40,10 +40,12 @@ const OFFICER_LINKS = [
   { href: '/app/officer/roles.html',     label: 'Roles',     icon: 'shield' },
 ];
 
-function navLink({ href, label, icon, soon }) {
+function navLink({ href, label, icon, soon }, officerLink = false) {
   const active = location.pathname === href
     || (href === '/app/' && location.pathname === '/app/index.html');
-  return `<a href="${href}" title="${label}" class="${active ? 'active' : ''}${soon ? ' disabled' : ''}"
+  const cls = [active ? 'active' : '', soon ? 'disabled' : '', officerLink ? 'officer-link' : '']
+    .filter(Boolean).join(' ');
+  return `<a href="${href}" title="${label}" class="${cls}"
     >${ICONS[icon] || ''} <span class="nav-lb">${label}${soon ? ' <small>(soon)</small>' : ''}</span></a>`;
 }
 
@@ -85,13 +87,13 @@ export function renderShell(ctx, pageTitle) {
         <nav>
           <div class="nav-label">Member</div>
           ${MEMBER_LINKS.map(navLink).join('')}
-          ${officer ? `<div class="nav-label">Officer</div>${OFFICER_LINKS.map(navLink).join('')}` : ''}
+          ${officer ? `<div class="nav-label">Officer</div>${OFFICER_LINKS.map(l => navLink(l, true)).join('')}` : ''}
         </nav>
         <div class="foot">Vietnamese Student Association<br>at UMKC</div>
-        <button class="side-toggle" id="side-toggle" aria-label="Collapse sidebar" title="Collapse sidebar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6 9 12l5.5 6"/></svg>
-        </button>
       </aside>
+      <button class="side-toggle" id="side-toggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6 9 12l5.5 6"/></svg>
+      </button>
       <div class="main">
         <header class="topbar">
           <div class="page-title">${pageTitle}</div>
