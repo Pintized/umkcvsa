@@ -411,24 +411,34 @@
 
     const contentEl = document.getElementById('ed-content');
 
-    // repair pass: legacy <font size> tags (saved by the old size bug)
-    // become inline px styles so they can't re-seed giant text on Enter
+    // ---- size plumbing ----
+    // execCommand('fontSize') materializes as EITHER <font size=N> or a
+    // span with a KEYWORD size (xxx-large etc.) depending on styleWithCSS
+    // at *insertion* time — so we normalize both forms everywhere.
     const LEGACY_SIZE = { 1: 10, 2: 13, 3: 16, 4: 18, 5: 24, 6: 32, 7: 48 };
-    contentEl.querySelectorAll('font[size]').forEach(f => {
-      const px = LEGACY_SIZE[f.getAttribute('size')] || 16;
-      f.removeAttribute('size');
-      if (!f.style.fontSize) f.style.fontSize = px + 'px';
-    });
+    const KEYWORD_PX = {
+      'x-small': 10, 'small': 13, 'medium': 16, 'large': 18,
+      'x-large': 24, 'xx-large': 32, 'xxx-large': 48, '-webkit-xxx-large': 48,
+    };
+    const normalizeSizes = (root, forcePx) => {
+      root.querySelectorAll('font[size]').forEach(f => {
+        const px = forcePx || LEGACY_SIZE[f.getAttribute('size')] || 16;
+        f.removeAttribute('size');
+        f.style.fontSize = px + 'px';
+      });
+      root.querySelectorAll('span[style], font[style]').forEach(el => {
+        if (KEYWORD_PX[el.style.fontSize]) {
+          el.style.fontSize = (forcePx || KEYWORD_PX[el.style.fontSize]) + 'px';
+        }
+      });
+    };
 
-    // any freshly created size-7 tags (from our execCommand below) are
-    // immediately rewritten to the sticky px on the very next input
+    // repair pass: convert anything saved by the old bug to stable px
+    normalizeSizes(contentEl, null);
+
+    // freshly created size elements become the sticky px on the next input
     contentEl.addEventListener('input', () => {
-      if (typingSizePx) {
-        contentEl.querySelectorAll('font[size]').forEach(f => {
-          f.removeAttribute('size');
-          f.style.fontSize = typingSizePx + 'px';
-        });
-      }
+      if (typingSizePx) normalizeSizes(contentEl, +typingSizePx);
       markDirty();
     });
 
@@ -441,9 +451,9 @@
       if (!s?.anchorNode || !contentEl.contains(s.anchorNode)) return;
       const nd = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
       if (Math.round(parseFloat(getComputedStyle(nd).fontSize)) !== +typingSizePx) {
-        document.execCommand('styleWithCSS', false, false);
         document.execCommand('fontSize', false, '7');
-        document.execCommand('styleWithCSS', false, true);
+        // no styleWithCSS juggling: whichever form materializes,
+        // the input pass normalizes it to the sticky px
       }
     });
     document.getElementById('ed-title').addEventListener('input', markDirty);
@@ -496,13 +506,9 @@
       const content = document.getElementById('ed-content');
       content.focus();
       typingSizePx = px; // sticky: stays the typing size until a new size is picked
-      document.execCommand('styleWithCSS', false, false);
       document.execCommand('fontSize', false, '7');
-      content.querySelectorAll('font[size]').forEach(f => {
-        f.removeAttribute('size');
-        f.style.fontSize = px + 'px';
-      });
-      document.execCommand('styleWithCSS', false, true);
+      // normalize whatever form materialized (font[size] or keyword span)
+      content.dispatchEvent(new Event('input', { bubbles: false }));
       markDirty();
       updateToolbarState();
     });
