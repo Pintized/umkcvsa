@@ -3,7 +3,8 @@
 
 - **Created:** 2026-07-16
 - **Source analyzed:** `E:\UMKCVSA` (full DreamHost webroot export + phpMyAdmin DB dump)
-- **Status:** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ site live at https://pintized.github.io/umkcvsa/ (2026-07-17) · Next: DNS cutover (pulled forward from Phase 6 — umkcvsa.org is 404ing), then Phase 3 (Supabase schema)
+- **Status:** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · DNS cutover ✅ — **https://umkcvsa.org live on GitHub Pages, HTTPS enforced (2026-07-17)** · Next: Phase 3 (Supabase schema)
+- **DNS:** zone still managed at DreamHost (ns1-3.dreamhost.com), domain set to "DNS Only"; apex → 4× GitHub Pages A records, www → CNAME pintized.github.io. DreamHost shared hosting is now unused and cancelable.
 - **Deploy method:** repo made public (Free-plan Pages); Pages serves the `gh-pages` branch (subtree of `public/`). Actions workflow is written (`.github/workflows/deploy-pages.yml`, uncommitted) but blocked until the gh token gets `workflow` scope (`gh auth refresh -h github.com -s workflow`); until then redeploy via `git subtree split --prefix=public HEAD` + push to `gh-pages`.
 - **Known caveat:** absolute links (`/about/`, `/assets/…`) 404 when browsing the github.io **subpath** preview — they are correct for the real domain and will work once umkcvsa.org points at Pages.
 - **Repo:** https://github.com/Pintized/umkcvsa · **Supabase:** ref `wrlpsetbkeyoyamkopgf` (us-east-2)
