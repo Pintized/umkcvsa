@@ -172,6 +172,17 @@ button { font-family: inherit; }
   transition: border-color .15s;
 }
 .check-list label:hover { border-color: var(--gold); }
+/* undo .field label chrome when checkboxes sit inside a form field */
+.field .check-list label {
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  font-weight: 400;
+  font-size: .9rem;
+  display: inline-flex;
+  justify-content: flex-start;
+  margin-bottom: 0;
+}
 
 .notice { border-radius: 10px; padding: 11px 14px; font-size: .9rem; margin-bottom: 16px; display: none; }
 .notice.error { display: block; background: rgba(200, 32, 47, .1); color: var(--red); border: 1px solid rgba(200, 32, 47, .35); }
