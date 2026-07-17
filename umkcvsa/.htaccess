@@ -1,0 +1,25 @@
+<IfModule mod_rewrite.c>
+
+  RewriteEngine On
+  RewriteBase /
+
+  # Prevent directory listings
+  Options -Indexes
+
+  # Deny access to .htaccess and other hidden files
+  <FilesMatch "^\.">
+    Require all denied
+  </FilesMatch>
+
+  # Don't rewrite files that exist
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # Don't rewrite other directories that exist
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Rewrite everything else to index.html
+  RewriteRule ^ index.html [L]
+
+</IfModule>

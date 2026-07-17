@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home | UMKC VSA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#16314d;
+    --red:#c8202f;
+      --light:#eef3f8;
+        --text:#1f2933;
+          --muted:#5b6b7b;
+            --serif:'Playfair Display',serif;
+              --sans:'Source Sans 3',sans-serif;
+              }
+              *{box-sizing:border-box;margin:0;padding:0;}
+              body{font-family:var(--sans);color:var(--text);line-height:1.6;}
+              h1,h2,h3{font-family:var(--serif);}
+              img{display:block;}
+              a{text-decoration:none;}
+
+                /* TOPBAR */
+                .topbar{
+                    background:var(--navy);
+                    color:#fff;
+                    font-size:13px;
+                    padding:6px 24px;
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                }
+                .topbar .socials {
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
+                }
+                .topbar .socials a{
+                    display: inline-flex;
+                    align-items: center;
+                }
+                .topbar .socials img{
+                    height:22px;
+                    width:22px;
+                    object-fit: contain;
+                    display: block;
+                }
+                .topbar .lang {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .topbar .lang button {
+                    background: none;
+                    border: none;
+                    color: #fff;
+                    font-size: 13px;
+                    cursor: pointer;
+                    opacity: .8;
+                    padding: 0;
+                }
+                .topbar .lang button:hover {
+                    opacity: 1;
+                    text-decoration: underline;
+                }
+
+                /* NAV */
+                nav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #e3e9f0;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;box-shadow:0 1px 6px rgba(0,0,0,.04);}
+                .brand{font-family:var(--serif);font-weight:800;font-size:22px;color:var(--navy);display:flex;align-items:center;gap:12px;}.brand-logo{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+                .navlinks a{margin:0 12px;color:var(--text);font-weight:600;font-size:15px;}
+                .navlinks a.active{color:var(--red);}
+                .login{background:var(--navy);color:#fff !important;padding:8px 18px;border-radius:6px;font-weight:600;}
+
+                /* HERO */
+                .hero {
+                    background: linear-gradient(135deg, var(--navy), var(--red));
+                    color: #fff;
+                    text-align: center;
+                    padding: 90px 24px;
+                }
+                .hero h1 {
+                    font-size: 46px;
+                    font-weight: 800;
+                    margin: 0;
+                    line-height: 1.05;
+                    display: block;
+                }
+                .hero .hero-title {
+                    margin: 0 0 6px 0;
+                }
+                .hero .hero-subtitle {
+                    margin: 0 0 16px 0;
+                }
+                .hero p {
+                    font-size: 20px;
+                    opacity: .95;
+                    margin: 0 0 28px 0;
+                    display: block;
+                }
+                .btn {
+                    display: inline-block;
+                    background: var(--red);
+                    color: #fff;
+                    padding: 14px 30px;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    font-size: 16px;
+                }
+
+                /* SECTION GENERAL */
+                .section{
+                    padding:70px 24px;
+                    max-width:1100px;
+                    margin:0 auto;
+                }
+                .section-light{
+                    background:var(--light);
+                    max-width:none;
+                }
+                .section-light .section-head,.section-light .event-grid{
+                    max-width:1100px;
+                    margin-left:auto;
+                    margin-right:auto;
+                }
+                .divider{
+                    border:none;
+                    height:4px;
+                    width:70px;
+                    background:var(--red);
+                    margin:14px 0 22px;
+                }
+
+                /* ABOUT */
+                .about-wrap{
+                    display:flex;
+                    gap:48px;
+                    align-items:center;
+                }
+                .about-text{
+                    flex:1;
+                }
+                .about-text h2{
+                    font-size:34px;
+                    color:var(--navy);
+                }
+                .about-text p{
+                    color:var(--muted);
+                    margin-bottom:22px;
+                }
+                .btn-outline{
+                    display:inline-block;
+                    border:2px solid var(--navy);
+                    color:var(--navy);
+                    padding:11px 26px;
+                    border-radius:8px;
+                    font-weight:700;
+                }
+                .img-placeholder{
+                    flex:1;
+                    height:300px;
+                }
+
+                /* EVENTS */
+                .section-head{
+                    text-align:center;
+                }
+                .section-head h2{
+                    font-size:34px;
+                    color:var(--navy);
+                }
+                .section-head .divider{
+                    margin:14px auto 36px;
+                }
+                .event-grid{
+                    display:grid;
+                    grid-template-columns:repeat(3,1fr);
+                    gap:28px;
+                }
+                .card{
+                    background:#fff;
+                    border-radius:12px;
+                    overflow:hidden;
+                    box-shadow:0 6px 20px rgba(22,49,77,.08);
+                }
+                .card-img{
+                    height:170px;
+                }
+                .card .body{
+                    padding:20px;
+                }
+                .card .date{
+                    color:var(--red);
+                    font-weight:700;
+                    font-size:13px;
+                    text-transform:uppercase;
+                    letter-spacing:.5px;
+                    margin-bottom:8px;
+                }
+                .card h3{
+                    color:var(--navy);
+                    font-size:20px;
+                    margin-bottom:8px;
+                }
+                .card .body p{
+                    color:var(--muted);
+                    font-size:15px;
+                }
+
+                /* MERCH */
+                .merch{background:var(--navy);color:#fff;text-align:center;padding:70px 24px;}
+                .merch h2{font-size:34px;margin-bottom:18px;}
+                .merch .btn{margin-top:10px;}
+
+                /* FOOTER */
+                footer{background:#0e2238;color:#cdd8e4;padding:56px 24px 0;}
+                .footer-cols{display:flex;justify-content:space-between;gap:48px;text-align:left;flex-wrap:wrap;max-width:1100px;margin:0 auto;}
+                .footer-col{max-width:240px;}
+                .footer-brand{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+                .footer-icon{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+                .footer-col h4{font-family:var(--serif);color:#fff;font-size:18px;margin-bottom:16px;}
+                .footer-col .brand-name{font-family:var(--serif);color:#fff;font-size:20px;font-weight:800;}
+                .footer-col p,.footer-col a{color:#9fb0c2;font-size:14px;display:block;margin-bottom:8px;}
+                .footer-col a:hover{color:#fff;}
+                .footer-bar{border-top:1px solid #1d3a59;margin-top:46px;padding:20px 0;text-align:center;font-size:13px;color:#8295a8;}
+
+                /* Language Switch Animation */
+                .text-language-pop {
+                    animation: textLanguagePop 450ms ease-out;
+                }
+                @keyframes textLanguagePop {
+                    0% {
+                        opacity: 0;
+                        transform: scale(0.85);
+                        background: linear-gradient(90deg, var(--red), var(--navy));
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        color: transparent;
+                    }
+                    60% {
+                        opacity: 1;
+                        transform: scale(1.08);
+                        background: linear-gradient(90deg, var(--red), #ffffff, var(--navy));
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        color: transparent;
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                </style>
+                </head>
+                <body>
+
+                <!-- TOPBAR -->
+                <div class="topbar">
+                    <div class="socials">
+                        <a href="https://www.instagram.com/umkc_vsa" target="_blank" aria-label="Instagram">
+                            <img src="/assets/logo.png" alt="Instagram">
+                        </a>
+                        <a href="https://www.tiktok.com/@umkc_vsa" target="_blank" aria-label="TikTok">
+                            <img src="/assets/logo.png" alt="Instagram">
+                        </a>
+                    </div>
+                
+                    <div class="lang">
+                        <button onclick="setLanguage('en')">EN</button>
+                        |
+                        <button onclick="setLanguage('vi')">VN</button>
+                    </div>
+                </div>
+
+                <!-- NAV -->
+                <nav>
+                    <div class="brand"><img class="brand-logo" src="/assets/logo.png" alt="UMKC VSA logo">UMKC VSA</div>
+                        <div class="navlinks">
+                            <a href="/home-new.html" class="active">HOME</a>
+                                <a href="/about/">ABOUT</a>
+                                    <a href="/eboard/">E-BOARD</a>
+                                        <a href="/store/">STORE</a>
+                                            <a href="/gallery/">GALLERY</a>
+                                                <a href="/contact/">CONTACT</a>
+                                                </div>
+                                                    <a class="login" href="#">Login</a>
+                                                    </nav>
+
+                                                    <!-- SECTION 1: HERO -->
+                                                    <header class="hero">
+                                                        <h1 class="hero-title" data-i18n="heroTitle">UMKC</h1>
+                                                        <h1 class="hero-subtitle" data-i18n="heroSubtitle">Vietnamese Student Association</h1>
+                                                        <p data-i18n="heroText">Become a part of our vibrant community.</p>
+                                                        <a class="btn" href="/contact/" data-i18n="joinButton">JOIN US</a>
+                                                    </header>
+
+                                                    <!-- SECTION 2: ABOUT -->
+                                                    <section class="section">
+                                                    <div class="about-wrap">
+                                                    <div class="about-text">
+                                                    <h2>Promoting Vietnamese Art and Culture</h2>
+                                                    <hr class="divider" style="margin-left:0;">
+                                                    <p>The Vietnamese Student Association is an independent nonprofit organization established with the purpose of promoting Vietnamese art and culture to connect students and communities who share an appreciation for Vietnam's rich traditions and contemporary creativity.</p>
+                                                    <a class="btn-outline" href="/about/">Learn More</a>
+                                                    </div>
+                                                    <div class="img-placeholder">
+                                                    <img src="https://picsum.photos/500/300" alt="Replace this image" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">
+                                                    </div>
+                                                    </div>
+                                                    </section>
+
+                                                    <!-- SECTION 3: EVENTS -->
+                                                    <section class="section section-light">
+                                                    <div class="section-head">
+                                                    <h2>Upcoming Events</h2>
+                                                    <hr class="divider">
+                                                    </div>
+                                                    <div class="event-grid">
+                                                    <div class="card">
+                                                    <div class="card-img"><img src="https://picsum.photos/330/170?random=1" alt="Replace" style="width:100%;height:100%;object-fit:cover;"></div>
+                                                    <div class="body">
+                                                    <div class="date">January 29, 2026</div>
+                                                    <h3>Lunar New Year Celebration</h3>
+                                                    <p>Ring in the Year of the Snake with traditional performances, food, and cultural activities for the whole campus.</p>
+                                                    </div>
+                                                    </div>
+                                                    <div class="card">
+                                                    <div class="card-img"><img src="https://picsum.photos/330/170?random=2" alt="Replace" style="width:100%;height:100%;object-fit:cover;"></div>
+                                                    <div class="body">
+                                                    <div class="date">March 14, 2026</div>
+                                                    <h3>Cultural Night</h3>
+                                                    <p>An evening showcasing Vietnamese traditions through dance, music, fashion, and storytelling.</p>
+                                                    </div>
+                                                    </div>
+                                                    <div class="card">
+                                                    <div class="card-img"><img src="https://picsum.photos/330/170?random=3" alt="Replace" style="width:100%;height:100%;object-fit:cover;"></div>
+                                                    <div class="body">
+                                                    <div class="date">April 18, 2026</div>
+                                                    <h3>Spring Picnic and Games</h3>
+                                                    <p>Join us for a fun afternoon of folk games, banh mi, and community bonding at Volker Park.</p>
+                                                    </div>
+                                                    </div>
+                                                    </div>
+                                                    </section>
+
+                                                    <!-- SECTION 4: MERCH -->
+                                                    <section class="merch">
+                                                    <h2>VSA Merch</h2>
+                                                    <p>Show your VSA pride with our exclusive merchandise.</p>
+                                                    <a class="btn" href="/store/">Visit Store</a>
+                                                    </section>
+
+                                                    <!-- FOOTER -->
+                                                    <footer>
+                                                        <div class="footer-cols">
+                                                        <div class="footer-col">
+                                                        <div class="footer-brand">
+                                                        <img class="footer-icon" src="/assets/logo.png" alt="Replace logo">
+                                                        <span class="brand-name">UMKC VSA</span>
+                                                        </div>
+                                                        <p>Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
+                                                        </div>
+                                                        <div class="footer-col">
+                                                        <h4>Quick Links</h4>
+                                                        <a href="/about/">About</a>
+                                                        <a href="/eboard/">E-Board</a>
+                                                        <a href="/store/">Store</a>
+                                                        <a href="/gallery/">Gallery</a>
+                                                        </div>
+                                                        <div class="footer-col">
+                                                        <h4>Contact</h4>
+                                                        <p>support@umkcvsa.org</p>
+                                                        <p>Student Union Building Room 302</p>
+                                                        </div>
+                                                        <div class="footer-col">
+                                                        <h4>Follow Us</h4>
+                                                        <a href="#">Instagram</a>
+                                                        <a href="#">TikTok</a>
+                                                        </div>
+                                                        </div>
+                                                        <div class="footer-bar">&copy; 2026 UMKC VSA. All rights reserved.</div>
+                                                    </footer>
+
+                                                    <script>
+                                                        const translations = {
+                                                            en: {
+                                                                heroTitle: "UMKC",
+                                                                heroSubtitle: "Vietnamese Student Association",
+                                                                heroText: "Become a part of our vibrant community.",
+                                                                joinButton: "JOIN US"
+                                                            },
+                                                            vi: {
+                                                                heroTitle: "UMKC",
+                                                                heroSubtitle: "Hội Sinh Viên Việt Nam",
+                                                                heroText: "Trở thành một phần của cộng đồng sôi động của chúng tôi.",
+                                                                joinButton: "THAM GIA"
+                                                            }
+                                                        };
+                                                        function animateTranslatedText() {
+                                                            document.querySelectorAll("[data-i18n]").forEach((element) =>  {
+                                                                element.classList.remove("text-language-pop");
+                                                                void element.offsetWidth;
+                                                                element.classList.add("text-language-pop");
+                                                                setTimeout(() => {
+                                                                    element.classList.remove("text-language-pop");
+                                                                }, 500);
+                                                            });
+                                                        }
+                                                        function setLanguage(language, animate = true) {
+                                                            document.documentElement.lang = language;
+                                                            document.querySelectorAll("[data-i18n]").forEach((element) => {
+                                                                const key = element.getAttribute("data-i18n");
+                                                                if (translations[language] && translations[language][key]) {
+                                                                    element.textContent = translations[language][key];
+                                                                }
+                                                            });
+                                                            localStorage.setItem("siteLanguage", language);
+                                                            if (animate) {
+                                                                animateTranslatedText();
+                                                            }
+                                                        }
+                                                        const savedLanguage = localStorage.getItem("siteLanguage") || "en";
+                                                        setLanguage(savedLanguage, false);
+                                                    </script>
+
+                                                    </body>
+                                                    </html>

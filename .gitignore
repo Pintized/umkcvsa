@@ -1,0 +1,16 @@
+# Old DreamHost backup folder — permanently out of scope, never commit
+umkcvsa/backup/
+
+# Secrets / env
+.env
+.env.*
+*.local
+
+# OS noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Node / tooling (future phases)
+node_modules/
+supabase/.temp/

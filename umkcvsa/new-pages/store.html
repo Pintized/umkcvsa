@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Store | UMKC VSA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#16314d;--red:#c8202f;--light:#eef3f8;--text:#1f2933;--muted:#5b6b7b;--serif:'Playfair Display',serif;--sans:'Source Sans 3',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--sans);color:var(--text);line-height:1.6;}
+h1,h2,h3,h4{font-family:var(--serif);}
+img{display:block;}
+a{text-decoration:none;}
+.topbar{background:var(--navy);color:#fff;font-size:13px;padding:6px 24px;display:flex;justify-content:space-between;align-items:center;}
+.topbar a{color:#fff;margin-right:14px;}
+.topbar .lang span{margin-left:6px;opacity:.8;}
+nav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #e3e9f0;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;box-shadow:0 1px 6px rgba(0,0,0,.04);}
+.brand{font-family:var(--serif);font-weight:800;font-size:22px;color:var(--navy);display:flex;align-items:center;gap:12px;}
+.brand-logo{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+.navlinks a{margin:0 12px;color:var(--text);font-weight:600;font-size:15px;position:relative;transition:color .2s;}
+.navlinks a::after{content:'';position:absolute;left:0;bottom:-4px;width:0;height:2px;background:var(--red);transition:width .25s;}
+.navlinks a:hover{color:var(--red);}
+.navlinks a:hover::after,.navlinks a.active::after{width:100%;}
+.navlinks a.active{color:var(--red);}
+.login{background:var(--navy);color:#fff !important;padding:8px 18px;border-radius:6px;font-weight:600;transition:transform .2s,background .2s;}
+.login:hover{background:var(--red);transform:translateY(-2px);}
+.page-hero{background:linear-gradient(135deg,var(--navy),var(--red));color:#fff;text-align:center;padding:80px 24px;}
+.page-hero h1{font-size:44px;font-weight:800;margin-bottom:12px;}
+.page-hero p{font-size:18px;opacity:.95;max-width:620px;margin:0 auto;}
+.section{padding:70px 24px;max-width:1100px;margin:0 auto;}
+.product-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;}
+.product{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(22,49,77,.08);transition:transform .3s,box-shadow .3s;display:flex;flex-direction:column;}
+.product:hover{transform:translateY(-8px);box-shadow:0 18px 44px rgba(22,49,77,.18);}
+.product .pimg{position:relative;height:280px;overflow:hidden;background:var(--light);}
+.product .pimg img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
+.product:hover .pimg img{transform:scale(1.06);}
+.badge{position:absolute;top:14px;left:14px;background:var(--red);color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:5px 12px;border-radius:20px;}
+.product .pbody{padding:20px;flex:1;display:flex;flex-direction:column;}
+.product .pbody h3{color:var(--navy);font-size:20px;}
+.product .pbody .desc{color:var(--muted);font-size:14px;margin:8px 0 16px;flex:1;}
+.product .prow{display:flex;align-items:center;justify-content:space-between;}
+.product .price{font-family:var(--serif);font-size:22px;font-weight:800;color:var(--navy);}
+.add-btn{background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s,transform .2s;}
+.add-btn:hover{background:var(--red);transform:translateY(-2px);}
+.store-note{text-align:center;color:var(--muted);margin-top:50px;font-size:15px;}
+footer{background:#0e2238;color:#cdd8e4;padding:56px 24px 0;}
+.footer-cols{display:flex;justify-content:space-between;gap:48px;text-align:left;flex-wrap:wrap;max-width:1100px;margin:0 auto;}
+.footer-col{max-width:240px;}
+.footer-brand{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.footer-icon{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+.footer-col h4{color:#fff;font-size:18px;margin-bottom:16px;}
+.footer-col .brand-name{color:#fff;font-size:20px;font-weight:800;}
+.footer-col p,.footer-col a{color:#9fb0c2;font-size:14px;display:block;margin-bottom:8px;transition:color .2s;}
+.footer-col a:hover{color:#fff;}
+.footer-bar{border-top:1px solid #1d3a59;margin-top:46px;padding:20px 0;text-align:center;font-size:13px;color:#8295a8;}
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease;}
+.reveal.visible{opacity:1;transform:none;}
+@media (max-width:900px){.product-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:820px){.navlinks{display:none;}}
+@media (max-width:600px){.product-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@umkc_vsa" target="_blank">TikTok</a></div>
+    <div class="lang"><span>EN</span> | <span>VN</span></div>
+    </div>
+
+    <nav>
+      <div class="brand"><img class="brand-logo" src="/assets/logo.png" alt="UMKC VSA logo">UMKC VSA</div>
+        <div class="navlinks">
+            <a href="/home-new.html">HOME</a>
+                <a href="/new-pages/about.html">ABOUT</a>
+                    <a href="/new-pages/eboard.html">E-BOARD</a>
+                        <a href="/new-pages/store.html" class="active">STORE</a>
+                            <a href="/new-pages/gallery.html">GALLERY</a>
+                                <a href="/new-pages/contact.html">CONTACT</a>
+                                  </div>
+                                    <a class="login" href="#">Login</a>
+                                    </nav>
+
+                                    <header class="page-hero">
+                                    <h1>VSA Merch Store</h1>
+                                    <p>Show your VSA pride with our exclusive apparel and accessories.</p>
+                                    </header>
+
+                                    <section class="section">
+                                    <div class="product-grid">
+                                    <div class="product reveal"><div class="pimg"><span class="badge">New</span><img src="https://picsum.photos/400/400?random=41" alt="Replace product"></div><div class="pbody"><h3>Classic Logo Tee</h3><p class="desc">Soft cotton tee featuring the UMKC VSA emblem. Available in multiple sizes.</p><div class="prow"><span class="price">$20</span><button class="add-btn">Add to Cart</button></div></div></div>
+                                    <div class="product reveal"><div class="pimg"><img src="https://picsum.photos/400/400?random=42" alt="Replace product"></div><div class="pbody"><h3>Embroidered Hoodie</h3><p class="desc">Cozy fleece hoodie with embroidered logo. Perfect for chilly campus days.</p><div class="prow"><span class="price">$40</span><button class="add-btn">Add to Cart</button></div></div></div>
+                                    <div class="product reveal"><div class="pimg"><span class="badge">Popular</span><img src="https://picsum.photos/400/400?random=43" alt="Replace product"></div><div class="pbody"><h3>Tote Bag</h3><p class="desc">Durable canvas tote for books, groceries, or event giveaways.</p><div class="prow"><span class="price">$15</span><button class="add-btn">Add to Cart</button></div></div></div>
+                                    <div class="product reveal"><div class="pimg"><img src="https://picsum.photos/400/400?random=44" alt="Replace product"></div><div class="pbody"><h3>Sticker Pack</h3><p class="desc">A set of vinyl stickers celebrating Vietnamese culture and VSA pride.</p><div class="prow"><span class="price">$8</span><button class="add-btn">Add to Cart</button></div></div></div>
+                                    <div class="product reveal"><div class="pimg"><img src="https://picsum.photos/400/400?random=45" alt="Replace product"></div><div class="pbody"><h3>Beanie</h3><p class="desc">Warm knit beanie with a stitched logo patch. One size fits most.</p><div class="prow"><span class="price">$18</span><button class="add-btn">Add to Cart</button></div></div></div>
+                                    <div class="product reveal"><div class="pimg"><span class="badge">Limited</span><img src="https://picsum.photos/400/400?random=46" alt="Replace product"></div><div class="pbody"><h3>Water Bottle</h3><p class="desc">Insulated stainless steel bottle to keep you hydrated on the go.</p><div class="prow"><span class="price">$22</span><button class="add-btn">Add to Cart</button></div></div></div>
+                                    </div>
+                                    <p class="store-note">This is a preview store. Replace product images, names, and prices, or connect to your real checkout when ready.</p>
+                                    </section>
+
+                                    <footer>
+                                    <div class="footer-cols">
+                                    <div class="footer-col">
+                                    <div class="footer-brand"><img class="footer-icon" src="/assets/logo.png" alt="UMKC VSA logo"><span class="brand-name">UMKC VSA</span></div>
+                                    <p>Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
+                                    </div>
+                                    <div class="footer-col"><h4>Quick Links</h4><a href="/new-pages/about.html">About</a><a href="/new-pages/eboard.html">E-Board</a><a href="/new-pages/store.html">Store</a><a href="/new-pages/gallery.html">Gallery</a></div>
+                                    <div class="footer-col"><h4>Contact</h4><p>support@umkcvsa.org</p><p>Student Union Building Room 302</p></div>
+                                    <div class="footer-col"><h4>Follow Us</h4><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@umkc_vsa" target="_blank">TikTok</a></div>
+                                    </div>
+                                    <div class="footer-bar">&copy; 2026 UMKC VSA. All rights reserved.</div>
+                                    </footer>
+
+                                    <script>
+                                    const obs=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});},{threshold:.12});
+                                    document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%3*0.08)+'s';obs.observe(el);});
+                                    </script>
+                                    </body>
+                                    </html>
