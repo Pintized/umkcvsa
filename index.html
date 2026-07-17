@@ -4,428 +4,161 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Home | UMKC VSA</title>
+<meta name="description" content="UMKC Vietnamese Student Association — celebrating Vietnamese culture, community, and connection at the University of Missouri-Kansas City.">
+<link rel="canonical" href="https://umkcvsa.org/">
+<meta property="og:title" content="UMKC Vietnamese Student Association">
+<meta property="og:description" content="Celebrating Vietnamese culture, community, and connection at UMKC.">
+<meta property="og:url" content="https://umkcvsa.org/">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --navy:#16314d;
-    --red:#c8202f;
-      --light:#eef3f8;
-        --text:#1f2933;
-          --muted:#5b6b7b;
-            --serif:'Playfair Display',serif;
-              --sans:'Source Sans 3',sans-serif;
-              }
-              *{box-sizing:border-box;margin:0;padding:0;}
-              body{font-family:var(--sans);color:var(--text);line-height:1.6;}
-              h1,h2,h3{font-family:var(--serif);}
-              img{display:block;}
-              a{text-decoration:none;}
+<link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body>
 
-                /* TOPBAR */
-                .topbar{
-                    background:var(--navy);
-                    color:#fff;
-                    font-size:13px;
-                    padding:6px 24px;
-                    display:flex;
-                    justify-content:space-between;
-                    align-items:center;
-                }
-                .topbar .socials {
-                    display: flex;
-                    align-items: center;
-                    gap: 14px;
-                }
-                .topbar .socials a{
-                    display: inline-flex;
-                    align-items: center;
-                }
-                .topbar .socials img{
-                    height:22px;
-                    width:22px;
-                    object-fit: contain;
-                    display: block;
-                }
-                .topbar .lang {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-                .topbar .lang button {
-                    background: none;
-                    border: none;
-                    color: #fff;
-                    font-size: 13px;
-                    cursor: pointer;
-                    opacity: .8;
-                    padding: 0;
-                }
-                .topbar .lang button:hover {
-                    opacity: 1;
-                    text-decoration: underline;
-                }
+<div class="topbar">
+  <div class="socials">
+    <a href="https://www.instagram.com/umkc_vsa" target="_blank" aria-label="Instagram">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.8" cy="6.2" r="1.3" fill="currentColor" stroke="none"/></svg>
+    </a>
+    <a href="https://www.tiktok.com/@umkc_vsa" target="_blank" aria-label="TikTok">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2.1 1.8 3.7 3.9 4v3c-1.5 0-2.9-.5-3.9-1.2v6.4c0 3.3-2.6 5.8-5.8 5.8S5 18.5 5 15.2c0-3.2 2.5-5.7 5.7-5.8v3.1c-1.4.1-2.6 1.3-2.6 2.7 0 1.5 1.2 2.8 2.7 2.8s2.7-1.3 2.7-2.8V3h3.1z"/></svg>
+    </a>
+  </div>
+  <div class="lang">
+    <button id="lang-en" class="on">EN</button>|<button id="lang-vi">VN</button>
+  </div>
+</div>
 
-                /* NAV */
-                nav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #e3e9f0;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;box-shadow:0 1px 6px rgba(0,0,0,.04);}
-                .brand{font-family:var(--serif);font-weight:800;font-size:22px;color:var(--navy);display:flex;align-items:center;gap:12px;}.brand-logo{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;}
-                .navlinks a{margin:0 12px;color:var(--text);font-weight:600;font-size:15px;}
-                .navlinks a.active{color:var(--red);}
-                .login{background:var(--navy);color:#fff !important;padding:8px 18px;border-radius:6px;font-weight:600;}
+<nav class="site-nav">
+  <a class="brand" href="/"><img class="brand-logo" src="/assets/img/logo.png" alt="UMKC VSA logo">UMKC VSA</a>
+  <div class="navlinks">
+    <a href="/" class="active">HOME</a>
+    <a href="/about/">ABOUT</a>
+    <a href="/eboard/">E-BOARD</a>
+    <a href="/store/">STORE</a>
+    <a href="/gallery/">GALLERY</a>
+    <a href="/contact/">CONTACT</a>
+  </div>
+  <a class="login" href="/app/login.html">Login</a>
+  <button class="nav-burger" aria-label="Menu">☰</button>
+</nav>
 
-                /* HERO */
-                .hero {
-                    background: linear-gradient(135deg, var(--navy), var(--red));
-                    color: #fff;
-                    text-align: center;
-                    padding: 90px 24px;
-                }
-                .hero h1 {
-                    font-size: 46px;
-                    font-weight: 800;
-                    margin: 0;
-                    line-height: 1.05;
-                    display: block;
-                }
-                .hero .hero-title {
-                    margin: 0 0 6px 0;
-                }
-                .hero .hero-subtitle {
-                    margin: 0 0 16px 0;
-                }
-                .hero p {
-                    font-size: 20px;
-                    opacity: .95;
-                    margin: 0 0 28px 0;
-                    display: block;
-                }
-                .btn {
-                    display: inline-block;
-                    background: var(--red);
-                    color: #fff;
-                    padding: 14px 30px;
-                    border-radius: 8px;
-                    font-weight: 700;
-                    font-size: 16px;
-                }
+<header class="page-hero tall">
+  <h1 data-i18n="heroTitle">UMKC</h1>
+  <h1 data-i18n="heroSubtitle">Vietnamese Student Association</h1>
+  <hr class="hero-rule">
+  <p data-i18n="heroText" style="margin-top:16px">Become a part of our vibrant community.</p>
+  <div class="hero-ctas">
+    <a class="btn" href="/app/signup.html" data-i18n="joinButton">JOIN US</a>
+    <a class="btn ghost" href="/app/login.html" data-i18n="loginButton">Member Login</a>
+  </div>
+</header>
 
-                /* SECTION GENERAL */
-                .section{
-                    padding:70px 24px;
-                    max-width:1100px;
-                    margin:0 auto;
-                }
-                .section-light{
-                    background:var(--light);
-                    max-width:none;
-                }
-                .section-light .section-head,.section-light .event-grid{
-                    max-width:1100px;
-                    margin-left:auto;
-                    margin-right:auto;
-                }
-                .divider{
-                    border:none;
-                    height:4px;
-                    width:70px;
-                    background:var(--red);
-                    margin:14px 0 22px;
-                }
+<section class="section">
+  <div style="display:flex; gap:48px; align-items:center; flex-wrap:wrap">
+    <div class="reveal" style="flex:1; min-width:280px">
+      <h2>Promoting Vietnamese Art and Culture</h2>
+      <hr class="divider">
+      <p class="lead">The Vietnamese Student Association is an independent nonprofit organization established with the purpose of promoting Vietnamese art and culture to connect students and communities who share an appreciation for Vietnam's rich traditions and contemporary creativity.</p>
+      <a class="btn ghost" href="/about/" style="margin-top:22px">Learn More</a>
+    </div>
+    <div class="ph reveal" style="flex:1; min-width:280px; height:320px">
+      <img class="ph-logo" src="/assets/img/logo.png" alt="">
+      <div class="ph-cap">Photo coming soon</div>
+    </div>
+  </div>
+</section>
 
-                /* ABOUT */
-                .about-wrap{
-                    display:flex;
-                    gap:48px;
-                    align-items:center;
-                }
-                .about-text{
-                    flex:1;
-                }
-                .about-text h2{
-                    font-size:34px;
-                    color:var(--navy);
-                }
-                .about-text p{
-                    color:var(--muted);
-                    margin-bottom:22px;
-                }
-                .btn-outline{
-                    display:inline-block;
-                    border:2px solid var(--navy);
-                    color:var(--navy);
-                    padding:11px 26px;
-                    border-radius:8px;
-                    font-weight:700;
-                }
-                .img-placeholder{
-                    flex:1;
-                    height:300px;
-                }
+<section class="section-alt">
+  <div class="section" style="padding-top:70px; padding-bottom:70px">
+    <div class="section-head reveal">
+      <h2>Upcoming Events</h2>
+      <hr class="divider">
+    </div>
+    <div class="event-grid" id="events"></div>
+  </div>
+</section>
 
-                /* EVENTS */
-                .section-head{
-                    text-align:center;
-                }
-                .section-head h2{
-                    font-size:34px;
-                    color:var(--navy);
-                }
-                .section-head .divider{
-                    margin:14px auto 36px;
-                }
-                .event-grid{
-                    display:grid;
-                    grid-template-columns:repeat(3,1fr);
-                    gap:28px;
-                }
-                .card{
-                    background:#fff;
-                    border-radius:12px;
-                    overflow:hidden;
-                    box-shadow:0 6px 20px rgba(22,49,77,.08);
-                }
-                .card-img{
-                    height:170px;
-                }
-                .card .body{
-                    padding:20px;
-                }
-                .card .date{
-                    color:var(--red);
-                    font-weight:700;
-                    font-size:13px;
-                    text-transform:uppercase;
-                    letter-spacing:.5px;
-                    margin-bottom:8px;
-                }
-                .card h3{
-                    color:var(--navy);
-                    font-size:20px;
-                    margin-bottom:8px;
-                }
-                .card .body p{
-                    color:var(--muted);
-                    font-size:15px;
-                }
+<section class="cta reveal">
+  <h2>Rep the culture.</h2>
+  <p>Exclusive VSA apparel and accessories — wear your pride.</p>
+  <a class="btn" href="/store/">Visit the Store</a>
+</section>
 
-                /* MERCH */
-                .merch{background:var(--navy);color:#fff;text-align:center;padding:70px 24px;}
-                .merch h2{font-size:34px;margin-bottom:18px;}
-                .merch .btn{margin-top:10px;}
+<footer>
+  <div class="footer-cols">
+    <div class="footer-col">
+      <div class="footer-brand"><img class="footer-icon" src="/assets/img/logo.png" alt="UMKC VSA logo"><span class="brand-name">UMKC VSA</span></div>
+      <p>Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
+    </div>
+    <div class="footer-col"><h4>Quick Links</h4><a href="/about/">About</a><a href="/eboard/">E-Board</a><a href="/store/">Store</a><a href="/gallery/">Gallery</a></div>
+    <div class="footer-col"><h4>Contact</h4><p>support@umkcvsa.org</p><p>Student Union Building Room 302</p></div>
+    <div class="footer-col"><h4>Follow Us</h4><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@umkc_vsa" target="_blank">TikTok</a></div>
+  </div>
+  <div class="footer-bar">&copy; 2026 UMKC VSA. All rights reserved.</div>
+</footer>
 
-                /* FOOTER */
-                footer{background:#0e2238;color:#cdd8e4;padding:56px 24px 0;}
-                .footer-cols{display:flex;justify-content:space-between;gap:48px;text-align:left;flex-wrap:wrap;max-width:1100px;margin:0 auto;}
-                .footer-col{max-width:240px;}
-                .footer-brand{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-                .footer-icon{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;}
-                .footer-col h4{font-family:var(--serif);color:#fff;font-size:18px;margin-bottom:16px;}
-                .footer-col .brand-name{font-family:var(--serif);color:#fff;font-size:20px;font-weight:800;}
-                .footer-col p,.footer-col a{color:#9fb0c2;font-size:14px;display:block;margin-bottom:8px;}
-                .footer-col a:hover{color:#fff;}
-                .footer-bar{border-top:1px solid #1d3a59;margin-top:46px;padding:20px 0;text-align:center;font-size:13px;color:#8295a8;}
+<script src="/assets/js/site.js"></script>
+<script>
+// EN / VN toggle (carried over from the original design)
+(function () {
+  var translations = {
+    en: {
+      heroTitle: "UMKC",
+      heroSubtitle: "Vietnamese Student Association",
+      heroText: "Become a part of our vibrant community.",
+      joinButton: "JOIN US",
+      loginButton: "Member Login"
+    },
+    vi: {
+      heroTitle: "UMKC",
+      heroSubtitle: "Hội Sinh Viên Việt Nam",
+      heroText: "Hãy trở thành một phần của cộng đồng sôi động của chúng tôi.",
+      joinButton: "THAM GIA",
+      loginButton: "Đăng Nhập"
+    }
+  };
+  function setLanguage(lang) {
+    var t = translations[lang] || translations.en;
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n];
+    });
+    document.getElementById('lang-en').classList.toggle('on', lang === 'en');
+    document.getElementById('lang-vi').classList.toggle('on', lang === 'vi');
+    try { localStorage.setItem('vsa-lang', lang); } catch (e) {}
+  }
+  document.getElementById('lang-en').onclick = function () { setLanguage('en'); };
+  document.getElementById('lang-vi').onclick = function () { setLanguage('vi'); };
+  try { if (localStorage.getItem('vsa-lang') === 'vi') setLanguage('vi'); } catch (e) {}
+})();
+</script>
+<script type="module">
+// Live upcoming events straight from Supabase (publicly readable)
+import { supabase } from '/app/shared/supabase.js';
+const grid = document.getElementById('events');
+const today = new Date().toISOString().slice(0, 10);
+const { data } = await supabase.from('events')
+  .select('name, event_date, start_time, location')
+  .gte('event_date', today)
+  .order('event_date').order('start_time')
+  .limit(3);
 
-                /* Language Switch Animation */
-                .text-language-pop {
-                    animation: textLanguagePop 450ms ease-out;
-                }
-                @keyframes textLanguagePop {
-                    0% {
-                        opacity: 0;
-                        transform: scale(0.85);
-                        background: linear-gradient(90deg, var(--red), var(--navy));
-                        -webkit-background-clip: text;
-                        background-clip: text;
-                        color: transparent;
-                    }
-                    60% {
-                        opacity: 1;
-                        transform: scale(1.08);
-                        background: linear-gradient(90deg, var(--red), #ffffff, var(--navy));
-                        -webkit-background-clip: text;
-                        background-clip: text;
-                        color: transparent;
-                    }
-                    100% {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
+const fmtTime = (t) => {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+};
 
-                </style>
-                </head>
-                <body>
-
-                <!-- TOPBAR -->
-                <div class="topbar">
-                    <div class="socials">
-                        <a href="https://www.instagram.com/umkc_vsa" target="_blank" aria-label="Instagram">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.8" cy="6.2" r="1.3" fill="#fff" stroke="none"/></svg>
-                        </a>
-                        <a href="https://www.tiktok.com/@umkc_vsa" target="_blank" aria-label="TikTok">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M16.6 3c.4 2.1 1.8 3.7 3.9 4v3c-1.5 0-2.9-.5-3.9-1.2v6.4c0 3.3-2.6 5.8-5.8 5.8S5 18.5 5 15.2c0-3.2 2.5-5.7 5.7-5.8v3.1c-1.4.1-2.6 1.3-2.6 2.7 0 1.5 1.2 2.8 2.7 2.8s2.7-1.3 2.7-2.8V3h3.1z"/></svg>
-                        </a>
-                    </div>
-                
-                    <div class="lang">
-                        <button onclick="setLanguage('en')">EN</button>
-                        |
-                        <button onclick="setLanguage('vi')">VN</button>
-                    </div>
-                </div>
-
-                <!-- NAV -->
-                <nav>
-                    <div class="brand"><img class="brand-logo" src="/assets/img/logo.png" alt="UMKC VSA logo">UMKC VSA</div>
-                        <div class="navlinks">
-                            <a href="/" class="active">HOME</a>
-                                <a href="/about/">ABOUT</a>
-                                    <a href="/eboard/">E-BOARD</a>
-                                        <a href="/store/">STORE</a>
-                                            <a href="/gallery/">GALLERY</a>
-                                                <a href="/contact/">CONTACT</a>
-                                                </div>
-                                                    <a class="login" href="/app/login.html">Login</a>
-                                                    </nav>
-
-                                                    <!-- SECTION 1: HERO -->
-                                                    <header class="hero">
-                                                        <h1 class="hero-title" data-i18n="heroTitle">UMKC</h1>
-                                                        <h1 class="hero-subtitle" data-i18n="heroSubtitle">Vietnamese Student Association</h1>
-                                                        <p data-i18n="heroText">Become a part of our vibrant community.</p>
-                                                        <a class="btn" href="/app/signup.html" data-i18n="joinButton">JOIN US</a>
-                                                    </header>
-
-                                                    <!-- SECTION 2: ABOUT -->
-                                                    <section class="section">
-                                                    <div class="about-wrap">
-                                                    <div class="about-text">
-                                                    <h2>Promoting Vietnamese Art and Culture</h2>
-                                                    <hr class="divider" style="margin-left:0;">
-                                                    <p>The Vietnamese Student Association is an independent nonprofit organization established with the purpose of promoting Vietnamese art and culture to connect students and communities who share an appreciation for Vietnam's rich traditions and contemporary creativity.</p>
-                                                    <a class="btn-outline" href="/about/">Learn More</a>
-                                                    </div>
-                                                    <div class="img-placeholder">
-                                                    <img src="https://picsum.photos/500/300" alt="Replace this image" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">
-                                                    </div>
-                                                    </div>
-                                                    </section>
-
-                                                    <!-- SECTION 3: EVENTS -->
-                                                    <section class="section section-light">
-                                                    <div class="section-head">
-                                                    <h2>Upcoming Events</h2>
-                                                    <hr class="divider">
-                                                    </div>
-                                                    <div class="event-grid">
-                                                    <div class="card">
-                                                    <div class="card-img"><img src="https://picsum.photos/330/170?random=1" alt="Replace" style="width:100%;height:100%;object-fit:cover;"></div>
-                                                    <div class="body">
-                                                    <div class="date">January 29, 2026</div>
-                                                    <h3>Lunar New Year Celebration</h3>
-                                                    <p>Ring in the Year of the Snake with traditional performances, food, and cultural activities for the whole campus.</p>
-                                                    </div>
-                                                    </div>
-                                                    <div class="card">
-                                                    <div class="card-img"><img src="https://picsum.photos/330/170?random=2" alt="Replace" style="width:100%;height:100%;object-fit:cover;"></div>
-                                                    <div class="body">
-                                                    <div class="date">March 14, 2026</div>
-                                                    <h3>Cultural Night</h3>
-                                                    <p>An evening showcasing Vietnamese traditions through dance, music, fashion, and storytelling.</p>
-                                                    </div>
-                                                    </div>
-                                                    <div class="card">
-                                                    <div class="card-img"><img src="https://picsum.photos/330/170?random=3" alt="Replace" style="width:100%;height:100%;object-fit:cover;"></div>
-                                                    <div class="body">
-                                                    <div class="date">April 18, 2026</div>
-                                                    <h3>Spring Picnic and Games</h3>
-                                                    <p>Join us for a fun afternoon of folk games, banh mi, and community bonding at Volker Park.</p>
-                                                    </div>
-                                                    </div>
-                                                    </div>
-                                                    </section>
-
-                                                    <!-- SECTION 4: MERCH -->
-                                                    <section class="merch">
-                                                    <h2>VSA Merch</h2>
-                                                    <p>Show your VSA pride with our exclusive merchandise.</p>
-                                                    <a class="btn" href="/store/">Visit Store</a>
-                                                    </section>
-
-                                                    <!-- FOOTER -->
-                                                    <footer>
-                                                        <div class="footer-cols">
-                                                        <div class="footer-col">
-                                                        <div class="footer-brand">
-                                                        <img class="footer-icon" src="/assets/img/logo.png" alt="Replace logo">
-                                                        <span class="brand-name">UMKC VSA</span>
-                                                        </div>
-                                                        <p>Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
-                                                        </div>
-                                                        <div class="footer-col">
-                                                        <h4>Quick Links</h4>
-                                                        <a href="/about/">About</a>
-                                                        <a href="/eboard/">E-Board</a>
-                                                        <a href="/store/">Store</a>
-                                                        <a href="/gallery/">Gallery</a>
-                                                        </div>
-                                                        <div class="footer-col">
-                                                        <h4>Contact</h4>
-                                                        <p>support@umkcvsa.org</p>
-                                                        <p>Student Union Building Room 302</p>
-                                                        </div>
-                                                        <div class="footer-col">
-                                                        <h4>Follow Us</h4>
-                                                        <a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a>
-                                                        <a href="https://www.tiktok.com/@umkc_vsa" target="_blank">TikTok</a>
-                                                        </div>
-                                                        </div>
-                                                        <div class="footer-bar">&copy; 2026 UMKC VSA. All rights reserved.</div>
-                                                    </footer>
-
-                                                    <script>
-                                                        const translations = {
-                                                            en: {
-                                                                heroTitle: "UMKC",
-                                                                heroSubtitle: "Vietnamese Student Association",
-                                                                heroText: "Become a part of our vibrant community.",
-                                                                joinButton: "JOIN US"
-                                                            },
-                                                            vi: {
-                                                                heroTitle: "UMKC",
-                                                                heroSubtitle: "Hội Sinh Viên Việt Nam",
-                                                                heroText: "Trở thành một phần của cộng đồng sôi động của chúng tôi.",
-                                                                joinButton: "THAM GIA"
-                                                            }
-                                                        };
-                                                        function animateTranslatedText() {
-                                                            document.querySelectorAll("[data-i18n]").forEach((element) =>  {
-                                                                element.classList.remove("text-language-pop");
-                                                                void element.offsetWidth;
-                                                                element.classList.add("text-language-pop");
-                                                                setTimeout(() => {
-                                                                    element.classList.remove("text-language-pop");
-                                                                }, 500);
-                                                            });
-                                                        }
-                                                        function setLanguage(language, animate = true) {
-                                                            document.documentElement.lang = language;
-                                                            document.querySelectorAll("[data-i18n]").forEach((element) => {
-                                                                const key = element.getAttribute("data-i18n");
-                                                                if (translations[language] && translations[language][key]) {
-                                                                    element.textContent = translations[language][key];
-                                                                }
-                                                            });
-                                                            localStorage.setItem("siteLanguage", language);
-                                                            if (animate) {
-                                                                animateTranslatedText();
-                                                            }
-                                                        }
-                                                        const savedLanguage = localStorage.getItem("siteLanguage") || "en";
-                                                        setLanguage(savedLanguage, false);
-                                                    </script>
-
-                                                    </body>
-                                                    </html>
+grid.innerHTML = (data && data.length)
+  ? data.map(ev => `
+      <div class="event-card reveal visible">
+        <div class="date">${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}${ev.start_time ? ' · ' + fmtTime(ev.start_time) : ''}</div>
+        <h3>${String(ev.name).replace(/</g, '&lt;')}</h3>
+        <div class="meta">${ev.location ? '📍 ' + String(ev.location).replace(/</g, '&lt;') : ''}</div>
+      </div>`).join('')
+  : '<div class="events-empty" style="grid-column:1/-1">No events on the calendar just yet — follow <a href="https://www.instagram.com/umkc_vsa" target="_blank" style="color:var(--gold-bright)">@umkc_vsa</a> for announcements!</div>';
+</script>
+</body>
+</html>

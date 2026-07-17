@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gallery | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading gallery…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Gallery');
+
+  let photos = [];
+
+  async function load() {
+    const { data } = await supabase.storage.from('gallery')
+      .list('', { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
+    photos = (data || []).filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f.name));
+    render();
+  }
+
+  function render() {
+    page.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:6px">
+          <div>
+            <h2 style="margin-bottom:2px">Public gallery</h2>
+            <p style="color:var(--muted); font-size:.86rem">These photos appear on the public site's Gallery page instantly. Max 8 MB each.</p>
+          </div>
+          <button class="btn" id="upload-btn">⬆ Upload photos</button>
+          <input type="file" id="files" accept="image/png,image/jpeg,image/webp,image/gif" multiple style="display:none">
+        </div>
+        <p class="notice" id="notice"></p>
+        ${photos.length ? `
+          <div class="member-list" style="grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); margin-top:14px">
+            ${photos.map(f => {
+              const url = supabase.storage.from('gallery').getPublicUrl(f.name).data.publicUrl;
+              return `
+                <div style="position:relative; border:1px solid var(--line); border-radius:12px; overflow:hidden">
+                  <img src="${url}" loading="lazy" style="width:100%; aspect-ratio:1; object-fit:cover; display:block">
+                  <button class="btn sm ghost" data-del="${f.name}"
+                    style="position:absolute; top:8px; right:8px; background:rgba(6,14,24,.7)">✕</button>
+                </div>`;
+            }).join('')}
+          </div>
+          <p style="color:var(--muted); font-size:.85rem; margin-top:14px">${photos.length} photo${photos.length === 1 ? '' : 's'} live on the public gallery.</p>
+        ` : '<p class="empty-state"><span class="big">📷</span>No photos yet — upload the first batch and the public gallery comes alive.</p>'}
+      </div>`;
+
+    const notice = document.getElementById('notice');
+    const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
+
+    document.getElementById('upload-btn').onclick = () => document.getElementById('files').click();
+    document.getElementById('files').addEventListener('change', async (e) => {
+      const files = [...e.target.files];
+      if (!files.length) return;
+      let done = 0, failed = 0;
+      say(`Uploading 0/${files.length}…`, 'ok');
+      for (const file of files) {
+        if (file.size > 8 * 1024 * 1024) { failed++; continue; }
+        const ext = file.name.split('.').pop().toLowerCase();
+        const { error } = await supabase.storage.from('gallery')
+          .upload(`${crypto.randomUUID()}.${ext}`, file);
+        error ? failed++ : done++;
+        say(`Uploading ${done}/${files.length}…`, 'ok');
+      }
+      say(`Uploaded ${done} photo${done === 1 ? '' : 's'}${failed ? ` — ${failed} failed (too large or error)` : ''}.`, failed ? 'error' : 'ok');
+      load();
+    });
+
+    page.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `
+        <div class="modal pop">
+          <h2>Remove photo?</h2>
+          <p style="font-size:.92rem; color:var(--muted)">It disappears from the public gallery immediately.</p>
+          <div class="row-btns">
+            <button class="btn ghost" id="d-no">Cancel</button>
+            <button class="btn" id="d-yes">Remove</button>
+          </div>
+        </div>`;
+      document.body.appendChild(back);
+      back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+      back.querySelector('#d-no').onclick = () => back.remove();
+      back.querySelector('#d-yes').onclick = async () => {
+        await supabase.storage.from('gallery').remove([b.dataset.del]);
+        back.remove();
+        load();
+      };
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>
