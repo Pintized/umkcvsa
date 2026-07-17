@@ -113,7 +113,7 @@
           <div class="field"><label>Name</label><input id="f-name" required value="${esc(m?.full_name)}"></div>
           <div class="field"><label>Role title</label><input id="f-role" required value="${esc(m?.role_title)}" placeholder="e.g. Treasurer"></div>
           <div class="field"><label>Bio (optional)</label><textarea id="f-bio">${esc(m?.bio)}</textarea></div>
-          <div class="field"><label>Photo (square works best, max 4 MB)</label><input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp"></div>
+          <div class="field"><label>Photo (square works best, max 11 MB)</label><input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp"></div>
           <div class="check-list">
             <label><input type="checkbox" id="f-lead" ${m?.is_lead ? 'checked' : ''}> Lead (big top row)</label>
             <label><input type="checkbox" id="f-active" ${m ? (m.active ? 'checked' : '') : 'checked'}> Visible on site</label>
@@ -140,7 +140,7 @@
       };
       const file = back.querySelector('#f-photo').files[0];
       if (file) {
-        if (file.size > 4 * 1024 * 1024) return say('Photo is larger than 4 MB.');
+        if (file.size > 11 * 1024 * 1024) return say('Photo is larger than 11 MB.');
         const path = `eboard-${crypto.randomUUID()}.${file.name.split('.').pop().toLowerCase()}`;
         const { error } = await supabase.storage.from('site-images').upload(path, file);
         if (error) return say(error.message);
