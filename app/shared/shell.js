@@ -5,10 +5,11 @@ import { isOfficer, logout } from './guard.js';
 
 const MEMBER_LINKS = [
   { href: '/app/',                  label: 'Dashboard',    icon: '🏠' },
-  { href: '/app/calendar.html',     label: 'Calendar',     icon: '📅', soon: true },
-  { href: '/app/achievements.html', label: 'Achievements', icon: '🏆', soon: true },
-  { href: '/app/rewards.html',      label: 'Rewards',      icon: '🎁', soon: true },
-  { href: '/app/members.html',      label: 'Members',      icon: '👥', soon: true },
+  { href: '/app/calendar.html',     label: 'Calendar',     icon: '📅' },
+  { href: '/app/achievements.html', label: 'Achievements', icon: '🏆' },
+  { href: '/app/rewards.html',      label: 'Rewards',      icon: '🎁' },
+  { href: '/app/members.html',      label: 'Members',      icon: '👥' },
+  { href: '/app/profile.html',      label: 'My Profile',   icon: '👤' },
 ];
 
 const OFFICER_LINKS = [

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Achievements | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading achievements…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Achievements');
+
+  const [{ data: achievements }, { data: myAwards }] = await Promise.all([
+    supabase.from('achievements').select('*').eq('active', true).order('points', { ascending: false }),
+    supabase.from('achievement_awards')
+      .select('achievement_id, points_awarded, created_at')
+      .eq('user_id', ctx.user.id)
+      .order('created_at', { ascending: false }),
+  ]);
+
+  const earnedIds = new Map();
+  (myAwards || []).forEach(a => { if (!earnedIds.has(a.achievement_id)) earnedIds.set(a.achievement_id, a.created_at); });
+  const totalEarned = (myAwards || []).reduce((s, a) => s + a.points_awarded, 0);
+
+  const tile = (a) => {
+    const when = earnedIds.get(a.id);
+    return `
+      <div class="tile ${when ? 'earned' : ''}">
+        ${when ? `<span class="earned-tag">Earned</span>` : ''}
+        <h3>${a.icon ? a.icon + ' ' : '🏆 '}${a.name}</h3>
+        <p>${a.description || ''}</p>
+        <span class="pts">+${a.points} pts</span>
+        ${when ? `<p style="margin:8px 0 0; font-size:.78rem">Earned ${new Date(when).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>` : ''}
+      </div>`;
+  };
+
+  page.innerHTML = `
+    <div class="card">
+      <h2>Your progress</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="num">${earnedIds.size}</div><div class="lbl">Achievements earned</div></div>
+        <div class="stat"><div class="num">${totalEarned}</div><div class="lbl">Points from achievements</div></div>
+        <div class="stat"><div class="num">${ctx.profile?.points ?? 0}</div><div class="lbl">Total points</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>All achievements</h2>
+      ${(achievements && achievements.length)
+        ? `<div class="tile-grid">${achievements.map(tile).join('')}</div>`
+        : '<p style="color:var(--muted)">No achievements have been created yet.</p>'}
+    </div>`;
+</script>
+</body>
+</html>
