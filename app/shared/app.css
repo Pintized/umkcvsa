@@ -642,12 +642,15 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 /* ---------- modal ---------- */
 .modal-back {
   position: fixed; inset: 0;
-  background: rgba(6, 21, 37, .62);
-  backdrop-filter: blur(3px);
+  /* no backdrop-filter: blurring the animated page behind was GPU-expensive
+     and caused a visible hitch on open */
+  background: rgba(6, 21, 37, .74);
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
   padding: 20px;
+  animation: backFade .15s ease;
 }
+@keyframes backFade { from { opacity: 0; } to { opacity: 1; } }
 .modal {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -662,6 +665,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   box-shadow: var(--shadow-lg);
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
+  animation: popIn .2s cubic-bezier(.2, .9, .3, 1.15);
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(.96) translateY(8px); }
+  to   { opacity: 1; transform: none; }
 }
 .modal::-webkit-scrollbar { width: 8px; }
 .modal::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
