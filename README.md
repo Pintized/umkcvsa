@@ -8,10 +8,13 @@ Website and member/officer portal for the UMKC Vietnamese Student Association.
 - `main` — the new, reorganized project (work in progress).
 - `legacy-import` — untouched snapshot of the DreamHost webroot + MySQL dump as exported on 2026-07-16. Reference only; never build on it.
 
-## Current layout (Phase 0/1)
-- `umkcvsa/` — legacy DreamHost webroot (being reorganized per the plan)
-- `umkcvsa_db.sql` — legacy MySQL dump (test data only; schema reference for Supabase migrations)
-- `docs/` — migration plan and architecture decisions
+## Layout (Phase 1 complete)
+- `public/` — the website (deployed root): home, about, contact, eboard, gallery, store + robots/sitemap/favicon. The member portal will be added under `public/app/` in Phase 4.
+- `legacy/php-app/` — old DreamHost PHP portal, kept as reference for the Supabase rebuild (do not deploy).
+- `legacy/dreamhost-dump/umkcvsa_db.sql` — old MySQL dump (test data only; schema reference for Supabase migrations).
+- `legacy/coming-soon/` — Apache config of the old splash page (the splash HTML itself was lost before export; superseded by the new site).
+- `supabase/` — Supabase CLI config; migrations land here in Phase 3.
+- `docs/` — migration plan and architecture decisions.
 
 ## Target stack
 - Public site: static HTML/CSS/JS (the `new-pages/` redesign), hosted via GitHub Pages

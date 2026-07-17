@@ -1,6 +1,3 @@
-# Old DreamHost backup folder — permanently out of scope, never commit
-umkcvsa/backup/
-
 # Secrets / env
 .env
 .env.*
