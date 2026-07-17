@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading task board…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const GRID = 40;
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Tasks');
+
+  let tasks = [], edges = [], assignees = [], officers = [];
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  async function load() {
+    const [t, e, a, p] = await Promise.all([
+      supabase.from('tasks').select('*').order('created_at'),
+      supabase.from('task_edges').select('*'),
+      supabase.from('task_assignees').select('*'),
+      supabase.from('profiles').select('id, full_name, first_name'),
+    ]);
+    tasks = t.data || []; edges = e.data || []; assignees = a.data || []; officers = p.data || [];
+    render();
+  }
+
+  const nameOf = (uid) => officers.find(o => o.id === uid)?.first_name || '?';
+
+  function render() {
+    page.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px">
+          <div>
+            <h2 style="margin-bottom:2px">Task board</h2>
+            <p style="color:var(--muted); font-size:.85rem">Drag cards to arrange — they snap to the grid and the layout saves automatically. ✎ to edit.</p>
+          </div>
+          <button class="btn" id="new">+ New task</button>
+        </div>
+        <div class="board-scroll">
+          <div class="board" id="board">
+            <svg class="edges" id="edge-svg">
+              <defs>
+                <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                  <path d="M0,0 L7,3 L0,6 Z" fill="var(--muted)"/>
+                </marker>
+              </defs>
+            </svg>
+          </div>
+        </div>
+      </div>`;
+
+    const board = document.getElementById('board');
+    tasks.forEach(t => board.appendChild(cardEl(t)));
+    drawEdges();
+    document.getElementById('new').onclick = () => openModal();
+  }
+
+  function cardEl(t) {
+    const el = document.createElement('div');
+    el.className = `task-card prio-${t.priority}`;
+    el.style.left = t.pos_x + 'px';
+    el.style.top = t.pos_y + 'px';
+    el.dataset.id = t.id;
+    const who = assignees.filter(a => a.task_id === t.id).map(a => nameOf(a.user_id)).join(', ');
+    el.innerHTML = `
+      <span class="edit-hit" title="Edit">✎</span>
+      <h4>${esc(t.title)}</h4>
+      <div class="meta">
+        <span class="st ${t.status}">${t.status}</span>
+        ${t.due_date ? `<span>📅 ${new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>` : ''}
+        ${who ? `<span>👤 ${esc(who)}</span>` : ''}
+      </div>`;
+    el.querySelector('.edit-hit').addEventListener('pointerdown', (e) => e.stopPropagation());
+    el.querySelector('.edit-hit').addEventListener('click', () => openModal(t));
+    dragify(el, t);
+    return el;
+  }
+
+  function dragify(el, t) {
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      const startX = e.clientX, startY = e.clientY;
+      const origX = t.pos_x, origY = t.pos_y;
+      let moved = false;
+
+      const onMove = (ev) => {
+        const nx = origX + (ev.clientX - startX);
+        const ny = origY + (ev.clientY - startY);
+        el.style.left = Math.max(0, nx) + 'px';
+        el.style.top = Math.max(0, ny) + 'px';
+        moved = true;
+        drawEdges();
+      };
+      const onUp = async (ev) => {
+        el.removeEventListener('pointermove', onMove);
+        el.removeEventListener('pointerup', onUp);
+        if (!moved) return;
+        const snapX = Math.max(0, Math.round((origX + (ev.clientX - startX)) / GRID) * GRID);
+        const snapY = Math.max(0, Math.round((origY + (ev.clientY - startY)) / GRID) * GRID);
+        el.style.left = snapX + 'px'; el.style.top = snapY + 'px';
+        t.pos_x = snapX; t.pos_y = snapY;
+        drawEdges();
+        await supabase.from('tasks').update({ pos_x: snapX, pos_y: snapY }).eq('id', t.id);
+      };
+      el.addEventListener('pointermove', onMove);
+      el.addEventListener('pointerup', onUp);
+    });
+  }
+
+  function drawEdges() {
+    const svg = document.getElementById('edge-svg');
+    if (!svg) return;
+    svg.querySelectorAll('line').forEach(l => l.remove());
+    edges.forEach(ed => {
+      const a = document.querySelector(`.task-card[data-id="${ed.from_id}"]`);
+      const b = document.querySelector(`.task-card[data-id="${ed.to_id}"]`);
+      if (!a || !b) return;
+      const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l.setAttribute('x1', a.offsetLeft + a.offsetWidth / 2);
+      l.setAttribute('y1', a.offsetTop + a.offsetHeight / 2);
+      l.setAttribute('x2', b.offsetLeft + b.offsetWidth / 2);
+      l.setAttribute('y2', b.offsetTop + b.offsetHeight / 2);
+      l.setAttribute('stroke', 'var(--muted)');
+      l.setAttribute('stroke-width', '2');
+      l.setAttribute('stroke-dasharray', '6 4');
+      l.setAttribute('marker-end', 'url(#arrow)');
+      svg.appendChild(l);
+    });
+  }
+
+  function openModal(t) {
+    const myAssignees = t ? assignees.filter(a => a.task_id === t.id).map(a => a.user_id) : [];
+    const myEdges = t ? edges.filter(e => e.from_id === t.id).map(e => e.to_id) : [];
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${t ? 'Edit task' : 'New task'}</h2>
+        <div class="notice" id="m-notice"></div>
+        <form id="t-form">
+          <div class="field"><label>Title</label><input id="f-title" required value="${esc(t?.title)}"></div>
+          <div class="field"><label>Description</label><textarea id="f-desc">${esc(t?.description)}</textarea></div>
+          <div class="field-row">
+            <div class="field"><label>Due date</label><input type="date" id="f-due" value="${t?.due_date || ''}"></div>
+            <div class="field"><label>Priority</label>
+              <select id="f-prio">
+                ${['low', 'medium', 'high'].map(p => `<option ${t?.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field"><label>Status</label>
+              <select id="f-status">
+                ${['open', 'in-progress', 'done'].map(s => `<option ${t?.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="field"><label>Assignees</label>
+            <div class="check-list">
+              ${officers.map(o => `<label><input type="checkbox" name="assign" value="${o.id}" ${myAssignees.includes(o.id) ? 'checked' : ''}> ${esc(o.full_name)}</label>`).join('')}
+            </div>
+          </div>
+          ${tasks.filter(x => !t || x.id !== t.id).length ? `
+          <div class="field"><label>Blocks / leads to</label>
+            <div class="check-list">
+              ${tasks.filter(x => !t || x.id !== t.id).map(x =>
+                `<label><input type="checkbox" name="edge" value="${x.id}" ${myEdges.includes(x.id) ? 'checked' : ''}> ${esc(x.title)}</label>`).join('')}
+            </div>
+          </div>` : ''}
+          <div class="row-btns">
+            ${t ? '<button type="button" class="btn ghost" id="m-del" style="margin-right:auto">Delete</button>' : ''}
+            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
+            <button type="submit" class="btn">${t ? 'Save' : 'Create'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+
+    back.querySelector('#m-del')?.addEventListener('click', async () => {
+      if (!confirm(`Delete task "${t.title}"?`)) return;
+      const { error } = await supabase.from('tasks').delete().eq('id', t.id);
+      if (error) alert(error.message);
+      back.remove(); load();
+    });
+
+    back.querySelector('#t-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const say = (m) => { const n = back.querySelector('#m-notice'); n.textContent = m; n.className = 'notice error'; };
+      const payload = {
+        title: back.querySelector('#f-title').value.trim(),
+        description: back.querySelector('#f-desc').value.trim() || null,
+        due_date: back.querySelector('#f-due').value || null,
+        priority: back.querySelector('#f-prio').value,
+        status: back.querySelector('#f-status').value,
+      };
+      let taskId = t?.id;
+      if (t) {
+        const { error } = await supabase.from('tasks').update(payload).eq('id', t.id);
+        if (error) return say(error.message);
+      } else {
+        const { data, error } = await supabase.from('tasks')
+          .insert({ ...payload, created_by: ctx.user.id, pos_x: 40, pos_y: 40 })
+          .select('id').single();
+        if (error) return say(error.message);
+        taskId = data.id;
+      }
+      // sync assignees + edges (delete-then-insert keeps it simple)
+      const picks = [...back.querySelectorAll('input[name="assign"]:checked')].map(i => i.value);
+      const edgePicks = [...back.querySelectorAll('input[name="edge"]:checked')].map(i => +i.value);
+      await supabase.from('task_assignees').delete().eq('task_id', taskId);
+      if (picks.length) await supabase.from('task_assignees').insert(picks.map(u => ({ task_id: taskId, user_id: u })));
+      await supabase.from('task_edges').delete().eq('from_id', taskId);
+      if (edgePicks.length) await supabase.from('task_edges').insert(edgePicks.map(to => ({ from_id: taskId, to_id: to })));
+      back.remove();
+      load();
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>

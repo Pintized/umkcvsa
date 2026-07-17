@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roles | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading roles…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const GRANTABLE = ['officer', 'alumni', 'intern', 'admin'];
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Roles');
+
+  const iAmAdmin = ctx.roles.includes('admin');
+  let profiles = [], roleMap = new Map(); // user_id -> Set(roles)
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  async function load() {
+    const [p, r] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, created_at').order('full_name'),
+      supabase.from('user_roles').select('*'),
+    ]);
+    profiles = p.data || [];
+    roleMap = new Map();
+    (r.data || []).forEach(x => {
+      if (!roleMap.has(x.user_id)) roleMap.set(x.user_id, new Set());
+      roleMap.get(x.user_id).add(x.role);
+    });
+    render();
+  }
+
+  function render() {
+    page.innerHTML = `
+      <div class="card">
+        <h2>Member roles</h2>
+        <p style="color:var(--muted); font-size:.86rem; margin-bottom:14px">
+          Everyone is a <em>member</em> by default. ${iAmAdmin
+            ? 'Toggle extra roles below — changes apply instantly.'
+            : 'Only <strong>admins</strong> can change roles; you have read-only access.'}
+        </p>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Member</th>${GRANTABLE.map(r => `<th style="text-transform:capitalize">${r}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${profiles.map(p => {
+                const rs = roleMap.get(p.id) || new Set();
+                return `
+                  <tr>
+                    <td><strong>${esc(p.full_name || 'Member')}</strong>${p.id === ctx.user.id ? ' <span class="badge">you</span>' : ''}</td>
+                    ${GRANTABLE.map(role => `
+                      <td>
+                        <input type="checkbox" data-u="${p.id}" data-r="${role}"
+                          ${rs.has(role) ? 'checked' : ''} ${iAmAdmin ? '' : 'disabled'}
+                          style="width:17px; height:17px; cursor:${iAmAdmin ? 'pointer' : 'default'}">
+                      </td>`).join('')}
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p class="notice" id="notice" style="margin-top:14px"></p>
+      </div>`;
+
+    if (!iAmAdmin) return;
+    const notice = document.getElementById('notice');
+    const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
+
+    page.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        const uid = cb.dataset.u, role = cb.dataset.r;
+        if (uid === ctx.user.id && role === 'admin' && !cb.checked) {
+          if (!confirm('Remove YOUR OWN admin role? You will not be able to manage roles afterwards.')) {
+            cb.checked = true;
+            return;
+          }
+        }
+        const { error } = cb.checked
+          ? await supabase.from('user_roles').insert({ user_id: uid, role })
+          : await supabase.from('user_roles').delete().eq('user_id', uid).eq('role', role);
+        if (error) {
+          cb.checked = !cb.checked;
+          say(error.message, 'error');
+          return;
+        }
+        say('Saved.', 'ok');
+        if (!roleMap.has(uid)) roleMap.set(uid, new Set());
+        cb.checked ? roleMap.get(uid).add(role) : roleMap.get(uid).delete(role);
+      });
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>

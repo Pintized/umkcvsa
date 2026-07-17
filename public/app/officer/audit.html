@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Log | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading audit log…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const PAGE = 50;
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Audit Log');
+
+  let rows = [], offset = 0, entity = '', done = false;
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  async function fetchPage(reset = false) {
+    if (reset) { rows = []; offset = 0; done = false; }
+    let q = supabase.from('audit_log').select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE - 1);
+    if (entity) q = q.eq('entity', entity);
+    const { data } = await q;
+    rows = rows.concat(data || []);
+    offset += PAGE;
+    if (!data || data.length < PAGE) done = true;
+    render();
+  }
+
+  function render() {
+    const entities = ['events', 'tasks', 'inventory', 'notes', 'note_folders', 'documents', 'document_folders', 'rewards', 'achievements', 'orders', 'profiles'];
+    page.innerHTML = `
+      <div class="card">
+        <h2>Audit log</h2>
+        <p style="color:var(--muted); font-size:.86rem; margin-bottom:14px">
+          Every create/update/delete on club data is recorded automatically by database triggers — entries can't be forged or removed from the app.
+        </p>
+        <div class="filter-bar">
+          <select id="f-entity">
+            <option value="">All entities</option>
+            ${entities.map(e => `<option value="${e}" ${entity === e ? 'selected' : ''}>${e}</option>`).join('')}
+          </select>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td style="white-space:nowrap">${new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                  <td>${esc(r.user_email || '—')}</td>
+                  <td><span class="badge">${esc(r.action)}</span></td>
+                  <td>${esc(r.entity)}</td>
+                  <td>${esc(r.details)}</td>
+                </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No audit entries yet.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        ${done ? '' : '<div style="text-align:center; margin-top:14px"><button class="btn ghost" id="more">Load more</button></div>'}
+      </div>`;
+
+    document.getElementById('f-entity').onchange = (e) => { entity = e.target.value; fetchPage(true); };
+    document.getElementById('more')?.addEventListener('click', () => fetchPage());
+  }
+
+  await fetchPage(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading events…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Events');
+
+  let events = [];
+  let rsvpCounts = new Map(); // event_id -> {going, maybe}
+
+  const fmtTime = (t) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  async function load() {
+    const [evRes, rsvpRes] = await Promise.all([
+      supabase.from('events').select('*').order('event_date').order('start_time'),
+      supabase.from('rsvps').select('event_id, status'),
+    ]);
+    events = evRes.data || [];
+    rsvpCounts = new Map();
+    (rsvpRes.data || []).forEach(r => {
+      const c = rsvpCounts.get(r.event_id) || { going: 0, maybe: 0 };
+      if (r.status === 'going') c.going++;
+      if (r.status === 'maybe') c.maybe++;
+      rsvpCounts.set(r.event_id, c);
+    });
+    render();
+  }
+
+  function render() {
+    const today = new Date().toISOString().slice(0, 10);
+    const upcoming = events.filter(e => e.event_date >= today).length;
+    const q = (document.getElementById('search')?.value || '').toLowerCase();
+
+    const rows = events
+      .filter(e => !q || e.name.toLowerCase().includes(q) || (e.location || '').toLowerCase().includes(q))
+      .map(e => {
+        const c = rsvpCounts.get(e.id) || { going: 0, maybe: 0 };
+        const past = e.event_date < today;
+        return `
+          <tr style="${past ? 'opacity:.55' : ''}">
+            <td><strong>${esc(e.name)}</strong></td>
+            <td>${new Date(e.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+            <td>${fmtTime(e.start_time)}${e.end_time ? '–' + fmtTime(e.end_time) : ''}</td>
+            <td>${esc(e.location)}</td>
+            <td>${c.going} going${c.maybe ? ` · ${c.maybe} maybe` : ''}</td>
+            <td class="actions">
+              <button class="btn sm secondary" data-edit="${e.id}">Edit</button>
+              <button class="btn sm ghost" data-del="${e.id}">Delete</button>
+            </td>
+          </tr>`;
+      }).join('');
+
+    page.innerHTML = `
+      <div class="card">
+        <h2>Overview</h2>
+        <div class="stat-grid">
+          <div class="stat"><div class="num">${events.length}</div><div class="lbl">Total events</div></div>
+          <div class="stat"><div class="num">${upcoming}</div><div class="lbl">Upcoming</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px">
+          <input class="searchbar" id="search" type="search" placeholder="Search events…" value="${esc(q)}" style="margin:0">
+          <button class="btn" id="new">+ New event</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Event</th><th>Date</th><th>Time</th><th>Location</th><th>RSVPs</th><th></th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="6" style="color:var(--muted)">No events yet — create the first one!</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>`;
+
+    document.getElementById('new').onclick = () => openModal();
+    document.getElementById('search').oninput = render;
+    page.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openModal(events.find(e => e.id === +b.dataset.edit)));
+    page.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const ev = events.find(e => e.id === +b.dataset.del);
+      if (!confirm(`Delete "${ev.name}"? RSVPs for it will also be removed.`)) return;
+      const { error } = await supabase.from('events').delete().eq('id', ev.id);
+      if (error) alert(error.message); else load();
+    });
+  }
+
+  function openModal(ev) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${ev ? 'Edit event' : 'New event'}</h2>
+        <div class="notice" id="m-notice"></div>
+        <form id="ev-form">
+          <div class="field"><label>Name</label><input id="f-name" required value="${esc(ev?.name)}"></div>
+          <div class="field-row">
+            <div class="field"><label>Date</label><input type="date" id="f-date" required value="${ev?.event_date || ''}"></div>
+            <div class="field"><label>Start</label><input type="time" id="f-start" value="${(ev?.start_time || '').slice(0, 5)}"></div>
+            <div class="field"><label>End</label><input type="time" id="f-end" value="${(ev?.end_time || '').slice(0, 5)}"></div>
+          </div>
+          <div class="field"><label>Location</label><input id="f-loc" value="${esc(ev?.location)}"></div>
+          <div class="field"><label>Description</label><textarea id="f-desc">${esc(ev?.description)}</textarea></div>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
+            <button type="submit" class="btn">${ev ? 'Save' : 'Create'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+
+    back.querySelector('#ev-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: back.querySelector('#f-name').value.trim(),
+        event_date: back.querySelector('#f-date').value,
+        start_time: back.querySelector('#f-start').value || null,
+        end_time: back.querySelector('#f-end').value || null,
+        location: back.querySelector('#f-loc').value.trim() || null,
+        description: back.querySelector('#f-desc').value.trim() || null,
+      };
+      const { error } = ev
+        ? await supabase.from('events').update(payload).eq('id', ev.id)
+        : await supabase.from('events').insert({ ...payload, created_by: ctx.user.id });
+      if (error) {
+        const n = back.querySelector('#m-notice');
+        n.textContent = error.message; n.className = 'notice error';
+        return;
+      }
+      back.remove();
+      load();
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>

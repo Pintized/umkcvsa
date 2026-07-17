@@ -13,12 +13,12 @@ const MEMBER_LINKS = [
 ];
 
 const OFFICER_LINKS = [
-  { href: '/app/officer/tasks.html',     label: 'Tasks',     icon: '🗂️', soon: true },
-  { href: '/app/officer/events.html',    label: 'Events',    icon: '📌', soon: true },
-  { href: '/app/officer/inventory.html', label: 'Inventory', icon: '📦', soon: true },
-  { href: '/app/officer/notes.html',     label: 'Notes',     icon: '📝', soon: true },
-  { href: '/app/officer/audit.html',     label: 'Audit Log', icon: '🔍', soon: true },
-  { href: '/app/officer/roles.html',     label: 'Roles',     icon: '🛡️', soon: true },
+  { href: '/app/officer/events.html',    label: 'Events',    icon: '📌' },
+  { href: '/app/officer/tasks.html',     label: 'Tasks',     icon: '🗂️' },
+  { href: '/app/officer/inventory.html', label: 'Inventory', icon: '📦' },
+  { href: '/app/officer/notes.html',     label: 'Notes',     icon: '📝' },
+  { href: '/app/officer/audit.html',     label: 'Audit Log', icon: '🔍' },
+  { href: '/app/officer/roles.html',     label: 'Roles',     icon: '🛡️' },
 ];
 
 function navLink({ href, label, icon, soon }) {
