@@ -878,13 +878,16 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   position: fixed;
   z-index: 120;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
   background: var(--surface);
   border: 1px solid var(--gold);
   border-radius: 10px;
-  padding: 5px;
+  padding: 6px 10px;
   box-shadow: var(--shadow-lg);
 }
+.img-bar input[type="range"] { width: 150px; accent-color: var(--gold); cursor: pointer; }
+.img-bar #img-pct { min-width: 42px; text-align: center; font-size: .82rem; font-weight: 700; color: var(--gold); }
 
 .rt-content {
   min-height: 340px;
