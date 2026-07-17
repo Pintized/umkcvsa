@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/assets/css/site.css">
 </head>
 <body>
+<div class="scroll-progress" id="scroll-progress"></div>
 
 <div class="topbar">
   <div class="socials">
@@ -45,7 +46,16 @@
   <button class="nav-burger" aria-label="Menu">☰</button>
 </nav>
 
-<header class="page-hero tall">
+<header class="page-hero tall" id="hero">
+  <div class="hero-slides" id="hero-slides"></div>
+  <span class="lantern" style="left:8%;  animation-duration:11s; animation-delay:0s"></span>
+  <span class="lantern" style="left:22%; animation-duration:14s; animation-delay:3s; width:6px; height:6px"></span>
+  <span class="lantern" style="left:38%; animation-duration:12s; animation-delay:6s"></span>
+  <span class="lantern" style="left:55%; animation-duration:16s; animation-delay:1.5s; width:5px; height:5px"></span>
+  <span class="lantern" style="left:70%; animation-duration:13s; animation-delay:4.5s"></span>
+  <span class="lantern" style="left:84%; animation-duration:15s; animation-delay:8s; width:6px; height:6px"></span>
+  <span class="lantern" style="left:93%; animation-duration:12s; animation-delay:2s; width:5px; height:5px"></span>
+
   <h1 data-i18n="heroTitle">UMKC</h1>
   <h1 data-i18n="heroSubtitle">Vietnamese Student Association</h1>
   <hr class="hero-rule">
@@ -54,7 +64,26 @@
     <a class="btn" href="/app/signup.html" data-i18n="joinButton">JOIN US</a>
     <a class="btn ghost" href="/app/login.html" data-i18n="loginButton">Member Login</a>
   </div>
+  <div class="countdown-box" id="countdown" style="display:none">
+    <div>
+      <div class="cd-label">Next event</div>
+      <div class="cd-event" id="cd-event"></div>
+    </div>
+    <div class="cd-units">
+      <div class="cd-unit"><div class="n" id="cd-d">0</div><div class="u">days</div></div>
+      <div class="cd-unit"><div class="n" id="cd-h">0</div><div class="u">hrs</div></div>
+      <div class="cd-unit"><div class="n" id="cd-m">0</div><div class="u">min</div></div>
+      <div class="cd-unit"><div class="n" id="cd-s">0</div><div class="u">sec</div></div>
+    </div>
+  </div>
 </header>
+
+<div class="ticker" id="ticker" style="display:none"><div class="ticker-track" id="ticker-track"></div></div>
+
+<section class="section" id="announce-sec" style="display:none; padding-bottom:20px">
+  <div class="section-head reveal"><h2>Announcements</h2><hr class="divider"></div>
+  <div class="announce-grid" id="announcements"></div>
+</section>
 
 <section class="section">
   <div style="display:flex; gap:48px; align-items:center; flex-wrap:wrap">
@@ -71,6 +100,22 @@
   </div>
 </section>
 
+<section class="section-alt" id="video-sec" style="display:none">
+  <div class="section" style="padding-top:70px; padding-bottom:70px">
+    <div class="section-head reveal"><h2 id="video-title">Meet Your New E-Board · 2026–27</h2><hr class="divider"></div>
+    <div class="video-frame reveal"><div class="vf-inner" id="video-holder"></div></div>
+  </div>
+</section>
+
+<section class="stats" id="stats-sec">
+  <div class="stats-grid">
+    <div class="stat reveal"><div class="num" data-count id="st-members">0</div><div class="label">Members</div></div>
+    <div class="stat reveal"><div class="num" data-count id="st-events">0</div><div class="label">Events Hosted</div></div>
+    <div class="stat reveal"><div class="num" data-count id="st-photos">0</div><div class="label">Photos Captured</div></div>
+    <div class="stat reveal"><div class="num">2015</div><div class="label">Established</div></div>
+  </div>
+</section>
+
 <section class="section-alt">
   <div class="section" style="padding-top:70px; padding-bottom:70px">
     <div class="section-head reveal">
@@ -81,10 +126,34 @@
   </div>
 </section>
 
-<section class="cta reveal">
+<section class="section" id="gstrip-sec" style="display:none">
+  <div class="section-head reveal"><h2>Recent Moments</h2><hr class="divider"></div>
+  <div class="gstrip" id="gstrip"></div>
+  <p style="text-align:center; margin-top:20px"><a class="btn ghost" href="/gallery/">View the Gallery</a></p>
+</section>
+
+<section class="section-alt" id="board-sec" style="display:none">
+  <div class="section" style="padding-top:70px; padding-bottom:70px">
+    <div class="section-head reveal"><h2>Meet the Board</h2><hr class="divider"></div>
+    <div class="team-grid leads" id="board-teaser"></div>
+    <p style="text-align:center; margin-top:26px"><a class="btn ghost" href="/eboard/">Meet the Full E-Board</a></p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head reveal"><h2>Joining Takes Two Minutes</h2><hr class="divider"></div>
+  <div class="steps" style="margin-top:36px">
+    <div class="step reveal"><h3>Sign Up</h3><p>Create your free member account — no fees, everyone welcome.</p></div>
+    <div class="step reveal"><h3>Show Up</h3><p>Come to a meeting or event. Free food, good people, zero pressure.</p></div>
+    <div class="step reveal"><h3>Level Up</h3><p>Earn points for showing up and trade them for real rewards & merch.</p></div>
+  </div>
+  <p style="text-align:center; margin-top:34px"><a class="btn" href="/app/signup.html">Create Your Account</a></p>
+</section>
+
+<section class="cta reveal" style="padding-top:20px">
   <h2>Rep the culture.</h2>
   <p>Exclusive VSA apparel and accessories — wear your pride.</p>
-  <a class="btn" href="/store/">Visit the Store</a>
+  <a class="btn ghost" href="/store/">Visit the Store</a>
 </section>
 
 <footer>
@@ -102,23 +171,19 @@
 
 <script src="/assets/js/site.js"></script>
 <script>
-// EN / VN toggle (carried over from the original design)
+// scroll progress bar
+(function () {
+  var bar = document.getElementById('scroll-progress');
+  addEventListener('scroll', function () {
+    var h = document.documentElement;
+    bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+  }, { passive: true });
+})();
+// EN / VN toggle
 (function () {
   var translations = {
-    en: {
-      heroTitle: "UMKC",
-      heroSubtitle: "Vietnamese Student Association",
-      heroText: "Become a part of our vibrant community.",
-      joinButton: "JOIN US",
-      loginButton: "Member Login"
-    },
-    vi: {
-      heroTitle: "UMKC",
-      heroSubtitle: "Hội Sinh Viên Việt Nam",
-      heroText: "Hãy trở thành một phần của cộng đồng sôi động của chúng tôi.",
-      joinButton: "THAM GIA",
-      loginButton: "Đăng Nhập"
-    }
+    en: { heroTitle: "UMKC", heroSubtitle: "Vietnamese Student Association", heroText: "Become a part of our vibrant community.", joinButton: "JOIN US", loginButton: "Member Login" },
+    vi: { heroTitle: "UMKC", heroSubtitle: "Hội Sinh Viên Việt Nam", heroText: "Hãy trở thành một phần của cộng đồng sôi động của chúng tôi.", joinButton: "THAM GIA", loginButton: "Đăng Nhập" }
   };
   function setLanguage(lang) {
     var t = translations[lang] || translations.en;
@@ -135,30 +200,162 @@
 })();
 </script>
 <script type="module">
-// Live upcoming events straight from Supabase (publicly readable)
 import { supabase } from '/app/shared/supabase.js';
-const grid = document.getElementById('events');
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const today = new Date().toISOString().slice(0, 10);
-const { data } = await supabase.from('events')
-  .select('name, event_date, start_time, location')
-  .gte('event_date', today)
-  .order('event_date').order('start_time')
-  .limit(3);
+const GAL = (n) => supabase.storage.from('gallery').getPublicUrl(n).data.publicUrl;
 
+const [evRes, annRes, setRes, statsRes, galRes, leadRes] = await Promise.all([
+  supabase.from('events').select('name, event_date, start_time, location')
+    .gte('event_date', today).order('event_date').order('start_time').limit(6),
+  supabase.from('announcements').select('*').eq('active', true).order('sort'),
+  supabase.from('site_settings').select('*'),
+  supabase.rpc('site_stats'),
+  supabase.storage.from('gallery').list('', { limit: 10, sortBy: { column: 'created_at', order: 'desc' } }),
+  supabase.from('eboard_members').select('full_name, role_title, bio, photo_path')
+    .eq('active', true).eq('is_lead', true).order('sort').limit(2),
+]);
+
+const events = evRes.data || [];
 const fmtTime = (t) => {
   if (!t) return '';
   const [h, m] = t.split(':').map(Number);
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-grid.innerHTML = (data && data.length)
-  ? data.map(ev => `
+// ---- hero slideshow from gallery ----
+const photos = (galRes.data || []).filter(f => /\.(jpe?g|png|webp)$/i.test(f.name));
+if (photos.length) {
+  const slides = document.getElementById('hero-slides');
+  slides.innerHTML = photos.slice(0, 5).map((f, i) =>
+    `<img src="${GAL(f.name)}" alt="" class="${i === 0 ? 'on' : ''}" loading="${i === 0 ? 'eager' : 'lazy'}">`).join('');
+  const imgs = slides.querySelectorAll('img');
+  if (imgs.length > 1) {
+    let cur = 0;
+    setInterval(() => {
+      imgs[cur].classList.remove('on');
+      cur = (cur + 1) % imgs.length;
+      imgs[cur].classList.add('on');
+    }, 6000);
+  }
+}
+
+// ---- countdown to next event ----
+if (events.length) {
+  const ev = events[0];
+  const target = new Date(`${ev.event_date}T${ev.start_time || '00:00:00'}`);
+  const box = document.getElementById('countdown');
+  document.getElementById('cd-event').textContent = ev.name;
+  box.style.display = 'inline-flex';
+  const tick = () => {
+    let ms = target - Date.now();
+    if (ms < 0) ms = 0;
+    const d = Math.floor(ms / 86400000);
+    const h = Math.floor(ms / 3600000) % 24;
+    const m = Math.floor(ms / 60000) % 60;
+    const s = Math.floor(ms / 1000) % 60;
+    document.getElementById('cd-d').textContent = d;
+    document.getElementById('cd-h').textContent = h;
+    document.getElementById('cd-m').textContent = m;
+    document.getElementById('cd-s').textContent = s;
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ---- event ticker ----
+if (events.length) {
+  const names = events.map(ev =>
+    `<b>${esc(ev.name)}</b> · ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+    .join('&nbsp;&nbsp;✦&nbsp;&nbsp;');
+  const half = names + '&nbsp;&nbsp;✦&nbsp;&nbsp;';
+  document.getElementById('ticker-track').innerHTML = half + half;
+  document.getElementById('ticker').style.display = 'block';
+}
+
+// ---- announcements ----
+const anns = annRes.data || [];
+if (anns.length) {
+  document.getElementById('announce-sec').style.display = 'block';
+  document.getElementById('announcements').innerHTML = anns.map(a => `
+    <div class="announce reveal visible">
+      <h3>${esc(a.title)}</h3>
+      ${a.body ? `<p>${esc(a.body)}</p>` : ''}
+      ${a.link_url ? `<a href="${esc(a.link_url)}">${esc(a.link_label || 'Learn more')} →</a>` : ''}
+    </div>`).join('');
+}
+
+// ---- e-board teaser video ----
+const settings = Object.fromEntries((setRes.data || []).map(s => [s.key, s.value]));
+const vurl = (settings.eboard_video_url || '').trim();
+if (vurl) {
+  document.getElementById('video-sec').style.display = 'block';
+  if (settings.eboard_video_title) document.getElementById('video-title').textContent = settings.eboard_video_title;
+  const holder = document.getElementById('video-holder');
+  const yt = vurl.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
+  if (yt) {
+    holder.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}" title="E-Board teaser" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+  } else {
+    holder.innerHTML = `<video src="${esc(vurl)}" controls playsinline preload="metadata"></video>`;
+  }
+}
+
+// ---- live stats with count-up ----
+const stats = statsRes.data || {};
+const targets = {
+  'st-members': stats.members || 0,
+  'st-events': stats.events || 0,
+  'st-photos': photos.length,
+};
+const countObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    countObs.unobserve(e.target);
+    const el = e.target, target = targets[el.id] || 0;
+    const t0 = performance.now(), dur = 1200;
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}, { threshold: .4 });
+document.querySelectorAll('[data-count]').forEach(el => countObs.observe(el));
+
+// ---- upcoming events grid ----
+document.getElementById('events').innerHTML = events.length
+  ? events.slice(0, 3).map(ev => `
       <div class="event-card reveal visible">
         <div class="date">${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}${ev.start_time ? ' · ' + fmtTime(ev.start_time) : ''}</div>
-        <h3>${String(ev.name).replace(/</g, '&lt;')}</h3>
-        <div class="meta">${ev.location ? '📍 ' + String(ev.location).replace(/</g, '&lt;') : ''}</div>
+        <h3>${esc(ev.name)}</h3>
+        <div class="meta">${ev.location ? '📍 ' + esc(ev.location) : ''}</div>
       </div>`).join('')
   : '<div class="events-empty" style="grid-column:1/-1">No events on the calendar just yet — follow <a href="https://www.instagram.com/umkc_vsa" target="_blank" style="color:var(--gold-bright)">@umkc_vsa</a> for announcements!</div>';
+
+// ---- gallery strip ----
+if (photos.length) {
+  document.getElementById('gstrip-sec').style.display = 'block';
+  document.getElementById('gstrip').innerHTML = photos.slice(0, 8).map(f =>
+    `<img src="${GAL(f.name)}" alt="UMKC VSA event photo" loading="lazy">`).join('');
+}
+
+// ---- board teaser ----
+const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+const leads = leadRes.data || [];
+if (leads.length) {
+  document.getElementById('board-sec').style.display = 'block';
+  document.getElementById('board-teaser').innerHTML = leads.map(m => `
+    <div class="member">
+      <div class="photo">${m.photo_path
+        ? `<img src="${IMG + m.photo_path}" alt="${esc(m.full_name)}" style="width:100%; height:100%; object-fit:cover">`
+        : '<div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div>'}</div>
+      <div class="info">
+        <h3>${esc(m.full_name)}</h3>
+        <div class="role">${esc(m.role_title)}</div>
+      </div>
+    </div>`).join('');
+}
 </script>
 </body>
 </html>
