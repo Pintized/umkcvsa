@@ -86,7 +86,7 @@ export function renderShell(ctx, pageTitle) {
         </a>
         <nav>
           <div class="nav-label">Member</div>
-          ${MEMBER_LINKS.map(navLink).join('')}
+          ${MEMBER_LINKS.map(l => navLink(l)).join('')}
           ${officer ? `<div class="nav-label">Officer</div>${OFFICER_LINKS.map(l => navLink(l, true)).join('')}` : ''}
         </nav>
         <div class="foot">Vietnamese Student Association<br>at UMKC</div>
