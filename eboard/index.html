@@ -47,25 +47,9 @@
 </header>
 
 <section class="section">
-  <div class="section-head reveal"><h2>Executive Board</h2><hr class="divider"></div>
-  <div class="team-grid leads">
-    <div class="member reveal">
-      <div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div>
-      <div class="info"><h3>Kalvin Tran</h3><div class="role">Co-President</div><p>Bio coming soon.</p></div>
-    </div>
-    <div class="member reveal">
-      <div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div>
-      <div class="info"><h3>Katie Nguyen</h3><div class="role">Co-President</div><p>Bio coming soon.</p></div>
-    </div>
-  </div>
-  <div class="team-grid">
-    <div class="member reveal"><div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="info"><h3>First Last</h3><div class="role">Vice-President</div></div></div>
-    <div class="member reveal"><div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="info"><h3>First Last</h3><div class="role">Treasurer</div></div></div>
-    <div class="member reveal"><div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="info"><h3>First Last</h3><div class="role">Secretary</div></div></div>
-    <div class="member reveal"><div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="info"><h3>First Last</h3><div class="role">Marketing Coordinator</div></div></div>
-    <div class="member reveal"><div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="info"><h3>First Last</h3><div class="role">EXA</div></div></div>
-    <div class="member reveal"><div class="photo"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="info"><h3>First Last</h3><div class="role">EXA</div></div></div>
-  </div>
+  <div class="section-head reveal visible"><h2>Executive Board</h2><hr class="divider"></div>
+  <div class="team-grid leads" id="leads"></div>
+  <div class="team-grid" id="team"></div>
 </section>
 
 <footer>
@@ -82,5 +66,33 @@
 </footer>
 
 <script src="/assets/js/site.js"></script>
+<script type="module">
+// Roster is managed from the portal's Admin > E-Board page
+import { supabase } from '/app/shared/supabase.js';
+const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+const { data } = await supabase.from('eboard_members')
+  .select('full_name, role_title, bio, photo_path, is_lead')
+  .eq('active', true)
+  .order('is_lead', { ascending: false }).order('sort');
+
+const card = (m, withBio) => `
+  <div class="member">
+    <div class="photo">${m.photo_path
+      ? `<img src="${IMG + m.photo_path}" alt="${esc(m.full_name)}" style="width:100%; height:100%; object-fit:cover">`
+      : '<div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div>'}</div>
+    <div class="info">
+      <h3>${esc(m.full_name)}</h3>
+      <div class="role">${esc(m.role_title)}</div>
+      ${withBio && m.bio ? `<p>${esc(m.bio)}</p>` : ''}
+    </div>
+  </div>`;
+
+const leads = (data || []).filter(m => m.is_lead);
+const team = (data || []).filter(m => !m.is_lead);
+document.getElementById('leads').innerHTML = leads.map(m => card(m, true)).join('');
+document.getElementById('team').innerHTML = team.map(m => card(m, false)).join('');
+</script>
 </body>
 </html>

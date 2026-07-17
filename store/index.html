@@ -47,14 +47,7 @@
 </header>
 
 <section class="section">
-  <div class="product-grid">
-    <div class="product reveal"><div class="pimg"><span class="badge">New</span><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="pbody"><h3>Classic Logo Tee</h3><p class="desc">Soft cotton tee featuring the UMKC VSA emblem. Available in multiple sizes.</p><div class="prow"><span class="price">$20</span></div></div></div>
-    <div class="product reveal"><div class="pimg"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="pbody"><h3>Embroidered Hoodie</h3><p class="desc">Cozy fleece hoodie with embroidered logo. Perfect for chilly campus days.</p><div class="prow"><span class="price">$40</span></div></div></div>
-    <div class="product reveal"><div class="pimg"><span class="badge">Popular</span><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="pbody"><h3>Tote Bag</h3><p class="desc">Durable canvas tote for books, groceries, or event giveaways.</p><div class="prow"><span class="price">$15</span></div></div></div>
-    <div class="product reveal"><div class="pimg"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="pbody"><h3>Sticker Pack</h3><p class="desc">A set of vinyl stickers celebrating Vietnamese culture and VSA pride.</p><div class="prow"><span class="price">$8</span></div></div></div>
-    <div class="product reveal"><div class="pimg"><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="pbody"><h3>Beanie</h3><p class="desc">Warm knit beanie with a stitched logo patch. One size fits most.</p><div class="prow"><span class="price">$18</span></div></div></div>
-    <div class="product reveal"><div class="pimg"><span class="badge">Limited</span><div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div></div><div class="pbody"><h3>Water Bottle</h3><p class="desc">Insulated stainless steel bottle to keep you hydrated on the go.</p><div class="prow"><span class="price">$22</span></div></div></div>
-  </div>
+  <div class="product-grid" id="products"></div>
   <p class="store-note">🛍️ Grab your merch at any VSA event, or DM <a href="https://www.instagram.com/umkc_vsa" target="_blank" style="color:var(--gold-bright)">@umkc_vsa</a> to arrange a pickup. Online checkout coming soon.</p>
 </section>
 
@@ -72,5 +65,33 @@
 </footer>
 
 <script src="/assets/js/site.js"></script>
+<script type="module">
+// Catalog is managed from the portal's Admin > Store page
+import { supabase } from '/app/shared/supabase.js';
+const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+const { data } = await supabase.from('store_products')
+  .select('name, description, price, badge, photo_path')
+  .eq('active', true)
+  .order('sort');
+
+document.getElementById('products').innerHTML = (data && data.length)
+  ? data.map(p => `
+      <div class="product">
+        <div class="pimg">
+          ${p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
+          ${p.photo_path
+            ? `<img src="${IMG + p.photo_path}" alt="${esc(p.name)}" style="width:100%; height:100%; object-fit:cover">`
+            : '<div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div>'}
+        </div>
+        <div class="pbody">
+          <h3>${esc(p.name)}</h3>
+          <p class="desc">${esc(p.description)}</p>
+          <div class="prow"><span class="price">$${Number(p.price).toFixed(2).replace(/\.00$/, '')}</span></div>
+        </div>
+      </div>`).join('')
+  : '<p style="grid-column:1/-1; text-align:center; color:var(--muted)">The store is being restocked — check back soon!</p>';
+</script>
 </body>
 </html>
