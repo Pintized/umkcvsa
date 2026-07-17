@@ -637,6 +637,97 @@ footer {
   .countdown-box { gap: 10px; padding: 12px 16px; }
 }
 
+/* ============================================================
+   Homepage seamless flow — one continuous canvas, no section
+   slabs; fixed ambient layer parallaxes behind floating content
+   ============================================================ */
+.ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: var(--bg); }
+.ambient .orb { position: absolute; border-radius: 50%; will-change: transform; }
+.ambient .o1 {
+  width: 70vw; height: 70vw; left: -20vw; top: 5vh;
+  background: radial-gradient(circle, rgba(200, 32, 47, .13), transparent 65%);
+}
+.ambient .o2 {
+  width: 60vw; height: 60vw; right: -18vw; top: 45vh;
+  background: radial-gradient(circle, rgba(224, 180, 92, .09), transparent 65%);
+}
+.ambient .o3 {
+  width: 55vw; height: 55vw; left: 10vw; top: 90vh;
+  background: radial-gradient(circle, rgba(63, 127, 191, .08), transparent 65%);
+}
+.ambient-lattice {
+  position: absolute; inset: -10% 0;
+  background-image: var(--lattice);
+  opacity: .35;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  will-change: transform;
+}
+
+/* hero blends into the flow instead of ending on a hard edge */
+.page-hero.seamless {
+  min-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.page-hero.seamless::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 180px;
+  background: linear-gradient(transparent, var(--bg));
+  pointer-events: none;
+}
+
+/* floating content blocks — spacing, not boxes */
+.flow .block { padding: 100px 24px; max-width: 1100px; margin: 0 auto; position: relative; }
+.flow .block.tight { padding-top: 40px; }
+.overline {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  margin-bottom: 16px;
+}
+.overline::before { content: ""; width: 34px; height: 2px; background: linear-gradient(90deg, var(--gold-bright), var(--red)); border-radius: 1px; }
+.statement { font-size: clamp(30px, 4.4vw, 44px); color: #fff; line-height: 1.15; margin-bottom: 18px; }
+.statement .g { color: var(--gold-bright); }
+
+/* borderless ticker line */
+.ticker-line { overflow: hidden; white-space: nowrap; padding: 4px 0 0; opacity: .85; }
+.ticker-line .ticker-track { animation-duration: 34s; }
+
+/* floating counters — no band */
+.counter-row { display: flex; justify-content: center; gap: clamp(30px, 7vw, 90px); flex-wrap: wrap; text-align: center; }
+.counter-row .num { font-family: var(--serif); font-size: clamp(42px, 6vw, 60px); font-weight: 800; color: var(--gold-bright); line-height: 1; }
+.counter-row .label { font-size: 13px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; margin-top: 8px; }
+
+/* final statement CTA */
+.finale { text-align: center; padding: 120px 24px 140px; }
+.finale .statement { margin-bottom: 12px; }
+.finale p { color: var(--muted); margin-bottom: 30px; }
+
+/* ---------- scroll FX (directional entrances) ---------- */
+.fx {
+  opacity: 0;
+  transform: translateY(48px);
+  transition: opacity .9s cubic-bezier(.2, .7, .3, 1), transform .9s cubic-bezier(.2, .7, .3, 1);
+  will-change: opacity, transform;
+}
+.fx.fx-left  { transform: translateX(-64px); }
+.fx.fx-right { transform: translateX(64px); }
+.fx.fx-scale { transform: scale(.92) translateY(24px); }
+.fx.in { opacity: 1; transform: none; }
+
+@media (max-width: 720px) {
+  .flow .block { padding: 64px 20px; }
+  .page-hero.seamless { min-height: 78vh; }
+}
+
 /* ---------- reveal on scroll ---------- */
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.visible { opacity: 1; transform: none; }

@@ -18,6 +18,13 @@
 <body>
 <div class="scroll-progress" id="scroll-progress"></div>
 
+<div class="ambient" aria-hidden="true">
+  <span class="orb o1"></span>
+  <span class="orb o2"></span>
+  <span class="orb o3"></span>
+  <div class="ambient-lattice"></div>
+</div>
+
 <div class="topbar">
   <div class="socials">
     <a href="https://www.instagram.com/umkc_vsa" target="_blank" aria-label="Instagram">
@@ -46,115 +53,115 @@
   <button class="nav-burger" aria-label="Menu">☰</button>
 </nav>
 
-<header class="page-hero tall" id="hero">
-  <div class="hero-slides" id="hero-slides"></div>
-  <span class="lantern" style="left:8%;  animation-duration:11s; animation-delay:0s"></span>
-  <span class="lantern" style="left:22%; animation-duration:14s; animation-delay:3s; width:6px; height:6px"></span>
-  <span class="lantern" style="left:38%; animation-duration:12s; animation-delay:6s"></span>
-  <span class="lantern" style="left:55%; animation-duration:16s; animation-delay:1.5s; width:5px; height:5px"></span>
-  <span class="lantern" style="left:70%; animation-duration:13s; animation-delay:4.5s"></span>
-  <span class="lantern" style="left:84%; animation-duration:15s; animation-delay:8s; width:6px; height:6px"></span>
-  <span class="lantern" style="left:93%; animation-duration:12s; animation-delay:2s; width:5px; height:5px"></span>
+<main class="flow">
 
-  <h1 data-i18n="heroTitle">UMKC</h1>
-  <h1 data-i18n="heroSubtitle">Vietnamese Student Association</h1>
-  <hr class="hero-rule">
-  <p data-i18n="heroText" style="margin-top:16px">Become a part of our vibrant community.</p>
-  <div class="hero-ctas">
-    <a class="btn" href="/app/signup.html" data-i18n="joinButton">JOIN US</a>
-    <a class="btn ghost" href="/app/login.html" data-i18n="loginButton">Member Login</a>
-  </div>
-  <div class="countdown-box" id="countdown" style="display:none">
-    <div>
-      <div class="cd-label">Next event</div>
-      <div class="cd-event" id="cd-event"></div>
+  <header class="page-hero tall seamless" id="hero">
+    <div class="hero-slides" id="hero-slides"></div>
+    <span class="lantern" style="left:8%;  animation-duration:11s; animation-delay:0s"></span>
+    <span class="lantern" style="left:22%; animation-duration:14s; animation-delay:3s; width:6px; height:6px"></span>
+    <span class="lantern" style="left:38%; animation-duration:12s; animation-delay:6s"></span>
+    <span class="lantern" style="left:55%; animation-duration:16s; animation-delay:1.5s; width:5px; height:5px"></span>
+    <span class="lantern" style="left:70%; animation-duration:13s; animation-delay:4.5s"></span>
+    <span class="lantern" style="left:84%; animation-duration:15s; animation-delay:8s; width:6px; height:6px"></span>
+    <span class="lantern" style="left:93%; animation-duration:12s; animation-delay:2s; width:5px; height:5px"></span>
+
+    <h1 data-i18n="heroTitle">UMKC</h1>
+    <h1 data-i18n="heroSubtitle">Vietnamese Student Association</h1>
+    <hr class="hero-rule">
+    <p data-i18n="heroText" style="margin-top:16px">Become a part of our vibrant community.</p>
+    <div class="hero-ctas">
+      <a class="btn" href="/app/signup.html" data-i18n="joinButton">JOIN US</a>
+      <a class="btn ghost" href="/app/login.html" data-i18n="loginButton">Member Login</a>
     </div>
-    <div class="cd-units">
-      <div class="cd-unit"><div class="n" id="cd-d">0</div><div class="u">days</div></div>
-      <div class="cd-unit"><div class="n" id="cd-h">0</div><div class="u">hrs</div></div>
-      <div class="cd-unit"><div class="n" id="cd-m">0</div><div class="u">min</div></div>
-      <div class="cd-unit"><div class="n" id="cd-s">0</div><div class="u">sec</div></div>
+    <div class="countdown-box" id="countdown" style="display:none">
+      <div>
+        <div class="cd-label">Next event</div>
+        <div class="cd-event" id="cd-event"></div>
+      </div>
+      <div class="cd-units">
+        <div class="cd-unit"><div class="n" id="cd-d">0</div><div class="u">days</div></div>
+        <div class="cd-unit"><div class="n" id="cd-h">0</div><div class="u">hrs</div></div>
+        <div class="cd-unit"><div class="n" id="cd-m">0</div><div class="u">min</div></div>
+        <div class="cd-unit"><div class="n" id="cd-s">0</div><div class="u">sec</div></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="ticker-line" id="ticker" style="display:none"><div class="ticker-track" id="ticker-track"></div></div>
+
+  <div class="block tight" id="announce-sec" style="display:none">
+    <div class="overline fx">Announcements</div>
+    <div class="announce-grid" id="announcements"></div>
+  </div>
+
+  <div class="block">
+    <div style="display:flex; gap:56px; align-items:center; flex-wrap:wrap">
+      <div class="fx fx-left" style="flex:1.1; min-width:280px">
+        <div class="overline">Who we are</div>
+        <h2 class="statement">Culture, community,<br>and a <span class="g">place to belong</span>.</h2>
+        <p class="lead">The Vietnamese Student Association is an independent nonprofit organization promoting Vietnamese art and culture — connecting students and communities who share an appreciation for Vietnam's rich traditions and contemporary creativity.</p>
+        <a class="btn ghost" href="/about/" style="margin-top:24px">Our Story</a>
+      </div>
+      <div class="ph fx fx-right" style="flex:1; min-width:280px; height:340px">
+        <img class="ph-logo" src="/assets/img/logo.png" alt="">
+        <div class="ph-cap">Photo coming soon</div>
+      </div>
     </div>
   </div>
-</header>
 
-<div class="ticker" id="ticker" style="display:none"><div class="ticker-track" id="ticker-track"></div></div>
+  <div class="block" id="video-sec" style="display:none">
+    <div class="overline fx">The Reveal</div>
+    <h2 class="statement fx" id="video-title">Meet Your New E-Board · 2026–27</h2>
+    <div class="video-frame fx fx-scale" style="margin-top:34px"><div class="vf-inner" id="video-holder"></div></div>
+  </div>
 
-<section class="section" id="announce-sec" style="display:none; padding-bottom:20px">
-  <div class="section-head reveal"><h2>Announcements</h2><hr class="divider"></div>
-  <div class="announce-grid" id="announcements"></div>
-</section>
-
-<section class="section">
-  <div style="display:flex; gap:48px; align-items:center; flex-wrap:wrap">
-    <div class="reveal" style="flex:1; min-width:280px">
-      <h2>Promoting Vietnamese Art and Culture</h2>
-      <hr class="divider">
-      <p class="lead">The Vietnamese Student Association is an independent nonprofit organization established with the purpose of promoting Vietnamese art and culture to connect students and communities who share an appreciation for Vietnam's rich traditions and contemporary creativity.</p>
-      <a class="btn ghost" href="/about/" style="margin-top:22px">Learn More</a>
-    </div>
-    <div class="ph reveal" style="flex:1; min-width:280px; height:320px">
-      <img class="ph-logo" src="/assets/img/logo.png" alt="">
-      <div class="ph-cap">Photo coming soon</div>
+  <div class="block" id="stats-sec">
+    <div class="counter-row">
+      <div class="fx"><div class="num" data-count id="st-members">0</div><div class="label">Members</div></div>
+      <div class="fx"><div class="num" data-count id="st-events">0</div><div class="label">Events Hosted</div></div>
+      <div class="fx"><div class="num" data-count id="st-photos">0</div><div class="label">Photos Captured</div></div>
+      <div class="fx"><div class="num">2015</div><div class="label">Established</div></div>
     </div>
   </div>
-</section>
 
-<section class="section-alt" id="video-sec" style="display:none">
-  <div class="section" style="padding-top:70px; padding-bottom:70px">
-    <div class="section-head reveal"><h2 id="video-title">Meet Your New E-Board · 2026–27</h2><hr class="divider"></div>
-    <div class="video-frame reveal"><div class="vf-inner" id="video-holder"></div></div>
+  <div class="block">
+    <div class="overline fx">What's next</div>
+    <h2 class="statement fx">Pull up. <span class="g">You're invited.</span></h2>
+    <div class="event-grid" id="events" style="margin-top:34px"></div>
   </div>
-</section>
 
-<section class="stats" id="stats-sec">
-  <div class="stats-grid">
-    <div class="stat reveal"><div class="num" data-count id="st-members">0</div><div class="label">Members</div></div>
-    <div class="stat reveal"><div class="num" data-count id="st-events">0</div><div class="label">Events Hosted</div></div>
-    <div class="stat reveal"><div class="num" data-count id="st-photos">0</div><div class="label">Photos Captured</div></div>
-    <div class="stat reveal"><div class="num">2015</div><div class="label">Established</div></div>
+  <div class="block" id="gstrip-sec" style="display:none">
+    <div class="overline fx">Recent moments</div>
+    <h2 class="statement fx">Nights we <span class="g">won't forget</span>.</h2>
+    <div class="gstrip fx" id="gstrip" style="margin-top:34px"></div>
+    <p style="margin-top:22px"><a class="btn ghost" href="/gallery/">View the Gallery</a></p>
   </div>
-</section>
 
-<section class="section-alt">
-  <div class="section" style="padding-top:70px; padding-bottom:70px">
-    <div class="section-head reveal">
-      <h2>Upcoming Events</h2>
-      <hr class="divider">
+  <div class="block" id="board-sec" style="display:none">
+    <div class="overline fx">Leadership</div>
+    <h2 class="statement fx">The people <span class="g">behind it all</span>.</h2>
+    <div class="team-grid leads" id="board-teaser" style="margin-top:38px"></div>
+    <p style="text-align:center; margin-top:30px"><a class="btn ghost" href="/eboard/">Meet the Full E-Board</a></p>
+  </div>
+
+  <div class="block">
+    <div class="overline fx">Join us</div>
+    <h2 class="statement fx">Two minutes to <span class="g">belong</span>.</h2>
+    <div class="steps" style="margin-top:52px">
+      <div class="step fx"><h3>Sign Up</h3><p>Create your free member account — no fees, everyone welcome.</p></div>
+      <div class="step fx"><h3>Show Up</h3><p>Come to a meeting or event. Free food, good people, zero pressure.</p></div>
+      <div class="step fx"><h3>Level Up</h3><p>Earn points for showing up and trade them for real rewards & merch.</p></div>
     </div>
-    <div class="event-grid" id="events"></div>
+    <p style="text-align:center; margin-top:40px"><a class="btn fx" href="/app/signup.html">Create Your Account</a></p>
   </div>
-</section>
 
-<section class="section" id="gstrip-sec" style="display:none">
-  <div class="section-head reveal"><h2>Recent Moments</h2><hr class="divider"></div>
-  <div class="gstrip" id="gstrip"></div>
-  <p style="text-align:center; margin-top:20px"><a class="btn ghost" href="/gallery/">View the Gallery</a></p>
-</section>
-
-<section class="section-alt" id="board-sec" style="display:none">
-  <div class="section" style="padding-top:70px; padding-bottom:70px">
-    <div class="section-head reveal"><h2>Meet the Board</h2><hr class="divider"></div>
-    <div class="team-grid leads" id="board-teaser"></div>
-    <p style="text-align:center; margin-top:26px"><a class="btn ghost" href="/eboard/">Meet the Full E-Board</a></p>
+  <div class="finale">
+    <h2 class="statement fx">Rep the <span class="g">culture</span>.</h2>
+    <p class="fx">Exclusive VSA apparel and accessories — wear your pride.</p>
+    <a class="btn ghost fx" href="/store/">Visit the Store</a>
   </div>
-</section>
 
-<section class="section">
-  <div class="section-head reveal"><h2>Joining Takes Two Minutes</h2><hr class="divider"></div>
-  <div class="steps" style="margin-top:36px">
-    <div class="step reveal"><h3>Sign Up</h3><p>Create your free member account — no fees, everyone welcome.</p></div>
-    <div class="step reveal"><h3>Show Up</h3><p>Come to a meeting or event. Free food, good people, zero pressure.</p></div>
-    <div class="step reveal"><h3>Level Up</h3><p>Earn points for showing up and trade them for real rewards & merch.</p></div>
-  </div>
-  <p style="text-align:center; margin-top:34px"><a class="btn" href="/app/signup.html">Create Your Account</a></p>
-</section>
-
-<section class="cta reveal" style="padding-top:20px">
-  <h2>Rep the culture.</h2>
-  <p>Exclusive VSA apparel and accessories — wear your pride.</p>
-  <a class="btn ghost" href="/store/">Visit the Store</a>
-</section>
+</main>
 
 <footer>
   <div class="footer-cols">
@@ -171,15 +178,50 @@
 
 <script src="/assets/js/site.js"></script>
 <script>
-// scroll progress bar
+// ---- scroll progress + ambient parallax ----
 (function () {
   var bar = document.getElementById('scroll-progress');
-  addEventListener('scroll', function () {
-    var h = document.documentElement;
-    bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
-  }, { passive: true });
+  var o1 = document.querySelector('.ambient .o1');
+  var o2 = document.querySelector('.ambient .o2');
+  var o3 = document.querySelector('.ambient .o3');
+  var lat = document.querySelector('.ambient-lattice');
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      var h = document.documentElement;
+      var y = h.scrollTop;
+      bar.style.width = (y / (h.scrollHeight - h.clientHeight) * 100) + '%';
+      o1.style.transform = 'translateY(' + (y * -0.06) + 'px)';
+      o2.style.transform = 'translateY(' + (y * -0.11) + 'px)';
+      o3.style.transform = 'translateY(' + (y * -0.04) + 'px)';
+      lat.style.transform = 'translateY(' + (y * -0.08) + 'px)';
+      ticking = false;
+    });
+  }
+  addEventListener('scroll', onScroll, { passive: true });
 })();
-// EN / VN toggle
+
+// ---- directional scroll-entrance engine ----
+(function () {
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); }
+    });
+  }, { threshold: .18, rootMargin: '0px 0px -40px 0px' });
+  window.__fxScan = function () {
+    document.querySelectorAll('.fx:not(.in):not([data-fxd])').forEach(function (el) {
+      el.setAttribute('data-fxd', '1');
+      var sibs = el.parentElement ? [].slice.call(el.parentElement.children).filter(function (c) { return c.classList && c.classList.contains('fx'); }) : [el];
+      el.style.transitionDelay = (sibs.indexOf(el) * .1) + 's';
+      obs.observe(el);
+    });
+  };
+  window.__fxScan();
+})();
+
+// ---- EN / VN toggle ----
 (function () {
   var translations = {
     en: { heroTitle: "UMKC", heroSubtitle: "Vietnamese Student Association", heroText: "Become a part of our vibrant community.", joinButton: "JOIN US", loginButton: "Member Login" },
@@ -212,7 +254,7 @@ const [evRes, annRes, setRes, statsRes, galRes, leadRes] = await Promise.all([
   supabase.from('site_settings').select('*'),
   supabase.rpc('site_stats'),
   supabase.storage.from('gallery').list('', { limit: 10, sortBy: { column: 'created_at', order: 'desc' } }),
-  supabase.from('eboard_members').select('full_name, role_title, bio, photo_path')
+  supabase.from('eboard_members').select('full_name, role_title, photo_path')
     .eq('active', true).eq('is_lead', true).order('sort').limit(2),
 ]);
 
@@ -223,7 +265,7 @@ const fmtTime = (t) => {
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-// ---- hero slideshow from gallery ----
+// hero slideshow
 const photos = (galRes.data || []).filter(f => /\.(jpe?g|png|webp)$/i.test(f.name));
 if (photos.length) {
   const slides = document.getElementById('hero-slides');
@@ -240,30 +282,24 @@ if (photos.length) {
   }
 }
 
-// ---- countdown to next event ----
+// countdown
 if (events.length) {
   const ev = events[0];
   const target = new Date(`${ev.event_date}T${ev.start_time || '00:00:00'}`);
-  const box = document.getElementById('countdown');
   document.getElementById('cd-event').textContent = ev.name;
-  box.style.display = 'inline-flex';
+  document.getElementById('countdown').style.display = 'inline-flex';
   const tick = () => {
-    let ms = target - Date.now();
-    if (ms < 0) ms = 0;
-    const d = Math.floor(ms / 86400000);
-    const h = Math.floor(ms / 3600000) % 24;
-    const m = Math.floor(ms / 60000) % 60;
-    const s = Math.floor(ms / 1000) % 60;
-    document.getElementById('cd-d').textContent = d;
-    document.getElementById('cd-h').textContent = h;
-    document.getElementById('cd-m').textContent = m;
-    document.getElementById('cd-s').textContent = s;
+    let ms = Math.max(0, target - Date.now());
+    document.getElementById('cd-d').textContent = Math.floor(ms / 86400000);
+    document.getElementById('cd-h').textContent = Math.floor(ms / 3600000) % 24;
+    document.getElementById('cd-m').textContent = Math.floor(ms / 60000) % 60;
+    document.getElementById('cd-s').textContent = Math.floor(ms / 1000) % 60;
   };
   tick();
   setInterval(tick, 1000);
 }
 
-// ---- event ticker ----
+// ticker
 if (events.length) {
   const names = events.map(ev =>
     `<b>${esc(ev.name)}</b> · ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
@@ -273,19 +309,19 @@ if (events.length) {
   document.getElementById('ticker').style.display = 'block';
 }
 
-// ---- announcements ----
+// announcements
 const anns = annRes.data || [];
 if (anns.length) {
   document.getElementById('announce-sec').style.display = 'block';
   document.getElementById('announcements').innerHTML = anns.map(a => `
-    <div class="announce reveal visible">
+    <div class="announce fx">
       <h3>${esc(a.title)}</h3>
       ${a.body ? `<p>${esc(a.body)}</p>` : ''}
       ${a.link_url ? `<a href="${esc(a.link_url)}">${esc(a.link_label || 'Learn more')} →</a>` : ''}
     </div>`).join('');
 }
 
-// ---- e-board teaser video ----
+// video
 const settings = Object.fromEntries((setRes.data || []).map(s => [s.key, s.value]));
 const vurl = (settings.eboard_video_url || '').trim();
 if (vurl) {
@@ -293,20 +329,14 @@ if (vurl) {
   if (settings.eboard_video_title) document.getElementById('video-title').textContent = settings.eboard_video_title;
   const holder = document.getElementById('video-holder');
   const yt = vurl.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
-  if (yt) {
-    holder.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}" title="E-Board teaser" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-  } else {
-    holder.innerHTML = `<video src="${esc(vurl)}" controls playsinline preload="metadata"></video>`;
-  }
+  holder.innerHTML = yt
+    ? `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}" title="E-Board teaser" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+    : `<video src="${esc(vurl)}" controls playsinline preload="metadata"></video>`;
 }
 
-// ---- live stats with count-up ----
+// stats count-up
 const stats = statsRes.data || {};
-const targets = {
-  'st-members': stats.members || 0,
-  'st-events': stats.events || 0,
-  'st-photos': photos.length,
-};
+const targets = { 'st-members': stats.members || 0, 'st-events': stats.events || 0, 'st-photos': photos.length };
 const countObs = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     if (!e.isIntersecting) return;
@@ -323,30 +353,30 @@ const countObs = new IntersectionObserver((entries) => {
 }, { threshold: .4 });
 document.querySelectorAll('[data-count]').forEach(el => countObs.observe(el));
 
-// ---- upcoming events grid ----
+// events grid
 document.getElementById('events').innerHTML = events.length
   ? events.slice(0, 3).map(ev => `
-      <div class="event-card reveal visible">
+      <div class="event-card fx">
         <div class="date">${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}${ev.start_time ? ' · ' + fmtTime(ev.start_time) : ''}</div>
         <h3>${esc(ev.name)}</h3>
         <div class="meta">${ev.location ? '📍 ' + esc(ev.location) : ''}</div>
       </div>`).join('')
   : '<div class="events-empty" style="grid-column:1/-1">No events on the calendar just yet — follow <a href="https://www.instagram.com/umkc_vsa" target="_blank" style="color:var(--gold-bright)">@umkc_vsa</a> for announcements!</div>';
 
-// ---- gallery strip ----
+// gallery strip
 if (photos.length) {
   document.getElementById('gstrip-sec').style.display = 'block';
   document.getElementById('gstrip').innerHTML = photos.slice(0, 8).map(f =>
     `<img src="${GAL(f.name)}" alt="UMKC VSA event photo" loading="lazy">`).join('');
 }
 
-// ---- board teaser ----
+// board teaser
 const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
 const leads = leadRes.data || [];
 if (leads.length) {
   document.getElementById('board-sec').style.display = 'block';
-  document.getElementById('board-teaser').innerHTML = leads.map(m => `
-    <div class="member">
+  document.getElementById('board-teaser').innerHTML = leads.map((m, i) => `
+    <div class="member fx ${i === 0 ? 'fx-left' : 'fx-right'}">
       <div class="photo">${m.photo_path
         ? `<img src="${IMG + m.photo_path}" alt="${esc(m.full_name)}" style="width:100%; height:100%; object-fit:cover">`
         : '<div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div>'}</div>
@@ -356,6 +386,9 @@ if (leads.length) {
       </div>
     </div>`).join('');
 }
+
+// register any freshly injected .fx elements with the entrance engine
+window.__fxScan();
 </script>
 </body>
 </html>
