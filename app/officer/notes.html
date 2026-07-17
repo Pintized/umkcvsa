@@ -264,6 +264,7 @@
       if (e.target.dataset.star || e.target.dataset.deln) return;
       await flushSave();
       selNote = +el.dataset.n; mode = 'view';
+      typingSizePx = null; // sticky size doesn't carry across notes
       renderList(); buildEditor();
     });
     pane.querySelectorAll('[data-star]').forEach(el => el.onclick = async () => {
@@ -408,42 +409,41 @@
     if (!editing) return;
     document.execCommand('styleWithCSS', false, true);
 
-    // dirty tracking + deferred px-size rewrite (see size handler below):
-    // picking a size with a collapsed cursor only creates the font element
-    // on the first keystroke, so rewrite it to the chosen px the moment it appears
-    let pendingSizePx = null;
-    typingSizePx = null;
     const contentEl = document.getElementById('ed-content');
+
+    // repair pass: legacy <font size> tags (saved by the old size bug)
+    // become inline px styles so they can't re-seed giant text on Enter
+    const LEGACY_SIZE = { 1: 10, 2: 13, 3: 16, 4: 18, 5: 24, 6: 32, 7: 48 };
+    contentEl.querySelectorAll('font[size]').forEach(f => {
+      const px = LEGACY_SIZE[f.getAttribute('size')] || 16;
+      f.removeAttribute('size');
+      if (!f.style.fontSize) f.style.fontSize = px + 'px';
+    });
+
+    // any freshly created size-7 tags (from our execCommand below) are
+    // immediately rewritten to the sticky px on the very next input
     contentEl.addEventListener('input', () => {
-      if (pendingSizePx) {
-        contentEl.querySelectorAll('font[size="7"]').forEach(f => {
+      if (typingSizePx) {
+        contentEl.querySelectorAll('font[size]').forEach(f => {
           f.removeAttribute('size');
-          f.style.fontSize = pendingSizePx + 'px';
+          f.style.fontSize = typingSizePx + 'px';
         });
-        if (!contentEl.querySelector('font[size="7"]')) pendingSizePx = null;
       }
       markDirty();
     });
 
-    // sticky size: whenever typed text would come out at a different size
-    // than the user's chosen one (e.g. after Enter), re-apply it just-in-time
+    // sticky size: the chosen size IS the typing size — re-applied
+    // just-in-time whenever a keystroke would land at any other size.
+    // Only picking a different size (or switching notes) changes it.
     contentEl.addEventListener('beforeinput', (e) => {
       if (e.inputType !== 'insertText' || !typingSizePx) return;
       const s = document.getSelection();
       if (!s?.anchorNode || !contentEl.contains(s.anchorNode)) return;
-      const n = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
-      if (Math.round(parseFloat(getComputedStyle(n).fontSize)) !== +typingSizePx) {
+      const nd = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
+      if (Math.round(parseFloat(getComputedStyle(nd).fontSize)) !== +typingSizePx) {
         document.execCommand('styleWithCSS', false, false);
         document.execCommand('fontSize', false, '7');
-        pendingSizePx = typingSizePx;
         document.execCommand('styleWithCSS', false, true);
-      }
-    });
-    // deliberate caret moves release the stickiness (typing then follows the local text size)
-    contentEl.addEventListener('pointerdown', () => { typingSizePx = null; });
-    contentEl.addEventListener('keydown', (e) => {
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
-        typingSizePx = null;
       }
     });
     document.getElementById('ed-title').addEventListener('input', markDirty);
@@ -495,18 +495,13 @@
       if (!px) return;
       const content = document.getElementById('ed-content');
       content.focus();
-      const collapsed = document.getSelection()?.isCollapsed;
-      typingSizePx = px; // stays the typing size until changed or caret moved
+      typingSizePx = px; // sticky: stays the typing size until a new size is picked
       document.execCommand('styleWithCSS', false, false);
       document.execCommand('fontSize', false, '7');
-      if (collapsed) {
-        pendingSizePx = px;
-      } else {
-        content.querySelectorAll('font[size="7"]').forEach(f => {
-          f.removeAttribute('size');
-          f.style.fontSize = px + 'px';
-        });
-      }
+      content.querySelectorAll('font[size]').forEach(f => {
+        f.removeAttribute('size');
+        f.style.fontSize = px + 'px';
+      });
       document.execCommand('styleWithCSS', false, true);
       markDirty();
       updateToolbarState();
