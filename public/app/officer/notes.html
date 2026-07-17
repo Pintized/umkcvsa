@@ -495,9 +495,9 @@
     const back = baseModal(`
       <h2>Attendees</h2>
       <p style="font-size:.85rem; color:var(--muted); margin-bottom:10px">Officers & interns present at this meeting.</p>
-      <div class="check-list" style="flex-direction:column; align-items:stretch">
+      <div class="roster-list">
         ${roster.map(r => `
-          <label><input type="checkbox" value="${r.id}" ${set.has(r.id) ? 'checked' : ''}> ${esc(r.full_name)}</label>`).join('')
+          <label><span>${esc(r.full_name)}</span><input type="checkbox" value="${r.id}" ${set.has(r.id) ? 'checked' : ''}></label>`).join('')
           || '<p style="color:var(--muted)">No officers or interns found.</p>'}
       </div>
       <div class="row-btns">
@@ -521,8 +521,8 @@
         <div class="field"><label>Title *</label><input id="nm-title" required maxlength="180"></div>
         <div class="field"><label>Date *</label><input type="date" id="nm-date" required value="${today}"></div>
         <div class="field"><label>Attendees</label>
-          <div class="check-list" style="flex-direction:column; align-items:stretch; max-height:180px; overflow-y:auto">
-            ${roster.map(r => `<label><input type="checkbox" value="${r.id}"> ${esc(r.full_name)}</label>`).join('')
+          <div class="roster-list">
+            ${roster.map(r => `<label><span>${esc(r.full_name)}</span><input type="checkbox" value="${r.id}"></label>`).join('')
               || '<p style="color:var(--muted); font-size:.85rem">No officers or interns found.</p>'}
           </div>
         </div>
