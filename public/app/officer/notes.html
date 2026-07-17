@@ -64,6 +64,25 @@
     curCell = node?.closest('td, th') || null;
     const tools = document.getElementById('tbl-tools');
     if (tools) tools.style.display = curCell ? 'flex' : 'none';
+
+    // reflect the cursor's font & size in the selects
+    const fontSel = document.getElementById('rt-font');
+    if (fontSel) {
+      const fam = (document.queryCommandValue('fontName') || '')
+        .split(',')[0].replace(/['"]/g, '').trim().toLowerCase();
+      let matched = '';
+      for (const o of fontSel.options) {
+        const first = o.value.split(',')[0].replace(/['"]/g, '').trim().toLowerCase();
+        if (first && first === fam) { matched = o.value; break; }
+      }
+      fontSel.value = matched;
+    }
+    const sizeSel = document.getElementById('rt-size');
+    if (sizeSel && node) {
+      let px = Math.round(parseFloat(getComputedStyle(node).fontSize));
+      if (px % 2) px += 1; // options are even-numbered
+      sizeSel.value = (px >= 6 && px <= 40) ? String(px) : '';
+    }
   }
   let curCell = null;
   document.addEventListener('selectionchange', updateToolbarState);
@@ -424,7 +443,7 @@
       document.execCommand('styleWithCSS', false, true);
       document.execCommand('fontName', false, e.target.value);
       markDirty();
-      e.target.value = '';
+      updateToolbarState();
     });
 
     // pixel font sizes: execCommand only knows 1-7, so apply 7 then
@@ -442,7 +461,7 @@
       });
       document.execCommand('styleWithCSS', false, true);
       markDirty();
-      e.target.value = '';
+      updateToolbarState();
     });
 
     // table operations (act on the cell the cursor is in)
