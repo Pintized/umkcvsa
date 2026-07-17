@@ -642,6 +642,84 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 }
 .filter-bar select:focus, .filter-bar input:focus { outline: none; border-color: var(--gold); }
 
+/* ---------- nav icons ---------- */
+.nav-ic { width: 18px; height: 18px; flex-shrink: 0; transition: transform .18s ease; }
+.sidebar nav a:hover .nav-ic { transform: translateX(2px) scale(1.1); }
+.sidebar nav a.active .nav-ic { color: var(--gold-bright); filter: drop-shadow(0 0 4px rgba(224, 180, 92, .5)); }
+
+/* ---------- motion layer (subtle sci-fi) ---------- */
+@keyframes fadeRise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes heroSweep {
+  to { transform: translateX(100%); }
+}
+@keyframes latticeDrift {
+  from { background-position: 0 0; }
+  to   { background-position: 88px 88px; }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gold), 0 0 8px rgba(224, 180, 92, .2); }
+  50%      { box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(224, 180, 92, .5); }
+}
+@keyframes loadPulse {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+
+/* staggered card entrance */
+.content .card { animation: fadeRise .45s cubic-bezier(.2, .7, .3, 1) backwards; }
+.content .card:nth-of-type(2) { animation-delay: .08s; }
+.content .card:nth-of-type(3) { animation-delay: .16s; }
+.content .card:nth-of-type(4) { animation-delay: .24s; }
+.content .card:nth-of-type(n+5) { animation-delay: .3s; }
+
+/* hero light-sweep (plays once) + drifting lattice */
+.card.hero::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 32%, rgba(224, 180, 92, .17) 46%, transparent 60%);
+  transform: translateX(-100%);
+  animation: heroSweep 1.5s .35s cubic-bezier(.4, 0, .2, 1) forwards;
+  pointer-events: none;
+}
+.card.hero::before,
+.sidebar::after,
+.auth-wrap::before { animation: latticeDrift 70s linear infinite; }
+
+/* button sheen sweep on hover */
+.btn { position: relative; overflow: hidden; }
+.btn:not(.ghost)::after {
+  content: "";
+  position: absolute; top: 0; bottom: 0; left: -80%;
+  width: 55%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .32), transparent);
+  transform: skewX(-20deg);
+  transition: left .45s ease;
+  pointer-events: none;
+}
+.btn:not(.ghost):hover::after { left: 125%; }
+
+/* ambient glow on gold-ringed portraits */
+.userchip img, .sidebar .brand img { animation: glowPulse 5s ease-in-out infinite; }
+.avatar-lg { animation: glowPulse 5s ease-in-out infinite; }
+
+/* micro-interactions */
+.theme-toggle { transition: border-color .15s, transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+.theme-toggle:hover { transform: rotate(24deg); }
+.loading { animation: loadPulse 1.6s ease-in-out infinite; }
+.tile, .member-card, .task-card { will-change: transform; }
+
+/* accessibility: honor reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 860px) {
   .shell { flex-direction: column; }
