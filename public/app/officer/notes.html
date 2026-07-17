@@ -79,12 +79,17 @@
     }
     const sizeSel = document.getElementById('rt-size');
     if (sizeSel && node) {
-      let px = Math.round(parseFloat(getComputedStyle(node).fontSize));
-      if (px % 2) px += 1; // options are even-numbered
-      sizeSel.value = (px >= 6 && px <= 40) ? String(px) : '';
+      if (typingSizePx) {
+        sizeSel.value = String(typingSizePx); // indicator shows what typing will produce
+      } else {
+        let px = Math.round(parseFloat(getComputedStyle(node).fontSize));
+        if (px % 2) px += 1; // options are even-numbered
+        sizeSel.value = (px >= 6 && px <= 40) ? String(px) : '';
+      }
     }
   }
   let curCell = null;
+  let typingSizePx = null; // sticky user-chosen size; survives Enter, cleared on deliberate caret moves
   document.addEventListener('selectionchange', updateToolbarState);
 
   // ----- floating image resize bar -----
@@ -407,16 +412,39 @@
     // picking a size with a collapsed cursor only creates the font element
     // on the first keystroke, so rewrite it to the chosen px the moment it appears
     let pendingSizePx = null;
-    document.getElementById('ed-content').addEventListener('input', () => {
+    typingSizePx = null;
+    const contentEl = document.getElementById('ed-content');
+    contentEl.addEventListener('input', () => {
       if (pendingSizePx) {
-        const c = document.getElementById('ed-content');
-        c.querySelectorAll('font[size="7"]').forEach(f => {
+        contentEl.querySelectorAll('font[size="7"]').forEach(f => {
           f.removeAttribute('size');
           f.style.fontSize = pendingSizePx + 'px';
         });
-        if (!c.querySelector('font[size="7"]')) pendingSizePx = null;
+        if (!contentEl.querySelector('font[size="7"]')) pendingSizePx = null;
       }
       markDirty();
+    });
+
+    // sticky size: whenever typed text would come out at a different size
+    // than the user's chosen one (e.g. after Enter), re-apply it just-in-time
+    contentEl.addEventListener('beforeinput', (e) => {
+      if (e.inputType !== 'insertText' || !typingSizePx) return;
+      const s = document.getSelection();
+      if (!s?.anchorNode || !contentEl.contains(s.anchorNode)) return;
+      const n = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
+      if (Math.round(parseFloat(getComputedStyle(n).fontSize)) !== +typingSizePx) {
+        document.execCommand('styleWithCSS', false, false);
+        document.execCommand('fontSize', false, '7');
+        pendingSizePx = typingSizePx;
+        document.execCommand('styleWithCSS', false, true);
+      }
+    });
+    // deliberate caret moves release the stickiness (typing then follows the local text size)
+    contentEl.addEventListener('pointerdown', () => { typingSizePx = null; });
+    contentEl.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+        typingSizePx = null;
+      }
     });
     document.getElementById('ed-title').addEventListener('input', markDirty);
     document.getElementById('ed-date').addEventListener('change', markDirty);
@@ -468,6 +496,7 @@
       const content = document.getElementById('ed-content');
       content.focus();
       const collapsed = document.getSelection()?.isCollapsed;
+      typingSizePx = px; // stays the typing size until changed or caret moved
       document.execCommand('styleWithCSS', false, false);
       document.execCommand('fontSize', false, '7');
       if (collapsed) {
