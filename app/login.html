@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="brand" href="/">
+      <img src="/assets/img/logo-128.png" alt="UMKC VSA logo">
+      <span>UMKC VSA</span>
+    </a>
+    <h1>Welcome back</h1>
+    <p class="sub">Log in to the member portal.</p>
+    <div class="notice" id="notice"></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn" id="submit" type="submit">Log in</button>
+    </form>
+    <p class="auth-alt">
+      New here? <a href="/app/signup.html">Create an account</a><br>
+      <a href="#" id="forgot">Forgot your password?</a>
+    </p>
+  </div>
+</div>
+<script type="module">
+  import { supabase } from '/app/shared/supabase.js';
+
+  const notice = document.getElementById('notice');
+  const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
+
+  // Already signed in? Straight to the dashboard.
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) location.replace('/app/');
+  });
+
+  if (new URLSearchParams(location.search).get('confirmed')) {
+    say('Email confirmed! You can log in now.', 'ok');
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit');
+    btn.disabled = true; btn.textContent = 'Logging in…';
+    const { error } = await supabase.auth.signInWithPassword({
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+    });
+    if (error) {
+      say(error.message, 'error');
+      btn.disabled = false; btn.textContent = 'Log in';
+      return;
+    }
+    location.replace('/app/');
+  });
+
+  document.getElementById('forgot').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    if (!email) { say('Type your email above first, then click "Forgot your password?" again.', 'error'); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://umkcvsa.org/app/reset.html',
+    });
+    say(error ? error.message : 'Password reset email sent — check your inbox.', error ? 'error' : 'ok');
+  });
+</script>
+</body>
+</html>

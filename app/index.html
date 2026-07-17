@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading your dashboard…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Dashboard');
+
+  const joined = ctx.profile?.created_at
+    ? new Date(ctx.profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—';
+
+  const [{ count: awardCount }, { data: nextEvents }] = await Promise.all([
+    supabase.from('achievement_awards').select('id', { count: 'exact', head: true }).eq('user_id', ctx.user.id),
+    supabase.from('events').select('name,event_date,start_time,location')
+      .gte('event_date', new Date().toISOString().slice(0, 10))
+      .order('event_date').limit(3),
+  ]);
+
+  page.innerHTML = `
+    <div class="card">
+      <h2>Hi, ${ctx.profile?.first_name || 'member'} 👋</h2>
+      <p style="color:var(--muted); margin-bottom:14px">
+        ${ctx.roles.map(r => `<span class="badge ${r}">${r}</span>`).join('')}
+      </p>
+      <div class="stat-grid">
+        <div class="stat"><div class="num">${ctx.profile?.points ?? 0}</div><div class="lbl">Points</div></div>
+        <div class="stat"><div class="num">${awardCount ?? 0}</div><div class="lbl">Achievements earned</div></div>
+        <div class="stat"><div class="num" style="font-size:1.05rem; padding-top:8px">${joined}</div><div class="lbl">Member since</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Upcoming events</h2>
+      ${
+        (nextEvents && nextEvents.length)
+          ? nextEvents.map(ev => `
+              <p style="margin-bottom:10px">
+                <strong>${ev.name}</strong><br>
+                <span style="color:var(--muted); font-size:.9rem">
+                  ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  ${ev.start_time ? ' · ' + ev.start_time.slice(0, 5) : ''}
+                  ${ev.location ? ' · ' + ev.location : ''}
+                </span>
+              </p>`).join('')
+          : '<p style="color:var(--muted)">No upcoming events yet — check back soon!</p>'
+      }
+    </div>
+  `;
+</script>
+</body>
+</html>

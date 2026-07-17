@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reset password | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="brand" href="/">
+      <img src="/assets/img/logo-128.png" alt="UMKC VSA logo">
+      <span>UMKC VSA</span>
+    </a>
+    <h1>Set a new password</h1>
+    <p class="sub">Choose a new password for your account.</p>
+    <div class="notice" id="notice"></div>
+    <form id="reset-form">
+      <div class="field">
+        <label for="password">New password</label>
+        <input type="password" id="password" autocomplete="new-password" minlength="8" required>
+      </div>
+      <button class="btn" id="submit" type="submit">Update password</button>
+    </form>
+  </div>
+</div>
+<script type="module">
+  import { supabase } from '/app/shared/supabase.js';
+
+  const notice = document.getElementById('notice');
+  const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
+
+  document.getElementById('reset-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit');
+    btn.disabled = true; btn.textContent = 'Updating…';
+    const { error } = await supabase.auth.updateUser({
+      password: document.getElementById('password').value,
+    });
+    if (error) {
+      say(error.message, 'error');
+      btn.disabled = false; btn.textContent = 'Update password';
+      return;
+    }
+    say('Password updated! Taking you to the dashboard…', 'ok');
+    setTimeout(() => location.replace('/app/'), 1200);
+  });
+</script>
+</body>
+</html>
