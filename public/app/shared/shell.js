@@ -19,6 +19,7 @@ const ICONS = {
   box: SVG('<path d="M3.8 8 12 3.6 20.2 8v8L12 20.4 3.8 16V8Z"/><path d="M3.8 8 12 12.4 20.2 8"/><path d="M12 12.4v8"/>'),
   note: SVG('<rect x="5" y="3.6" width="14" height="16.8" rx="2"/><path d="M9 8.4h6M9 12h6M9 15.6h3.6"/>'),
   scope: SVG('<circle cx="11" cy="11" r="6.2"/><path d="M15.6 15.6 20.4 20.4"/><path d="M8.6 11h4.8M11 8.6v4.8"/>'),
+  camera: SVG('<path d="M4 7.6h3l1.6-2.4h6.8L17 7.6h3a1.4 1.4 0 0 1 1.4 1.4v9a1.4 1.4 0 0 1-1.4 1.4H4A1.4 1.4 0 0 1 2.6 18V9A1.4 1.4 0 0 1 4 7.6Z"/><circle cx="12" cy="13.4" r="3.6"/>'),
   shield: SVG('<path d="M12 3.6 18.8 6v5.2c0 4.4-2.9 7.3-6.8 9.2-3.9-1.9-6.8-4.8-6.8-9.2V6L12 3.6Z"/><path d="m9.2 11.6 2 2 3.6-3.8"/>'),
 };
 
@@ -36,6 +37,7 @@ const OFFICER_LINKS = [
   { href: '/app/officer/tasks.html',     label: 'Tasks',     icon: 'board' },
   { href: '/app/officer/inventory.html', label: 'Inventory', icon: 'box' },
   { href: '/app/officer/notes.html',     label: 'Notes',     icon: 'note' },
+  { href: '/app/officer/gallery.html',   label: 'Gallery',   icon: 'camera' },
   { href: '/app/officer/audit.html',     label: 'Audit Log', icon: 'scope' },
   { href: '/app/officer/roles.html',     label: 'Roles',     icon: 'shield' },
 ];
