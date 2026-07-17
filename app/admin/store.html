@@ -17,6 +17,7 @@
   import { requireAdmin } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
+  import { compressImage, outExt } from '/app/shared/img.js';
 
   const IMG_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
   const ctx = await requireAdmin();
@@ -115,7 +116,7 @@
             <div class="field"><label>Badge (optional)</label><input id="f-badge" value="${esc(p?.badge)}" placeholder="New / Popular / Limited"></div>
           </div>
           <div class="field"><label>Description</label><textarea id="f-desc">${esc(p?.description)}</textarea></div>
-          <div class="field"><label>Photo (square works best, max 4 MB)</label><input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp"></div>
+          <div class="field"><label>Photo (square works best, max 11 MB)</label><input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp"></div>
           <div class="check-list">
             <label><input type="checkbox" id="f-active" ${p ? (p.active ? 'checked' : '') : 'checked'}> Visible on site</label>
           </div>
@@ -141,9 +142,11 @@
       };
       const file = back.querySelector('#f-photo').files[0];
       if (file) {
-        if (file.size > 4 * 1024 * 1024) return say('Photo is larger than 4 MB.');
-        const path = `store-${crypto.randomUUID()}.${file.name.split('.').pop().toLowerCase()}`;
-        const { error } = await supabase.storage.from('site-images').upload(path, file);
+        if (file.size > 11 * 1024 * 1024) return say('Photo is larger than 11 MB.');
+        const up = await compressImage(file, 1200, .85); // auto-shrink for fast page loads
+        const path = `store-${crypto.randomUUID()}.${outExt(up, file)}`;
+        const { error } = await supabase.storage.from('site-images')
+          .upload(path, up, { contentType: up.type });
         if (error) return say(error.message);
         if (p?.photo_path) await supabase.storage.from('site-images').remove([p.photo_path]);
         payload.photo_path = path;
