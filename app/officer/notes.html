@@ -403,8 +403,21 @@
     if (!editing) return;
     document.execCommand('styleWithCSS', false, true);
 
-    // dirty tracking
-    document.getElementById('ed-content').addEventListener('input', markDirty);
+    // dirty tracking + deferred px-size rewrite (see size handler below):
+    // picking a size with a collapsed cursor only creates the font element
+    // on the first keystroke, so rewrite it to the chosen px the moment it appears
+    let pendingSizePx = null;
+    document.getElementById('ed-content').addEventListener('input', () => {
+      if (pendingSizePx) {
+        const c = document.getElementById('ed-content');
+        c.querySelectorAll('font[size="7"]').forEach(f => {
+          f.removeAttribute('size');
+          f.style.fontSize = pendingSizePx + 'px';
+        });
+        if (!c.querySelector('font[size="7"]')) pendingSizePx = null;
+      }
+      markDirty();
+    });
     document.getElementById('ed-title').addEventListener('input', markDirty);
     document.getElementById('ed-date').addEventListener('change', markDirty);
 
@@ -447,18 +460,24 @@
     });
 
     // pixel font sizes: execCommand only knows 1-7, so apply 7 then
-    // rewrite the generated font tags to the exact px value
+    // rewrite the generated font tags to the exact px value. With a
+    // collapsed cursor the tag doesn't exist yet - defer via pendingSizePx.
     document.getElementById('rt-size').addEventListener('change', (e) => {
       const px = e.target.value;
       if (!px) return;
       const content = document.getElementById('ed-content');
       content.focus();
+      const collapsed = document.getSelection()?.isCollapsed;
       document.execCommand('styleWithCSS', false, false);
       document.execCommand('fontSize', false, '7');
-      content.querySelectorAll('font[size="7"]').forEach(f => {
-        f.removeAttribute('size');
-        f.style.fontSize = px + 'px';
-      });
+      if (collapsed) {
+        pendingSizePx = px;
+      } else {
+        content.querySelectorAll('font[size="7"]').forEach(f => {
+          f.removeAttribute('size');
+          f.style.fontSize = px + 'px';
+        });
+      }
       document.execCommand('styleWithCSS', false, true);
       markDirty();
       updateToolbarState();
