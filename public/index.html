@@ -87,6 +87,8 @@
     </div>
   </header>
 
+  <div class="hero-divider" aria-hidden="true"></div>
+
   <div class="ticker-line" id="ticker" style="display:none"><div class="ticker-track" id="ticker-track"></div></div>
 
   <div class="block tight" id="announce-sec" style="display:none">
@@ -153,6 +155,12 @@
       <div class="step fx"><h3>Level Up</h3><p>Earn points for showing up and trade them for real rewards & merch.</p></div>
     </div>
     <p style="text-align:center; margin-top:40px"><a class="btn fx" href="/app/signup.html">Create Your Account</a></p>
+  </div>
+
+  <div class="block" id="sponsor-sec" style="display:none; text-align:center">
+    <div class="overline fx" style="justify-content:center">Our Sponsors</div>
+    <h2 class="statement fx">Powered by <span class="g">people who believe</span>.</h2>
+    <div class="sponsor-row" id="sponsors"></div>
   </div>
 
   <div class="finale">
@@ -247,7 +255,7 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const today = new Date().toISOString().slice(0, 10);
 const GAL = (n) => supabase.storage.from('gallery').getPublicUrl(n).data.publicUrl;
 
-const [evRes, annRes, setRes, statsRes, galRes, leadRes] = await Promise.all([
+const [evRes, annRes, setRes, statsRes, galRes, leadRes, spRes] = await Promise.all([
   supabase.from('events').select('name, event_date, start_time, location')
     .gte('event_date', today).order('event_date').order('start_time').limit(6),
   supabase.from('announcements').select('*').eq('active', true).order('sort'),
@@ -256,6 +264,8 @@ const [evRes, annRes, setRes, statsRes, galRes, leadRes] = await Promise.all([
   supabase.storage.from('gallery').list('', { limit: 10, sortBy: { column: 'created_at', order: 'desc' } }),
   supabase.from('eboard_members').select('full_name, role_title, photo_path')
     .eq('active', true).eq('is_lead', true).order('sort').limit(2),
+  supabase.from('sponsors').select('name, logo_path, link_url')
+    .eq('active', true).order('sort'),
 ]);
 
 const events = evRes.data || [];
@@ -385,6 +395,20 @@ if (leads.length) {
         <div class="role">${esc(m.role_title)}</div>
       </div>
     </div>`).join('');
+}
+
+// sponsors
+const sponsors = spRes.data || [];
+if (sponsors.length) {
+  document.getElementById('sponsor-sec').style.display = 'block';
+  document.getElementById('sponsors').innerHTML = sponsors.map(s => {
+    const inner = s.logo_path
+      ? `<img src="${IMG + s.logo_path}" alt="${esc(s.name)}" title="${esc(s.name)}" loading="lazy">`
+      : `<span class="sp-name">${esc(s.name)}</span>`;
+    return s.link_url
+      ? `<a href="${esc(s.link_url)}" target="_blank" rel="noopener">${inner}</a>`
+      : `<span class="sp">${inner}</span>`;
+  }).join('');
 }
 
 // register any freshly injected .fx elements with the entrance engine

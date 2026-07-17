@@ -679,6 +679,52 @@ footer {
   pointer-events: none;
 }
 
+/* glowing gold bar stitching the hero into the flow */
+.hero-divider {
+  position: relative;
+  z-index: 2;
+  width: min(640px, 78%);
+  height: 3px;
+  margin: -1px auto 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    transparent, var(--gold-bright) 18%, var(--red) 40%, #ffe9bd 50%, var(--red) 60%, var(--gold-bright) 82%, transparent);
+  background-size: 200% 100%;
+  animation: flowBar 7s linear infinite;
+  box-shadow:
+    0 0 14px rgba(224, 180, 92, .6),
+    0 0 44px rgba(224, 180, 92, .28);
+}
+
+/* sponsors strip */
+.sponsor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 38px;
+}
+.sponsor-row a, .sponsor-row .sp { display: inline-flex; align-items: center; }
+.sponsor-row img {
+  height: 56px;
+  width: auto;
+  max-width: 190px;
+  object-fit: contain;
+  filter: grayscale(1) brightness(1.7);
+  opacity: .72;
+  transition: filter .3s, opacity .3s, transform .3s;
+}
+.sponsor-row a:hover img, .sponsor-row .sp:hover img { filter: none; opacity: 1; transform: translateY(-3px); }
+.sponsor-row .sp-name {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--muted);
+  transition: color .3s;
+}
+.sponsor-row a:hover .sp-name { color: var(--gold-bright); }
+
 /* floating content blocks — spacing, not boxes */
 .flow .block { padding: 100px 24px; max-width: 1100px; margin: 0 auto; position: relative; }
 .flow .block.tight { padding-top: 40px; }
