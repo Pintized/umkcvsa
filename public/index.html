@@ -184,8 +184,6 @@
   var bar = document.getElementById('scroll-progress');
   var o1 = document.querySelector('.ambient .o1');
   var o2 = document.querySelector('.ambient .o2');
-  var o3 = document.querySelector('.ambient .o3');
-  var lat = document.querySelector('.ambient-lattice');
   var ticking = false;
   function onScroll() {
     if (ticking) return;
@@ -193,11 +191,9 @@
     requestAnimationFrame(function () {
       var h = document.documentElement;
       var y = h.scrollTop;
-      bar.style.width = (y / (h.scrollHeight - h.clientHeight) * 100) + '%';
+      bar.style.transform = 'scaleX(' + (y / (h.scrollHeight - h.clientHeight)) + ')';
       o1.style.transform = 'translateY(' + (y * -0.06) + 'px)';
       o2.style.transform = 'translateY(' + (y * -0.11) + 'px)';
-      o3.style.transform = 'translateY(' + (y * -0.04) + 'px)';
-      lat.style.transform = 'translateY(' + (y * -0.08) + 'px)';
       ticking = false;
     });
   }
@@ -270,15 +266,25 @@ const fmtTime = (t) => {
 const photos = (galRes.data || []).filter(f => /\.(jpe?g|png|webp)$/i.test(f.name));
 if (photos.length) {
   const slides = document.getElementById('hero-slides');
+  // only the first slide loads upfront; the rest fetch just-in-time
   slides.innerHTML = photos.slice(0, 5).map((f, i) =>
-    `<img src="${GAL(f.name)}" alt="" class="${i === 0 ? 'on' : ''}" loading="${i === 0 ? 'eager' : 'lazy'}">`).join('');
+    `<img ${i === 0 ? `src="${GAL(f.name)}" class="on"` : `data-src="${GAL(f.name)}"`} alt="">`).join('');
   const imgs = slides.querySelectorAll('img');
   if (imgs.length > 1) {
     let cur = 0;
     setInterval(() => {
+      const next = (cur + 1) % imgs.length;
+      const upcoming = imgs[next];
+      if (upcoming.dataset.src) {
+        upcoming.src = upcoming.dataset.src;
+        delete upcoming.dataset.src;
+      }
       imgs[cur].classList.remove('on');
-      cur = (cur + 1) % imgs.length;
-      imgs[cur].classList.add('on');
+      upcoming.classList.add('on');
+      cur = next;
+      // warm the one after so it's ready before its turn
+      const after = imgs[(next + 1) % imgs.length];
+      if (after.dataset.src) { after.src = after.dataset.src; delete after.dataset.src; }
     }, 6000);
   }
 }
