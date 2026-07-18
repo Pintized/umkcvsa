@@ -20,11 +20,12 @@
   --sans: 'Source Sans 3', system-ui, sans-serif;
   --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 1L43 22L22 43L1 22Z' fill='none' stroke='%23c99b3f' stroke-opacity='.16'/%3E%3C/svg%3E");
 }
-/* ---------- page transitions (View Transitions API) ---------- */
+/* ---------- page transitions (View Transitions API) ----------
+   circular reveal from the clicked element, driven by JS in
+   site.js (pagereveal); defaults are disabled so nothing twitches */
 @view-transition { navigation: auto; }
-::view-transition-old(root) { animation: vtOut .25s ease forwards; }
-::view-transition-new(root) { animation: vtIn .38s cubic-bezier(.2, .7, .3, 1); }
-@keyframes vtOut { to { opacity: 0; transform: translateY(-14px); } }
+::view-transition-old(root) { animation: none; }
+::view-transition-new(root) { animation: none; }
 @keyframes vtIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 /* the nav rides across navigations instead of fading */
 nav.site-nav { view-transition-name: site-nav; }
