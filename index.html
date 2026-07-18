@@ -245,7 +245,7 @@ const today = new Date().toISOString().slice(0, 10);
 const GAL = (n) => supabase.storage.from('gallery').getPublicUrl(n).data.publicUrl;
 
 const [evRes, annRes, setRes, statsRes, galRes, spRes] = await Promise.all([
-  supabase.from('events').select('name, event_date, start_time, location')
+  supabase.from('events').select('name, event_date, start_time, location, photo_path')
     .gte('event_date', today).order('event_date').order('start_time').limit(6),
   supabase.from('announcements').select('*').eq('active', true).order('sort'),
   supabase.from('site_settings').select('*'),
@@ -361,9 +361,11 @@ const countObs = new IntersectionObserver((entries) => {
 document.querySelectorAll('[data-count]').forEach(el => countObs.observe(el));
 
 // events grid
+const EVIMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/event-images/';
 document.getElementById('events').innerHTML = events.length
   ? events.slice(0, 3).map(ev => `
       <div class="event-card fx">
+        ${ev.photo_path ? `<div class="eimg"><img src="${EVIMG + ev.photo_path}" alt="${esc(ev.name)}" loading="lazy"></div>` : ''}
         <div class="date">${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}${ev.start_time ? ' · ' + fmtTime(ev.start_time) : ''}</div>
         <h3>${esc(ev.name)}</h3>
         <div class="meta">${ev.location ? '📍 ' + esc(ev.location) : ''}</div>

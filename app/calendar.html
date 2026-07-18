@@ -105,6 +105,8 @@
         data-rsvp="${status}">${label}${mine === status ? ' ✓' : ''}</button>`;
 
     document.getElementById('detail').innerHTML = `
+      ${ev.photo_path ? `<img src="https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/event-images/${ev.photo_path}"
+        alt="" style="width:100%; max-width:560px; aspect-ratio:16/9; object-fit:cover; border-radius:12px; border:1px solid var(--line); margin-bottom:14px">` : ''}
       <h3 style="margin-bottom:6px">${ev.name}</h3>
       <p style="color:var(--muted); font-size:.9rem">
         ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}

@@ -288,6 +288,18 @@ nav.site-nav::after {
   transition: transform .25s, border-color .25s;
 }
 .event-card:hover { transform: translateY(-5px); border-left-color: var(--red); }
+.event-card { overflow: hidden; }
+.event-card .eimg {
+  margin: -22px -22px 16px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+.event-card .eimg img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .35s ease;
+}
+.event-card:hover .eimg img { transform: scale(1.05); }
 .event-card .date {
   font-family: var(--serif);
   color: var(--gold-bright);

@@ -17,7 +17,9 @@
   import { requireOfficer } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
+  import { compressImage, outExt } from '/app/shared/img.js';
 
+  const EV_IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/event-images/';
   const ctx = await requireOfficer();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Events');
@@ -60,6 +62,9 @@
         const past = e.event_date < today;
         return `
           <tr style="${past ? 'opacity:.55' : ''}">
+            <td style="width:56px">${e.photo_path
+              ? `<img src="${EV_IMG + e.photo_path}" style="width:48px; height:32px; border-radius:6px; object-fit:cover; border:1px solid var(--line)">`
+              : ''}</td>
             <td><strong>${esc(e.name)}</strong></td>
             <td>${new Date(e.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
             <td>${fmtTime(e.start_time)}${e.end_time ? '–' + fmtTime(e.end_time) : ''}</td>
@@ -87,8 +92,8 @@
         </div>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>Event</th><th>Date</th><th>Time</th><th>Location</th><th>RSVPs</th><th></th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="6" style="color:var(--muted)">No events yet — create the first one!</td></tr>'}</tbody>
+            <thead><tr><th></th><th>Event</th><th>Date</th><th>Time</th><th>Location</th><th>RSVPs</th><th></th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="7" style="color:var(--muted)">No events yet — create the first one!</td></tr>'}</tbody>
           </table>
         </div>
       </div>`;
@@ -100,7 +105,9 @@
       const ev = events.find(e => e.id === +b.dataset.del);
       if (!confirm(`Delete "${ev.name}"? RSVPs for it will also be removed.`)) return;
       const { error } = await supabase.from('events').delete().eq('id', ev.id);
-      if (error) alert(error.message); else load();
+      if (error) { alert(error.message); return; }
+      if (ev.photo_path) await supabase.storage.from('event-images').remove([ev.photo_path]);
+      load();
     });
   }
 
@@ -120,6 +127,8 @@
           </div>
           <div class="field"><label>Location</label><input id="f-loc" value="${esc(ev?.location)}"></div>
           <div class="field"><label>Description</label><textarea id="f-desc">${esc(ev?.description)}</textarea></div>
+          <div class="field"><label>Event image (shown on the homepage & calendar, max 11 MB)</label>
+            <input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp"></div>
           <div class="row-btns">
             <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
             <button type="submit" class="btn">${ev ? 'Save' : 'Create'}</button>
@@ -132,6 +141,7 @@
 
     back.querySelector('#ev-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const say = (t) => { const n = back.querySelector('#m-notice'); n.textContent = t; n.className = 'notice error'; };
       const payload = {
         name: back.querySelector('#f-name').value.trim(),
         event_date: back.querySelector('#f-date').value,
@@ -140,6 +150,17 @@
         location: back.querySelector('#f-loc').value.trim() || null,
         description: back.querySelector('#f-desc').value.trim() || null,
       };
+      const file = back.querySelector('#f-photo').files[0];
+      if (file) {
+        if (file.size > 11 * 1024 * 1024) return say('Image is larger than 11 MB.');
+        const up = await compressImage(file, 1400, .85);
+        const path = `${crypto.randomUUID()}.${outExt(up, file)}`;
+        const { error: upErr } = await supabase.storage.from('event-images')
+          .upload(path, up, { contentType: up.type });
+        if (upErr) return say(upErr.message);
+        if (ev?.photo_path) await supabase.storage.from('event-images').remove([ev.photo_path]);
+        payload.photo_path = path;
+      }
       const { error } = ev
         ? await supabase.from('events').update(payload).eq('id', ev.id)
         : await supabase.from('events').insert({ ...payload, created_by: ctx.user.id });
