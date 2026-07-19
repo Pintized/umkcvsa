@@ -10,6 +10,289 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
+<style>
+/* ===== Task board (ported from the legacy canvas board, Lacquer & Gold skin) ===== */
+.tb-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.tb-head p { color:var(--muted); font-size:.85rem; margin-top:2px; }
+.tb-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+
+.task-layout { display:flex; gap:16px; align-items:flex-start; }
+.task-layout .board { flex:1 1 auto; min-width:0; }
+
+/* ---- infinite canvas board ---- */
+.board {
+  position:relative; width:100%; aspect-ratio:16/9; max-height:72vh; overflow:hidden;
+  border:1px solid var(--line); border-radius:14px; background:var(--surface-2);
+  cursor:grab; touch-action:none; user-select:none;
+}
+.board.panning { cursor:grabbing; }
+.board-canvas {
+  position:absolute; top:0; left:0; width:8000px; height:8000px;
+  transform-origin:0 0; will-change:transform;
+  --grid-line: rgba(22, 49, 77, .10);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+html.dark-mode .board-canvas { --grid-line: rgba(201, 155, 63, .10); }
+.board-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.95rem; pointer-events:none; }
+
+.zoom-controls {
+  position:absolute; left:12px; bottom:12px; z-index:40;
+  display:flex; align-items:center; gap:4px;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:4px 8px; box-shadow:var(--shadow-sm); font-size:.8rem;
+}
+.zoom-controls button {
+  width:26px; height:26px; border:none; background:transparent; cursor:pointer;
+  font-size:1rem; line-height:1; border-radius:6px; color:var(--text);
+}
+.zoom-controls button:hover { background:var(--surface-2); color:var(--gold); }
+.zoom-controls #zoomLevel { min-width:42px; text-align:center; color:var(--muted); }
+
+.board-search { position:absolute; right:12px; top:12px; z-index:40; width:220px; }
+.board-search input {
+  width:100%; box-sizing:border-box; padding:7px 11px; border:1px solid var(--line);
+  border-radius:10px; background:var(--surface); color:var(--text); font-size:.82rem; box-shadow:var(--shadow-sm);
+}
+.board-search input:focus { outline:none; border-color:var(--gold); }
+.search-results { margin-top:4px; background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow-lg); overflow:hidden; display:none; }
+.search-results.open { display:block; }
+.search-results .sr-item { padding:7px 11px; font-size:.8rem; cursor:pointer; border-bottom:1px solid var(--line); }
+.search-results .sr-item:last-child { border-bottom:none; }
+.search-results .sr-item:hover { background:rgba(201, 155, 63, .12); }
+.search-results .sr-empty { padding:7px 11px; font-size:.78rem; color:var(--muted); }
+.tcard.search-hit { box-shadow:0 0 0 3px var(--gold-bright), 0 12px 30px rgba(224, 180, 92, .35) !important; }
+
+.minimap {
+  position:absolute; right:12px; bottom:12px; z-index:40; width:256px; height:144px;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  box-shadow:var(--shadow-sm); overflow:hidden; cursor:pointer;
+}
+.minimap svg { display:block; }
+.minimap .mm-node { fill:var(--muted); }
+.minimap .mm-node.high { fill:var(--red); } .minimap .mm-node.medium { fill:var(--warn); } .minimap .mm-node.low { fill:var(--ok); }
+.minimap .mm-edge { stroke:var(--line); stroke-width:1; }
+.minimap .mm-view { fill:rgba(201, 155, 63, .12); stroke:var(--gold); stroke-width:1.5; }
+@media (max-width:1100px) { .minimap { display:none; } }
+
+/* ---- task card ---- */
+.tcard {
+  position:absolute; z-index:2; width:240px; background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; box-shadow:var(--shadow-sm); padding:12px 14px;
+  cursor:grab; user-select:none; transition:box-shadow .15s;
+}
+.tcard.dragging { cursor:grabbing; box-shadow:var(--shadow-lg); z-index:50; opacity:.96; }
+.tcard[data-priority="high"]   { border-left:4px solid var(--red); }
+.tcard[data-priority="medium"] { border-left:4px solid var(--warn); }
+.tcard[data-priority="low"]    { border-left:4px solid var(--ok); }
+.tcard .card-head { display:flex; align-items:flex-start; gap:6px; position:relative; }
+.tcard .card-head-main { display:flex; align-items:center; gap:8px; flex:1; min-width:0; flex-wrap:wrap; }
+.tcard .ttl { font-weight:700; font-size:.98rem; white-space:normal; overflow-wrap:anywhere; }
+.tcard .card-menu-btn { flex:0 0 auto; border:none; background:transparent; cursor:pointer; font-size:1.1rem; line-height:1; padding:2px 6px; border-radius:6px; color:var(--muted); }
+.tcard .card-menu-btn:hover { background:var(--surface-2); color:var(--gold); }
+.tcard .card-menu { display:none; position:absolute; top:26px; right:0; z-index:60; background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow-lg); overflow:hidden; min-width:110px; }
+.tcard .card-menu.open { display:block; }
+.tcard .card-menu button { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 14px; cursor:pointer; font-size:.85rem; color:var(--text); }
+.tcard .card-menu button:hover { background:var(--surface-2); }
+.tcard .card-menu button.del { color:var(--red); }
+.tcard .card-date { font-size:.78rem; color:var(--muted); margin:6px 0 4px; }
+.tcard .card-date .muted-due { font-style:italic; opacity:.8; }
+.tcard .card-toggle { display:inline-flex; align-items:center; gap:6px; border:none; background:transparent; cursor:pointer; padding:2px 0; font-size:.78rem; color:var(--gold); font-weight:600; }
+.tcard .card-body { margin-top:6px; }
+.tcard .card-body .desc {
+  font-size:.84rem; color:var(--muted); margin-bottom:6px; white-space:pre-wrap; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.tcard .card-body .desc.muted-due { font-style:italic; }
+
+.status-badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+.status-open { background:rgba(63, 127, 191, .16); color:#6ea8d8; }
+.status-in-progress { background:rgba(232, 163, 61, .16); color:#b97b18; }
+.status-done { background:rgba(47, 158, 99, .16); color:var(--ok); }
+html:not(.dark-mode) .status-open { color:#2a6099; }
+
+/* roll-up progress ring on parent nodes */
+.rollup { display:inline-flex; align-items:center; gap:3px; }
+.rollup svg { display:block; }
+.rollup .ring-bg { fill:none; stroke:var(--line); stroke-width:3; }
+.rollup .ring-fg { fill:none; stroke:var(--gold); stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .3s ease; }
+.rollup.complete .ring-fg { stroke:var(--ok); }
+.rollup-label { font-size:.66rem; font-weight:700; color:var(--muted); }
+.rollup.complete .rollup-label { color:var(--ok); }
+
+/* assignees */
+.tcard .assignees { border-top:1px solid var(--line); margin-top:6px; padding-top:6px; }
+.tcard .assignees summary { cursor:pointer; font-size:.78rem; color:var(--muted); list-style:none; display:flex; align-items:center; gap:5px; }
+.tcard .assignees summary::-webkit-details-marker { display:none; }
+.tcard .assignees summary .chev { transition:transform .15s; }
+.tcard .assignees[open] summary .chev { transform:rotate(90deg); }
+.assignee-list { margin-top:6px; display:flex; flex-direction:column; gap:4px; }
+.assignee-row { display:flex; align-items:center; justify-content:space-between; font-size:.8rem; gap:6px; }
+.assignee-row .x { cursor:pointer; color:var(--red); font-weight:700; padding:0 4px; }
+.assignee-add { display:flex; gap:6px; margin-top:6px; }
+.assignee-add select { flex:1; font-size:.78rem; padding:3px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--text); }
+
+/* connector + edges */
+.tcard .connector {
+  position:absolute; right:-9px; top:50%; transform:translateY(-50%);
+  width:16px; height:16px; border-radius:50%; background:var(--gold); border:2px solid var(--surface);
+  cursor:crosshair; z-index:5; box-shadow:var(--shadow-sm); opacity:0; transition:opacity .12s;
+}
+.tcard:hover .connector { opacity:1; }
+.tcard.linking-source .connector { opacity:1; background:var(--red); }
+.tcard.link-target-hover { outline:2px dashed var(--gold); outline-offset:2px; }
+.edge-layer { position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:1; }
+.edge-layer .edge-line { stroke:var(--muted); stroke-width:2.5; fill:none; pointer-events:stroke; cursor:pointer; opacity:.55; transition:stroke .12s, opacity .12s; }
+.edge-layer .edge-line:hover { stroke:var(--gold); opacity:1; stroke-width:3.5; }
+.edge-layer .edge-hit { stroke:transparent; stroke-width:16; fill:none; pointer-events:stroke; cursor:pointer; }
+.edge-layer .edge-arrow { fill:var(--muted); cursor:pointer; pointer-events:auto; transition:fill .12s; }
+.edge-layer .edge-arrow:hover { fill:var(--gold); }
+.edge-layer .edge-arrow.active { fill:var(--red); }
+.edge-temp { stroke:var(--gold); stroke-width:2.5; stroke-dasharray:5 4; fill:none; pointer-events:none; }
+.edge-menu { position:fixed; transform:translate(-50%,-50%); z-index:400; }
+.edge-menu .edge-menu-del { background:var(--red); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:.8rem; font-weight:600; cursor:pointer; box-shadow:var(--shadow-lg); white-space:nowrap; }
+
+/* ---- right-side task list ---- */
+.task-list-panel {
+  flex:0 0 280px; width:280px; border:1px solid var(--line); border-radius:14px;
+  background:var(--surface); padding:14px; max-height:72vh; overflow-y:auto;
+}
+.task-list-panel h3 { font-family:var(--serif); font-size:1rem; margin:0 0 8px; }
+.task-list-panel .tl-group-title { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:var(--gold); margin:14px 0 6px; font-weight:700; }
+.task-list-panel .tl-group-title:first-of-type { margin-top:4px; }
+.tl-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+.tl-item:last-child { border-bottom:none; }
+.tl-item:hover .tl-title { color:var(--gold); }
+.tl-dot { width:9px; height:9px; border-radius:50%; margin-top:5px; flex:0 0 auto; }
+.tl-dot.open { background:var(--gold); }
+.tl-dot.closed { background:var(--muted); }
+.tl-body { flex:1; min-width:0; }
+.tl-title { font-size:.85rem; font-weight:600; line-height:1.25; transition:color .12s; }
+.tl-meta { font-size:.72rem; color:var(--muted); margin-top:2px; }
+.tl-empty { color:var(--muted); font-size:.8rem; padding:6px 0; }
+@media (max-width:1000px){ .task-layout { flex-direction:column; } .task-list-panel { flex-basis:auto; width:100%; max-height:260px; } }
+
+/* ---- details popup ---- */
+.detpop-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:.8rem; color:var(--muted); margin-bottom:12px; }
+.detpop-desc { overflow-y:auto; max-height:50vh; white-space:pre-wrap; word-break:break-word; line-height:1.55; font-size:.95rem; }
+.detpop-desc.empty { color:var(--muted); font-style:italic; }
+
+/* ---- fancy assignee checkboxes in the modal ---- */
+.modal-assignee-box {
+  display:flex; flex-direction:column; gap:2px; max-height:210px; overflow-y:auto; padding:6px;
+  border:1px solid var(--line); border-radius:10px; background:var(--surface); scrollbar-width:thin;
+}
+label.modal-assignee-option {
+  position:relative; display:grid; grid-template-columns:18px minmax(0,1fr); align-items:center;
+  column-gap:12px; width:100%; margin:0; padding:9px 10px; border-radius:7px;
+  cursor:pointer; color:var(--text); font-size:.86rem; font-weight:600; transition:background .14s ease;
+}
+label.modal-assignee-option:hover { background:var(--surface-2); }
+label.modal-assignee-option:has(input:checked) { background:rgba(201, 155, 63, .12); }
+label.modal-assignee-option input[type="checkbox"] {
+  position:absolute; width:1px; height:1px; margin:0; padding:0; opacity:0; pointer-events:none;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
+}
+.modal-assignee-check {
+  position:relative; display:block; grid-column:1; width:18px; height:18px;
+  border:1.5px solid var(--muted); border-radius:5px; background:var(--surface);
+  transition:background .14s ease, border-color .14s ease, transform .14s ease;
+}
+.modal-assignee-check::after {
+  content:''; position:absolute; left:5px; top:2px; width:5px; height:9px;
+  border:solid #fff; border-width:0 2px 2px 0;
+  transform:rotate(45deg) scale(.7); opacity:0; transition:opacity .12s ease, transform .12s ease;
+}
+label.modal-assignee-option:hover .modal-assignee-check { border-color:var(--gold); }
+label.modal-assignee-option input:checked + .modal-assignee-check { background:var(--gold); border-color:var(--gold); }
+label.modal-assignee-option input:checked + .modal-assignee-check::after { opacity:1; transform:rotate(45deg) scale(1); }
+label.modal-assignee-option:active .modal-assignee-check { transform:scale(.94); }
+.modal-assignee-empty { color:var(--muted); font-size:.8rem; padding:10px; text-align:center; }
+
+/* ===== Kanban view ===== */
+.kanban { display:none; width:100%; position:relative; }
+body.kanban-mode .board, body.kanban-mode .task-list-panel { display:none; }
+body.kanban-mode .task-layout { display:block; width:100%; }
+body.kanban-mode .kanban { display:block; }
+
+.kanban-col {
+  min-width:0; overflow:hidden; border:1px solid var(--line); border-radius:16px;
+  background:var(--surface); box-shadow:var(--shadow-sm);
+  display:flex; flex-direction:column; height:clamp(480px, 64vh, 720px);
+}
+.kanban-col::before { content:''; display:block; height:4px; background:var(--col-accent); }
+.kanban-col[data-col="main"]        { --col-accent:var(--gold); --col-soft:rgba(201, 155, 63, .14); --col-ink:var(--gold); }
+.kanban-col[data-col="open"]        { --col-accent:#3f7fbf; --col-soft:rgba(63, 127, 191, .14); --col-ink:#6ea8d8; }
+.kanban-col[data-col="in-progress"] { --col-accent:var(--warn); --col-soft:rgba(232, 163, 61, .14); --col-ink:#b97b18; }
+.kanban-col[data-col="done"]        { --col-accent:var(--ok); --col-soft:rgba(47, 158, 99, .14); --col-ink:var(--ok); }
+html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
+.kanban-main-col { height:auto; min-height:0; margin:0 0 16px; }
+.kanban-main-col .kanban-col-body { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px; overflow:visible; min-height:100px; }
+.kanban-main-col .kanban-col-body:empty::after { grid-column:1 / -1; }
+.kanban-columns { display:grid; grid-template-columns:repeat(3, minmax(260px, 1fr)); gap:14px; align-items:start; }
+.kanban-col-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 15px 12px; border-bottom:1px solid var(--line); }
+.kanban-col-heading { display:flex; align-items:center; gap:10px; min-width:0; }
+.kanban-col-icon { width:32px; height:32px; border-radius:10px; display:grid; place-items:center; color:var(--col-ink); background:var(--col-soft); font-size:.9rem; font-weight:900; }
+.kanban-col-copy strong { display:block; font-size:.93rem; line-height:1.1; }
+.kanban-col-copy small { display:block; color:var(--muted); margin-top:3px; font-size:.7rem; }
+.kanban-col-count { min-width:28px; height:25px; padding:0 9px; display:inline-grid; place-items:center; border-radius:999px; color:var(--col-ink); background:var(--col-soft); font-size:.74rem; font-weight:800; }
+.kanban-col-body { flex:1; min-height:90px; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; scrollbar-width:thin; }
+.kanban-col-body:empty::after {
+  content:'Drop a task here'; min-height:84px; border:1.5px dashed var(--line); border-radius:12px;
+  display:grid; place-items:center; color:var(--muted); font-size:.78rem; font-weight:600;
+}
+.kanban-col.drop-hover { border-color:var(--gold); box-shadow:0 0 0 3px rgba(201, 155, 63, .14), var(--shadow-lg); }
+
+.kcard {
+  --priority:var(--warn); position:relative; overflow:hidden; flex:0 0 auto;
+  border:1px solid var(--line); border-radius:12px; background:var(--surface-2); padding:12px 12px 11px;
+  cursor:grab; box-shadow:var(--shadow-sm); transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.kcard::before { content:''; position:absolute; inset:0 auto 0 0; width:4px; background:var(--priority); }
+.kcard[data-priority="high"] { --priority:var(--red); }
+.kcard[data-priority="low"] { --priority:var(--ok); }
+.kcard:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.kcard:active { cursor:grabbing; }
+.kcard.dragging { opacity:.45; transform:rotate(1deg) scale(.985); }
+.kcard.kroot { border-color:rgba(201, 155, 63, .5); }
+.kcard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-left:3px; }
+.kcard-title-row { display:flex; align-items:flex-start; flex:1; min-width:0; gap:7px; }
+.kcard-parent-badge { flex:0 0 auto; margin-top:1px; padding:3px 7px; border-radius:999px; color:var(--gold); background:rgba(201, 155, 63, .14); font-size:.54rem; font-weight:900; letter-spacing:.07em; line-height:1.1; }
+.kcard-title { flex:1; min-width:0; padding-right:4px; font-size:.9rem; font-weight:700; line-height:1.28; overflow-wrap:anywhere; }
+.kcard-actions { display:flex; align-items:center; gap:5px; flex:0 0 auto; }
+.kcard-edit, .kcard-toggle {
+  flex:0 0 auto; display:grid; place-items:center; border:none; border-radius:8px;
+  color:var(--muted); background:var(--surface); cursor:pointer; transition:color .15s, background .15s, transform .16s;
+}
+.kcard-edit { width:28px; height:28px; }
+.kcard-edit svg { width:14px; height:14px; display:block; pointer-events:none; }
+.kcard-edit:hover, .kcard-toggle:hover { color:var(--gold); }
+.kcard-toggle { width:26px; height:26px; font-size:.76rem; line-height:1; }
+.kcard-toggle.open { transform:rotate(90deg); }
+.kcard-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:9px; padding-left:3px; }
+.kcard-chip { display:inline-flex; align-items:center; gap:4px; min-height:22px; padding:3px 7px; border-radius:7px; color:var(--muted); background:var(--surface); font-size:.66rem; font-weight:700; }
+.kcard-chip.priority { text-transform:capitalize; }
+.kcard-chip.overdue { color:var(--red); background:rgba(200, 32, 47, .12); }
+.kcard-parent { display:flex; align-items:center; gap:6px; margin:8px 0 0 3px; padding:6px 8px; border-radius:8px; color:var(--muted); background:var(--surface); font-size:.68rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kcard-parent span { overflow:hidden; text-overflow:ellipsis; }
+.kcard-desc { display:none; margin:9px 0 0 3px; padding:9px 1px 1px; border-top:1px solid var(--line); color:var(--muted); font-size:.76rem; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+.kcard-desc.open { display:block; }
+.kcard-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; padding:9px 0 0 3px; border-top:1px solid var(--line); }
+.kcard-assignees { display:flex; align-items:center; min-width:0; }
+.kavatar {
+  width:25px; height:25px; margin-left:-5px; border:2px solid var(--surface-2); border-radius:50%;
+  display:grid; place-items:center; color:#fff; background:linear-gradient(140deg, #d42a3a, var(--red-deep, #8f1622));
+  font-size:.58rem; font-weight:900; letter-spacing:.02em;
+}
+.kavatar:first-child { margin-left:0; }
+.kavatar.more { color:var(--muted); background:var(--surface); }
+.kcard-unassigned { color:var(--muted); font-size:.66rem; font-weight:600; }
+.kcard-id { color:var(--muted); opacity:.7; font-size:.62rem; font-weight:700; }
+@media (max-width:900px) { .kanban-columns { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; } .kanban-columns .kanban-col { flex:0 0 min(86vw, 320px); scroll-snap-align:start; } .kanban-main-col .kanban-col-body { grid-template-columns:1fr; } }
+@media (prefers-reduced-motion:reduce) { .kcard, .kcard-toggle { transition:none; } }
+</style>
 </head>
 <body>
 <div class="loading" id="loading">Loading task board…</div>
@@ -19,323 +302,869 @@
   import { supabase } from '/app/shared/supabase.js';
 
   const GRID = 40;
-  const STATUSES = ['open', 'in-progress', 'done'];
   const ctx = await requireOfficer();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Tasks');
 
-  let tasks = [], edges = [], assignees = [], officers = [];
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  const todayStr = () => new Date().toLocaleDateString('en-CA');
+  let TASKS = [], EDGES = [], ASSIGNEES = [], OFFICERS = [];
+  const esc = (s) => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const snap = (v) => Math.max(0, Math.round(v / GRID) * GRID);
+  const statusClass = (s) => 'status-' + (s || 'open').replace(/[^a-z-]/g, '');
+  const statusLabel = (s) => (s || 'open').replace('-', ' ');
+  const assigneesOf = (taskId) => ASSIGNEES.filter(a => a.task_id === taskId)
+    .map(a => ({ user_id: a.user_id, name: OFFICERS.find(o => o.id === a.user_id)?.full_name || 'Member' }));
 
-  // view + filter preferences survive reloads
-  let prefs = { view: 'board', status: 'all', prio: 'all', who: 'all', hideDone: false };
-  try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem('vsa-tasks-prefs') || '{}') }; } catch (e) {}
-  const savePrefs = () => { try { localStorage.setItem('vsa-tasks-prefs', JSON.stringify(prefs)); } catch (e) {} };
+  // ---------- layout ----------
+  page.innerHTML = `
+    <div class="tb-head">
+      <div>
+        <h2 style="margin-bottom:2px">Task board</h2>
+        <p>Drag cards to organize — they snap to the grid and the layout saves. Drag empty space to pan, scroll to zoom, and pull the gold dot on a card onto another to link them.</p>
+      </div>
+      <div class="tb-actions">
+        <div class="mode-toggle" id="viewToggle">
+          <button type="button" data-view="grid" class="on">Grid</button>
+          <button type="button" data-view="kanban">Kanban</button>
+        </div>
+        <button class="btn" id="newTaskBtn">+ New task</button>
+      </div>
+    </div>
+    <div class="task-layout">
+      <aside class="task-list-panel" id="taskListPanel">
+        <h3>All Tasks</h3>
+        <div id="taskListBody"><div class="tl-empty">Loading…</div></div>
+      </aside>
+      <div class="board" id="board">
+        <div class="board-canvas" id="boardCanvas"><svg class="edge-layer" id="edgeLayer" width="8000" height="8000"></svg></div>
+        <div class="board-empty" id="boardEmpty">No tasks yet. Click "New task" to add one.</div>
+        <div class="zoom-controls">
+          <button type="button" id="zoomInBtn" title="Zoom in">+</button>
+          <button type="button" id="zoomOutBtn" title="Zoom out">−</button>
+          <button type="button" id="zoomFitBtn" title="Fit to screen">⛶</button>
+          <span id="zoomLevel">100%</span>
+        </div>
+        <div class="board-search">
+          <input type="text" id="boardSearch" placeholder="Search tasks…" autocomplete="off">
+          <div class="search-results" id="searchResults"></div>
+        </div>
+        <div class="minimap" id="minimap"><svg id="minimapSvg" width="256" height="144" viewBox="0 0 256 144"></svg></div>
+      </div>
+      <div class="kanban" id="kanban">
+        <section class="kanban-col kanban-main-col" data-col="main">
+          <div class="kanban-col-head"><div class="kanban-col-heading"><span class="kanban-col-icon">◆</span><span class="kanban-col-copy"><strong>Main</strong><small>Parent tasks with sub-tasks</small></span></div><span class="kanban-col-count" data-count="main">0</span></div>
+          <div class="kanban-col-body" data-status="main"></div>
+        </section>
+        <div class="kanban-columns">
+          <section class="kanban-col" data-col="open">
+            <div class="kanban-col-head"><div class="kanban-col-heading"><span class="kanban-col-icon">○</span><span class="kanban-col-copy"><strong>Open</strong><small>Ready to be worked on</small></span></div><span class="kanban-col-count" data-count="open">0</span></div>
+            <div class="kanban-col-body" data-status="open"></div>
+          </section>
+          <section class="kanban-col" data-col="in-progress">
+            <div class="kanban-col-head"><div class="kanban-col-heading"><span class="kanban-col-icon">◐</span><span class="kanban-col-copy"><strong>In Progress</strong><small>Actively being completed</small></span></div><span class="kanban-col-count" data-count="in-progress">0</span></div>
+            <div class="kanban-col-body" data-status="in-progress"></div>
+          </section>
+          <section class="kanban-col" data-col="done">
+            <div class="kanban-col-head"><div class="kanban-col-heading"><span class="kanban-col-icon">✓</span><span class="kanban-col-copy"><strong>Done</strong><small>Completed and closed</small></span></div><span class="kanban-col-count" data-count="done">0</span></div>
+            <div class="kanban-col-body" data-status="done"></div>
+          </section>
+        </div>
+      </div>
+    </div>
 
-  async function load() {
+    <div class="modal-back" id="detpopOverlay" style="display:none">
+      <div class="modal" role="dialog" aria-modal="true">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:6px">
+          <h2 id="detpopTitle" style="flex:1; word-break:break-word"></h2>
+          <button type="button" class="btn sm ghost" id="detpopClose" aria-label="Close">✕</button>
+        </div>
+        <div class="detpop-meta" id="detpopMeta"></div>
+        <div class="detpop-desc" id="detpopDesc"></div>
+      </div>
+    </div>
+
+    <div class="modal-back" id="overlay" style="display:none">
+      <div class="modal">
+        <h2 id="modalTitle">New task</h2>
+        <div class="notice" id="formErr"></div>
+        <input type="hidden" id="taskId">
+        <div class="field"><label>Title</label><input id="fTitle" maxlength="255" placeholder="Task title"></div>
+        <div class="field"><label>Description</label><textarea id="fDesc" placeholder="Optional details"></textarea></div>
+        <div class="field-row">
+          <div class="field"><label>Due date</label><input type="date" id="fDue"></div>
+          <div class="field"><label>Status</label>
+            <select id="fStatus"><option value="open">Open</option><option value="in-progress">In progress</option><option value="done">Done</option></select>
+          </div>
+          <div class="field"><label>Priority</label>
+            <select id="fPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Assigned officers</label>
+          <div class="modal-assignee-box" id="fAssignees"><div class="modal-assignee-empty">No officers available.</div></div>
+        </div>
+        <div class="row-btns">
+          <button class="btn ghost" id="cancelBtn" type="button">Cancel</button>
+          <button class="btn" id="saveBtn" type="button">Save</button>
+        </div>
+      </div>
+    </div>`;
+
+  // modal-back is display:flex in app.css; we toggle via inline display
+  const overlay = document.getElementById('overlay');
+  const detpop = document.getElementById('detpopOverlay');
+
+  // ---------- data ----------
+  async function fetchAll() {
     const [t, e, a, p] = await Promise.all([
       supabase.from('tasks').select('*').order('created_at'),
       supabase.from('task_edges').select('*'),
       supabase.from('task_assignees').select('*'),
-      supabase.from('profiles').select('id, full_name, first_name'),
+      supabase.from('profiles').select('id, full_name').order('full_name'),
     ]);
-    tasks = t.data || []; edges = e.data || []; assignees = a.data || []; officers = p.data || [];
-    render();
+    return { tasks: t.data || [], edges: e.data || [], assignees: a.data || [], officers: p.data || [] };
+  }
+  async function load() {
+    const d = await fetchAll();
+    TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
+    renderBoard(); renderTaskList(); renderKanban();
   }
 
-  const nameOf = (uid) => officers.find(o => o.id === uid)?.first_name || '?';
-  const whoFor = (taskId) => assignees.filter(a => a.task_id === taskId).map(a => a.user_id);
-
-  function dueClass(t) {
-    if (!t.due_date || t.status === 'done') return '';
-    const today = todayStr();
-    if (t.due_date < today) return 'overdue';
-    const week = new Date(); week.setDate(week.getDate() + 7);
-    return t.due_date <= week.toLocaleDateString('en-CA') ? 'due-soon' : '';
+  // ---------- camera (pan/zoom) ----------
+  let CAM = { x: 0, y: 0, scale: 1 };
+  const MIN_SCALE = 0.3, MAX_SCALE = 2.5;
+  try { const saved = JSON.parse(localStorage.getItem('vsa-task-cam') || 'null'); if (saved && typeof saved.scale === 'number') CAM = saved; } catch (e) {}
+  function applyCam() {
+    const c = document.getElementById('boardCanvas');
+    if (!c) return;
+    c.style.transform = `translate(${CAM.x}px,${CAM.y}px) scale(${CAM.scale})`;
+    document.getElementById('zoomLevel').textContent = Math.round(CAM.scale * 100) + '%';
+    renderMinimap();
+  }
+  const saveCam = () => { try { localStorage.setItem('vsa-task-cam', JSON.stringify(CAM)); } catch (e) {} };
+  const clampScale = (s) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
+  function zoomAt(factor, cx, cy) {
+    const r = document.getElementById('board').getBoundingClientRect();
+    const px = (cx == null ? r.width / 2 : cx - r.left);
+    const py = (cy == null ? r.height / 2 : cy - r.top);
+    const ns = clampScale(CAM.scale * factor);
+    const k = ns / CAM.scale;
+    CAM.x = px - (px - CAM.x) * k;
+    CAM.y = py - (py - CAM.y) * k;
+    CAM.scale = ns;
+    applyCam(); saveCam();
+  }
+  function fitToView() {
+    const board = document.getElementById('board');
+    if (!TASKS.length) { CAM = { x: 0, y: 0, scale: 1 }; applyCam(); saveCam(); return; }
+    let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    TASKS.forEach(t => {
+      const x = t.pos_x || 40, y = t.pos_y || 40;
+      minx = Math.min(minx, x); miny = Math.min(miny, y);
+      maxx = Math.max(maxx, x + 260); maxy = Math.max(maxy, y + 200);
+    });
+    const r = board.getBoundingClientRect(), pad = 60;
+    const ns = clampScale(Math.min((r.width - pad * 2) / Math.max(1, maxx - minx), (r.height - pad * 2) / Math.max(1, maxy - miny), 1.2));
+    CAM.scale = ns;
+    CAM.x = pad - minx * ns + (r.width - pad * 2 - (maxx - minx) * ns) / 2;
+    CAM.y = pad - miny * ns + (r.height - pad * 2 - (maxy - miny) * ns) / 2;
+    applyCam(); saveCam();
+  }
+  function flyToTask(taskId, targetScale) {
+    const t = TASKS.find(x => x.id === taskId);
+    if (!t) return;
+    const board = document.getElementById('board');
+    const nx = (t.pos_x || 40) + 120, ny = (t.pos_y || 40) + 48;
+    const s = clampScale(targetScale || Math.max(CAM.scale, 1));
+    CAM.scale = s;
+    CAM.x = board.clientWidth / 2 - nx * s;
+    CAM.y = board.clientHeight / 2 - ny * s;
+    applyCam(); saveCam();
+    const card = document.querySelector(`.tcard[data-id="${taskId}"]`);
+    if (card) { card.classList.add('search-hit'); setTimeout(() => card.classList.remove('search-hit'), 1600); }
   }
 
-  function visible(t) {
-    if (prefs.hideDone && t.status === 'done') return false;
-    if (prefs.status !== 'all' && t.status !== prefs.status) return false;
-    if (prefs.prio !== 'all' && t.priority !== prefs.prio) return false;
-    if (prefs.who !== 'all' && !whoFor(t.id).includes(prefs.who)) return false;
-    return true;
+  // ---------- minimap ----------
+  function renderMinimap() {
+    const svg = document.getElementById('minimapSvg');
+    if (!svg) return;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    if (!TASKS.length) return;
+    const NS = 'http://www.w3.org/2000/svg';
+    const board = document.getElementById('board');
+    let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    TASKS.forEach(t => {
+      const x = t.pos_x || 40, y = t.pos_y || 40;
+      minx = Math.min(minx, x); miny = Math.min(miny, y);
+      maxx = Math.max(maxx, x + 240); maxy = Math.max(maxy, y + 96);
+    });
+    const pad = 60; minx -= pad; miny -= pad; maxx += pad; maxy += pad;
+    const bw = maxx - minx, bh = maxy - miny, MW = 256, MH = 144;
+    const k = Math.min(MW / bw, MH / bh);
+    const offx = (MW - bw * k) / 2, offy = (MH - bh * k) / 2;
+    const mmx = (x) => (x - minx) * k + offx, mmy = (y) => (y - miny) * k + offy;
+    svg.dataset.minx = minx; svg.dataset.miny = miny; svg.dataset.k = k; svg.dataset.offx = offx; svg.dataset.offy = offy;
+    EDGES.forEach(e => {
+      const a = TASKS.find(t => t.id === e.from_id), b = TASKS.find(t => t.id === e.to_id);
+      if (!a || !b) return;
+      const ln = document.createElementNS(NS, 'line');
+      ln.setAttribute('class', 'mm-edge');
+      ln.setAttribute('x1', mmx((a.pos_x || 40) + 120)); ln.setAttribute('y1', mmy((a.pos_y || 40) + 48));
+      ln.setAttribute('x2', mmx((b.pos_x || 40) + 120)); ln.setAttribute('y2', mmy((b.pos_y || 40) + 48));
+      svg.appendChild(ln);
+    });
+    TASKS.forEach(t => {
+      const r = document.createElementNS(NS, 'rect');
+      r.setAttribute('class', 'mm-node ' + (t.priority || 'medium'));
+      r.setAttribute('x', mmx(t.pos_x || 40)); r.setAttribute('y', mmy(t.pos_y || 40));
+      r.setAttribute('width', Math.max(3, 240 * k)); r.setAttribute('height', Math.max(2, 96 * k));
+      r.setAttribute('rx', 1.5);
+      svg.appendChild(r);
+    });
+    const vx = -CAM.x / CAM.scale, vy = -CAM.y / CAM.scale;
+    const vw = board.clientWidth / CAM.scale, vh = board.clientHeight / CAM.scale;
+    const vr = document.createElementNS(NS, 'rect');
+    vr.setAttribute('class', 'mm-view');
+    vr.setAttribute('x', mmx(vx)); vr.setAttribute('y', mmy(vy));
+    vr.setAttribute('width', Math.max(4, vw * k)); vr.setAttribute('height', Math.max(4, vh * k));
+    vr.setAttribute('rx', 2);
+    svg.appendChild(vr);
+  }
+  function minimapPanTo(evt) {
+    const svg = document.getElementById('minimapSvg');
+    if (!svg || !svg.dataset.k) return;
+    const r = svg.getBoundingClientRect();
+    const minx = +svg.dataset.minx, miny = +svg.dataset.miny, k = +svg.dataset.k, offx = +svg.dataset.offx, offy = +svg.dataset.offy;
+    const cx = (evt.clientX - r.left - offx) / k + minx, cy = (evt.clientY - r.top - offy) / k + miny;
+    const board = document.getElementById('board');
+    CAM.x = board.clientWidth / 2 - cx * CAM.scale;
+    CAM.y = board.clientHeight / 2 - cy * CAM.scale;
+    applyCam(); saveCam();
   }
 
-  async function cycleStatus(t) {
-    const next = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length];
-    const { error } = await supabase.from('tasks').update({ status: next }).eq('id', t.id);
-    if (error) { alert(error.message); return; }
-    t.status = next;
-    render();
+  // ---------- board cards ----------
+  function taskProgress(taskId) {
+    const childIds = EDGES.filter(e => e.from_id === taskId).map(e => e.to_id);
+    if (!childIds.length) return null;
+    const done = childIds.filter(cid => TASKS.find(t => t.id === cid)?.status === 'done').length;
+    return { done, total: childIds.length };
   }
-
-  function render() {
-    const shown = tasks.filter(visible);
-    const assignedIds = [...new Set(assignees.map(a => a.user_id))];
-    const overdue = tasks.filter(t => dueClass(t) === 'overdue').length;
-
-    page.innerHTML = `
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px">
-          <div>
-            <h2 style="margin-bottom:2px">Task board</h2>
-            <p style="color:var(--muted); font-size:.85rem">${prefs.view === 'board'
-              ? 'Drag cards to arrange — layout saves automatically. Click a status pill to cycle it, ✎ to edit.'
-              : 'Sorted by due date. Click a status pill to cycle it.'}${overdue
-              ? ` <strong style="color:var(--red)">${overdue} overdue.</strong>` : ''}</p>
-          </div>
-          <button class="btn" id="new">+ New task</button>
-        </div>
-        <div class="filter-bar">
-          <div class="mode-toggle">
-            <button id="v-board" class="${prefs.view === 'board' ? 'on' : ''}">Board</button>
-            <button id="v-list" class="${prefs.view === 'list' ? 'on' : ''}">List</button>
-          </div>
-          <select id="f-status" title="Filter by status">
-            <option value="all">All statuses</option>
-            ${STATUSES.map(s => `<option value="${s}" ${prefs.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-          </select>
-          <select id="f-prio" title="Filter by priority">
-            <option value="all">All priorities</option>
-            ${['high', 'medium', 'low'].map(p => `<option value="${p}" ${prefs.prio === p ? 'selected' : ''}>${p}</option>`).join('')}
-          </select>
-          <select id="f-who" title="Filter by assignee">
-            <option value="all">Anyone</option>
-            ${assignedIds.map(id => `<option value="${id}" ${prefs.who === id ? 'selected' : ''}>${esc(officers.find(o => o.id === id)?.full_name || '?')}</option>`).join('')}
-          </select>
-          <button class="chip-btn ${prefs.hideDone ? 'on' : ''}" id="f-hide-done">Hide done</button>
-          ${shown.length !== tasks.length ? `<span style="color:var(--muted); font-size:.8rem">${shown.length} of ${tasks.length} shown</span>` : ''}
-        </div>
-        ${prefs.view === 'board' ? `
-        <div class="board-scroll">
-          <div class="board" id="board">
-            <svg class="edges" id="edge-svg">
-              <defs>
-                <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
-                  <path d="M0,0 L7,3 L0,6 Z" fill="var(--muted)"/>
-                </marker>
-              </defs>
-            </svg>
-          </div>
-        </div>` : `
-        <div class="tbl-wrap">
-          <table class="tbl">
-            <thead><tr><th>Task</th><th>Status</th><th>Priority</th><th>Due</th><th>Assignees</th><th></th></tr></thead>
-            <tbody id="list-body"></tbody>
-          </table>
-        </div>`}
-      </div>`;
-
-    document.getElementById('new').onclick = () => openModal();
-    document.getElementById('v-board').onclick = () => { prefs.view = 'board'; savePrefs(); render(); };
-    document.getElementById('v-list').onclick = () => { prefs.view = 'list'; savePrefs(); render(); };
-    document.getElementById('f-status').onchange = (e) => { prefs.status = e.target.value; savePrefs(); render(); };
-    document.getElementById('f-prio').onchange = (e) => { prefs.prio = e.target.value; savePrefs(); render(); };
-    document.getElementById('f-who').onchange = (e) => { prefs.who = e.target.value; savePrefs(); render(); };
-    document.getElementById('f-hide-done').onclick = () => { prefs.hideDone = !prefs.hideDone; savePrefs(); render(); };
-
-    if (prefs.view === 'board') {
-      const board = document.getElementById('board');
-      shown.forEach(t => board.appendChild(cardEl(t)));
-      drawEdges();
-    } else {
-      renderList(shown);
-    }
+  function progressRingHTML(p) {
+    if (!p) return '';
+    const R = 9, C = 2 * Math.PI * R;
+    const off = C * (1 - (p.total ? p.done / p.total : 0));
+    return `<span class="rollup${p.done === p.total ? ' complete' : ''}" title="${p.done} of ${p.total} sub-tasks done">
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <circle class="ring-bg" cx="12" cy="12" r="${R}"></circle>
+        <circle class="ring-fg" cx="12" cy="12" r="${R}" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 12 12)"></circle>
+      </svg><span class="rollup-label">${p.done}/${p.total}</span></span>`;
   }
-
-  function renderList(shown) {
-    const body = document.getElementById('list-body');
-    const sorted = shown.slice().sort((a, b) =>
-      (a.due_date || '9999') < (b.due_date || '9999') ? -1
-      : (a.due_date || '9999') > (b.due_date || '9999') ? 1
-      : a.created_at < b.created_at ? -1 : 1);
-    body.innerHTML = sorted.map(t => {
-      const dc = dueClass(t);
-      const who = whoFor(t.id).map(nameOf).join(', ');
-      return `
-        <tr>
-          <td><strong>${esc(t.title)}</strong>${t.description ? `<br><small style="color:var(--muted)">${esc(t.description)}</small>` : ''}</td>
-          <td><button class="st-pill ${t.status}" data-cycle="${t.id}" title="Click to change status">${t.status}</button></td>
-          <td style="text-transform:capitalize">${t.priority}</td>
-          <td style="${dc === 'overdue' ? 'color:var(--red); font-weight:700' : dc === 'due-soon' ? 'color:var(--gold); font-weight:700' : ''}">${
-            t.due_date ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}${
-            dc === 'overdue' ? ' (overdue)' : ''}</td>
-          <td>${esc(who) || '<span style="color:var(--muted)">—</span>'}</td>
-          <td class="actions"><button class="btn sm secondary" data-edit="${t.id}">Edit</button></td>
-        </tr>`;
-    }).join('') || '<tr><td colspan="6" style="color:var(--muted)">Nothing matches these filters.</td></tr>';
-    body.querySelectorAll('[data-cycle]').forEach(b => b.onclick = () => cycleStatus(tasks.find(t => t.id === +b.dataset.cycle)));
-    body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openModal(tasks.find(t => t.id === +b.dataset.edit)));
+  function officerOptions(task) {
+    const assignedIds = new Set(assigneesOf(task.id).map(a => a.user_id));
+    const avail = OFFICERS.filter(o => !assignedIds.has(o.id));
+    if (!avail.length) return '';
+    return `<div class="assignee-add"><select data-add="${task.id}"><option value="">+ Assign officer…</option>${
+      avail.map(o => `<option value="${o.id}">${esc(o.full_name)}</option>`).join('')}</select></div>`;
   }
-
-  function cardEl(t) {
+  function renderCard(task) {
     const el = document.createElement('div');
-    const dc = dueClass(t);
-    el.className = `task-card prio-${t.priority}${dc ? ' ' + dc : ''}`;
-    el.style.left = t.pos_x + 'px';
-    el.style.top = t.pos_y + 'px';
-    el.dataset.id = t.id;
-    const who = whoFor(t.id).map(nameOf).join(', ');
+    el.className = 'tcard';
+    el.style.left = (task.pos_x || 40) + 'px';
+    el.style.top = (task.pos_y || 40) + 'px';
+    el.dataset.id = task.id;
+    el.dataset.priority = task.priority || 'medium';
+    const who = assigneesOf(task.id);
+    const due = task.due_date ? `<span>📅 ${esc(task.due_date)}</span>` : '<span class="muted-due">No due date</span>';
+    const aRows = who.map(a =>
+      `<div class="assignee-row"><span>${esc(a.name)}</span><span class="x" data-unassign="${task.id}" data-uid="${a.user_id}">✕</span></div>`
+    ).join('') || '<div class="assignee-row" style="color:var(--muted)">No one assigned</div>';
     el.innerHTML = `
-      <span class="edit-hit" title="Edit">✎</span>
-      <h4>${esc(t.title)}</h4>
-      <div class="meta">
-        <span class="st ${t.status}" title="Click to change status">${t.status}</span>
-        ${t.due_date ? `<span class="due">📅 ${new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${dc === 'overdue' ? ' ⚠' : ''}</span>` : ''}
-        ${who ? `<span>👤 ${esc(who)}</span>` : ''}
+      <div class="card-head">
+        <div class="card-head-main">
+          <span class="ttl">${esc(task.title)}</span>
+          <span class="status-badge ${statusClass(task.status)}">${esc(statusLabel(task.status))}</span>
+          ${progressRingHTML(taskProgress(task.id))}
+        </div>
+        <button class="card-menu-btn" data-menu="${task.id}" title="More" aria-label="More">⋮</button>
+        <div class="card-menu" data-menufor="${task.id}">
+          <button data-edit="${task.id}">Edit</button>
+          <button class="del" data-del="${task.id}">Delete</button>
+        </div>
+      </div>
+      <div class="card-date">${due}</div>
+      <button class="card-toggle" data-toggle="${task.id}">▸ Show details</button>
+      <div class="card-body">
+        ${task.description ? `<div class="desc">${esc(task.description)}</div>` : '<div class="desc muted-due">No description</div>'}
+        <details class="assignees"><summary><span class="chev">▸</span> Assigned (${who.length})</summary>
+          <div class="assignee-list">${aRows}</div>${officerOptions(task)}
+        </details>
       </div>`;
-    el.querySelector('.edit-hit').addEventListener('pointerdown', (e) => e.stopPropagation());
-    el.querySelector('.edit-hit').addEventListener('click', () => openModal(t));
-    const st = el.querySelector('.st');
-    st.addEventListener('pointerdown', (e) => e.stopPropagation());
-    st.addEventListener('click', () => cycleStatus(t));
-    dragify(el, t);
+    const conn = document.createElement('div');
+    conn.className = 'connector';
+    conn.title = 'Drag to link to another task';
+    el.appendChild(conn);
+    attachConnector(conn, el, task);
+    attachDrag(el);
     return el;
   }
 
-  function dragify(el, t) {
-    el.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      el.setPointerCapture(e.pointerId);
-      const startX = e.clientX, startY = e.clientY;
-      const origX = t.pos_x, origY = t.pos_y;
-      let moved = false;
-
-      const onMove = (ev) => {
-        const nx = origX + (ev.clientX - startX);
-        const ny = origY + (ev.clientY - startY);
-        el.style.left = Math.max(0, nx) + 'px';
-        el.style.top = Math.max(0, ny) + 'px';
-        moved = true;
-        drawEdges();
-      };
-      const onUp = async (ev) => {
-        el.removeEventListener('pointermove', onMove);
-        el.removeEventListener('pointerup', onUp);
-        if (!moved) return;
-        const snapX = Math.max(0, Math.round((origX + (ev.clientX - startX)) / GRID) * GRID);
-        const snapY = Math.max(0, Math.round((origY + (ev.clientY - startY)) / GRID) * GRID);
-        el.style.left = snapX + 'px'; el.style.top = snapY + 'px';
-        t.pos_x = snapX; t.pos_y = snapY;
-        drawEdges();
-        await supabase.from('tasks').update({ pos_x: snapX, pos_y: snapY }).eq('id', t.id);
-      };
-      el.addEventListener('pointermove', onMove);
-      el.addEventListener('pointerup', onUp);
-    });
+  function renderTaskList() {
+    const body = document.getElementById('taskListBody');
+    if (!body) return;
+    const active = TASKS.filter(t => (t.status || 'open') !== 'done');
+    const closed = TASKS.filter(t => (t.status || 'open') === 'done');
+    const row = (t) => {
+      const who = assigneesOf(t.id).map(a => a.name).join(', ') || 'Unassigned';
+      const due = t.due_date ? ` · due ${esc(t.due_date)}` : '';
+      return `<div class="tl-item" data-fly="${t.id}">
+        <span class="tl-dot ${(t.status || 'open') !== 'done' ? 'open' : 'closed'}"></span>
+        <div class="tl-body"><div class="tl-title">${esc(t.title || '(untitled)')}</div>
+        <div class="tl-meta">${statusLabel(t.status)}${due} · ${esc(who)}</div></div></div>`;
+    };
+    body.innerHTML =
+      `<div class="tl-group-title">Active (${active.length})</div>` +
+      (active.length ? active.map(row).join('') : '<div class="tl-empty">No active tasks.</div>') +
+      `<div class="tl-group-title">Closed (${closed.length})</div>` +
+      (closed.length ? closed.map(row).join('') : '<div class="tl-empty">No closed tasks.</div>');
   }
 
-  function drawEdges() {
-    const svg = document.getElementById('edge-svg');
+  function renderBoard() {
+    const canvas = document.getElementById('boardCanvas');
+    canvas.querySelectorAll('.tcard').forEach(c => c.remove());
+    document.getElementById('boardEmpty').style.display = TASKS.length ? 'none' : 'flex';
+    TASKS.forEach(t => canvas.appendChild(renderCard(t)));
+    renderEdges();
+    applyCam();
+  }
+
+  // ---------- edges ----------
+  function nodeCenter(taskId) {
+    const el = document.querySelector(`.tcard[data-id="${taskId}"]`);
+    if (el) {
+      const x = parseInt(el.style.left, 10) || 0, y = parseInt(el.style.top, 10) || 0;
+      return { x: x + el.offsetWidth / 2, y: y + el.offsetHeight / 2 };
+    }
+    const t = TASKS.find(t => t.id === taskId);
+    return t ? { x: (t.pos_x || 40) + 120, y: (t.pos_y || 40) + 45 } : null;
+  }
+  const edgePath = (a, b) => {
+    const dx = (b.x - a.x) * 0.5;
+    return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y} ${b.x - dx} ${b.y} ${b.x} ${b.y}`;
+  };
+  function renderEdges() {
+    const svg = document.getElementById('edgeLayer');
     if (!svg) return;
-    svg.querySelectorAll('line').forEach(l => l.remove());
-    edges.forEach(ed => {
-      const a = document.querySelector(`.task-card[data-id="${ed.from_id}"]`);
-      const b = document.querySelector(`.task-card[data-id="${ed.to_id}"]`);
-      if (!a || !b) return; // filtered-out cards keep their edges hidden too
-      const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      l.setAttribute('x1', a.offsetLeft + a.offsetWidth / 2);
-      l.setAttribute('y1', a.offsetTop + a.offsetHeight / 2);
-      l.setAttribute('x2', b.offsetLeft + b.offsetWidth / 2);
-      l.setAttribute('y2', b.offsetTop + b.offsetHeight / 2);
-      l.setAttribute('stroke', 'var(--muted)');
-      l.setAttribute('stroke-width', '2');
-      l.setAttribute('stroke-dasharray', '6 4');
-      l.setAttribute('marker-end', 'url(#arrow)');
-      svg.appendChild(l);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const NS = 'http://www.w3.org/2000/svg';
+    EDGES.forEach(edge => {
+      const a = nodeCenter(edge.from_id), b = nodeCenter(edge.to_id);
+      if (!a || !b) return;
+      const d = edgePath(a, b);
+      const hit = document.createElementNS(NS, 'path');
+      hit.setAttribute('class', 'edge-hit'); hit.setAttribute('d', d); hit.dataset.edgeId = edge.id;
+      const line = document.createElementNS(NS, 'path');
+      line.setAttribute('class', 'edge-line'); line.setAttribute('d', d); line.dataset.edgeId = edge.id;
+      svg.appendChild(hit); svg.appendChild(line);
+      const _dx = (b.x - a.x) * 0.5;
+      const P0 = a, P1 = { x: a.x + _dx, y: a.y }, P2 = { x: b.x - _dx, y: b.y }, P3 = b;
+      const mx = (P0.x + 3 * P1.x + 3 * P2.x + P3.x) / 8;
+      const my = (P0.y + 3 * P1.y + 3 * P2.y + P3.y) / 8;
+      const ang = Math.atan2(-0.75 * P0.y - 0.75 * P1.y + 0.75 * P2.y + 0.75 * P3.y,
+                             -0.75 * P0.x - 0.75 * P1.x + 0.75 * P2.x + 0.75 * P3.x) * 180 / Math.PI;
+      const arrow = document.createElementNS(NS, 'path');
+      arrow.setAttribute('class', 'edge-arrow');
+      arrow.setAttribute('d', 'M -7 -7 L 8 0 L -7 7 L -3 0 Z');
+      arrow.dataset.edgeId = edge.id;
+      arrow.dataset.mx = mx; arrow.dataset.my = my; arrow.dataset.flowAngle = ang;
+      arrow.setAttribute('transform', `translate(${mx},${my}) rotate(${ang})`);
+      svg.appendChild(arrow);
     });
+    if (window.__edgeMenu && window.__edgeMenu.edgeId) {
+      if (!EDGES.some(e => e.id === window.__edgeMenu.edgeId)) closeEdgeMenu();
+      else aimArrowAtMenu();
+    }
   }
 
-  function openModal(t) {
-    const myAssignees = t ? assignees.filter(a => a.task_id === t.id).map(a => a.user_id) : [];
-    const myEdges = t ? edges.filter(e => e.from_id === t.id).map(e => e.to_id) : [];
-    const back = document.createElement('div');
-    back.className = 'modal-back';
-    back.innerHTML = `
-      <div class="modal">
-        <h2>${t ? 'Edit task' : 'New task'}</h2>
-        <div class="notice" id="m-notice"></div>
-        <form id="t-form">
-          <div class="field"><label>Title</label><input id="f-title" required value="${esc(t?.title)}"></div>
-          <div class="field"><label>Description</label><textarea id="f-desc">${esc(t?.description)}</textarea></div>
-          <div class="field-row">
-            <div class="field"><label>Due date</label><input type="date" id="f-due" value="${t?.due_date || ''}"></div>
-            <div class="field"><label>Priority</label>
-              <select id="f-prio-m">
-                ${['low', 'medium', 'high'].map(p => `<option ${t?.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
-              </select>
-            </div>
-            <div class="field"><label>Status</label>
-              <select id="f-status-m">
-                ${STATUSES.map(s => `<option ${t?.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <div class="field"><label>Assignees</label>
-            <div class="check-list">
-              ${officers.map(o => `<label><input type="checkbox" name="assign" value="${o.id}" ${myAssignees.includes(o.id) ? 'checked' : ''}> ${esc(o.full_name)}</label>`).join('')}
-            </div>
-          </div>
-          ${tasks.filter(x => !t || x.id !== t.id).length ? `
-          <div class="field"><label>Blocks / leads to</label>
-            <div class="check-list">
-              ${tasks.filter(x => !t || x.id !== t.id).map(x =>
-                `<label><input type="checkbox" name="edge" value="${x.id}" ${myEdges.includes(x.id) ? 'checked' : ''}> ${esc(x.title)}</label>`).join('')}
-            </div>
-          </div>` : ''}
-          <div class="row-btns">
-            ${t ? '<button type="button" class="btn ghost" id="m-del" style="margin-right:auto">Delete</button>' : ''}
-            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
-            <button type="submit" class="btn">${t ? 'Save' : 'Create'}</button>
-          </div>
-        </form>
-      </div>`;
-    document.body.appendChild(back);
-    back.querySelector('#m-cancel').onclick = () => back.remove();
-    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
-
-    back.querySelector('#m-del')?.addEventListener('click', async () => {
-      if (!confirm(`Delete task "${t.title}"?`)) return;
-      const { error } = await supabase.from('tasks').delete().eq('id', t.id);
-      if (error) alert(error.message);
-      back.remove(); load();
+  // ---------- drag-to-connect ----------
+  let LINKING = null;
+  function clientToCanvas(cx, cy) {
+    const r = document.getElementById('board').getBoundingClientRect();
+    return { x: (cx - r.left - CAM.x) / CAM.scale, y: (cy - r.top - CAM.y) / CAM.scale };
+  }
+  function canvasToClient(x, y) {
+    const r = document.getElementById('board').getBoundingClientRect();
+    return { x: x * CAM.scale + CAM.x + r.left, y: y * CAM.scale + CAM.y + r.top };
+  }
+  function attachConnector(conn, cardEl, task) {
+    conn.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const svg = document.getElementById('edgeLayer');
+      const temp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      temp.setAttribute('class', 'edge-temp');
+      svg.appendChild(temp);
+      LINKING = { fromId: task.id, temp };
+      cardEl.classList.add('linking-source');
+      try { conn.setPointerCapture(e.pointerId); } catch (_) {}
     });
-
-    back.querySelector('#t-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const say = (m) => { const n = back.querySelector('#m-notice'); n.textContent = m; n.className = 'notice error'; };
-      const payload = {
-        title: back.querySelector('#f-title').value.trim(),
-        description: back.querySelector('#f-desc').value.trim() || null,
-        due_date: back.querySelector('#f-due').value || null,
-        priority: back.querySelector('#f-prio-m').value,
-        status: back.querySelector('#f-status-m').value,
-      };
-      let taskId = t?.id;
-      if (t) {
-        const { error } = await supabase.from('tasks').update(payload).eq('id', t.id);
-        if (error) return say(error.message);
-      } else {
-        const { data, error } = await supabase.from('tasks')
-          .insert({ ...payload, created_by: ctx.user.id, pos_x: 40, pos_y: 40 })
-          .select('id').single();
-        if (error) return say(error.message);
-        taskId = data.id;
+    conn.addEventListener('pointermove', (e) => {
+      if (!LINKING) return;
+      const a = nodeCenter(LINKING.fromId);
+      if (a) LINKING.temp.setAttribute('d', edgePath(a, clientToCanvas(e.clientX, e.clientY)));
+      document.querySelectorAll('.tcard.link-target-hover').forEach(c => c.classList.remove('link-target-hover'));
+      const tgt = document.elementFromPoint(e.clientX, e.clientY)?.closest('.tcard');
+      if (tgt && +tgt.dataset.id !== LINKING.fromId) tgt.classList.add('link-target-hover');
+    });
+    conn.addEventListener('pointerup', async (e) => {
+      if (!LINKING) return;
+      const link = LINKING; LINKING = null;
+      link.temp?.parentNode?.removeChild(link.temp);
+      cardEl.classList.remove('linking-source');
+      document.querySelectorAll('.tcard.link-target-hover').forEach(c => c.classList.remove('link-target-hover'));
+      const tgt = document.elementFromPoint(e.clientX, e.clientY)?.closest('.tcard');
+      if (!tgt) return;
+      const toId = +tgt.dataset.id;
+      if (!toId || toId === link.fromId) return;
+      const { error } = await supabase.from('task_edges').insert({ from_id: link.fromId, to_id: toId });
+      if (!error) {
+        const { data } = await supabase.from('task_edges').select('*');
+        EDGES = data || EDGES;
+        renderBoard(); renderKanban();
       }
-      // sync assignees + edges (delete-then-insert keeps it simple)
-      const picks = [...back.querySelectorAll('input[name="assign"]:checked')].map(i => i.value);
-      const edgePicks = [...back.querySelectorAll('input[name="edge"]:checked')].map(i => +i.value);
-      await supabase.from('task_assignees').delete().eq('task_id', taskId);
-      if (picks.length) await supabase.from('task_assignees').insert(picks.map(u => ({ task_id: taskId, user_id: u })));
-      await supabase.from('task_edges').delete().eq('from_id', taskId);
-      if (edgePicks.length) await supabase.from('task_edges').insert(edgePicks.map(to => ({ from_id: taskId, to_id: to })));
-      back.remove();
-      load();
     });
   }
+
+  // ---------- edge delete popup ----------
+  window.__edgeMenu = null;
+  function closeEdgeMenu() {
+    document.getElementById('edgeMenu')?.remove();
+    window.__edgeMenu = null;
+    document.querySelectorAll('.edge-arrow').forEach(ar => {
+      ar.setAttribute('transform', `translate(${ar.dataset.mx},${ar.dataset.my}) rotate(${ar.dataset.flowAngle})`);
+      ar.classList.remove('active');
+    });
+  }
+  function aimArrowAtMenu() {
+    if (!window.__edgeMenu || !document.getElementById('edgeMenu')) return;
+    const ar = document.querySelector(`.edge-arrow[data-edge-id="${window.__edgeMenu.edgeId}"]`);
+    if (!ar) return;
+    const mx = +ar.dataset.mx, my = +ar.dataset.my, mc = window.__edgeMenu.canvas;
+    const ang = Math.atan2(mc.y - my, mc.x - mx) * 180 / Math.PI;
+    ar.setAttribute('transform', `translate(${mx},${my}) rotate(${ang})`);
+    ar.classList.add('active');
+  }
+  function openEdgeMenu(edgeId) {
+    closeEdgeMenu();
+    const ar = document.querySelector(`.edge-arrow[data-edge-id="${edgeId}"]`);
+    if (!ar) return;
+    const mx = +ar.dataset.mx, my = +ar.dataset.my, fa = +ar.dataset.flowAngle;
+    const perp = (fa + 90) * Math.PI / 180, off = 46;
+    const cand1 = { x: mx + Math.cos(perp) * off, y: my + Math.sin(perp) * off };
+    const cand2 = { x: mx - Math.cos(perp) * off, y: my - Math.sin(perp) * off };
+    const s1 = canvasToClient(cand1.x, cand1.y), s2 = canvasToClient(cand2.x, cand2.y);
+    const room = (p) => Math.min(p.x, innerWidth - p.x) + Math.min(p.y, innerHeight - p.y);
+    const pickCanvas = room(s1) >= room(s2) ? cand1 : cand2;
+    const screen = canvasToClient(pickCanvas.x, pickCanvas.y);
+    const menu = document.createElement('div');
+    menu.id = 'edgeMenu'; menu.className = 'edge-menu';
+    menu.style.left = screen.x + 'px'; menu.style.top = screen.y + 'px';
+    menu.innerHTML = '<button type="button" class="edge-menu-del">Delete link</button>';
+    document.body.appendChild(menu);
+    window.__edgeMenu = { edgeId, canvas: pickCanvas };
+    aimArrowAtMenu();
+    menu.querySelector('.edge-menu-del').addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      await supabase.from('task_edges').delete().eq('id', edgeId);
+      const { data } = await supabase.from('task_edges').select('*');
+      EDGES = data || [];
+      closeEdgeMenu();
+      renderBoard(); renderKanban();
+    });
+  }
+  document.getElementById('edgeLayer').addEventListener('click', (e) => {
+    const t = e.target.closest('[data-edge-id]');
+    if (!t) return;
+    const eid = +t.dataset.edgeId;
+    if (!eid) return;
+    if (window.__edgeMenu && window.__edgeMenu.edgeId === eid) { closeEdgeMenu(); return; }
+    openEdgeMenu(eid);
+  });
+  document.addEventListener('click', (e) => {
+    if (!window.__edgeMenu) return;
+    if (e.target.closest('#edgeMenu') || e.target.closest('[data-edge-id]')) return;
+    closeEdgeMenu();
+  });
+
+  // ---------- card drag with grid snap ----------
+  let CARD_DRAGGING = false;
+  function attachDrag(el) {
+    let sx, sy, ox, oy, dragging = false;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.connector') || e.target.closest('.card-toggle') || e.target.closest('.card-menu-btn')
+        || e.target.closest('.card-menu') || e.target.closest('.assignees') || e.target.closest('select')) return;
+      dragging = true; CARD_DRAGGING = true;
+      el.classList.add('dragging');
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      sx = e.clientX; sy = e.clientY;
+      ox = parseInt(el.style.left, 10) || 0; oy = parseInt(el.style.top, 10) || 0;
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      el.style.left = Math.max(0, ox + (e.clientX - sx) / CAM.scale) + 'px';
+      el.style.top = Math.max(0, oy + (e.clientY - sy) / CAM.scale) + 'px';
+      renderEdges();
+    });
+    el.addEventListener('pointerup', async () => {
+      if (!dragging) return;
+      dragging = false; CARD_DRAGGING = false;
+      el.classList.remove('dragging');
+      const nx = snap(parseInt(el.style.left, 10) || 0), ny = snap(parseInt(el.style.top, 10) || 0);
+      el.style.left = nx + 'px'; el.style.top = ny + 'px';
+      const task = TASKS.find(t => t.id === +el.dataset.id);
+      if (task) { task.pos_x = nx; task.pos_y = ny; }
+      renderEdges(); renderMinimap();
+      await supabase.from('tasks').update({ pos_x: nx, pos_y: ny }).eq('id', +el.dataset.id);
+    });
+  }
+
+  // ---------- modals ----------
+  function openModal(task) {
+    document.getElementById('formErr').className = 'notice';
+    document.getElementById('formErr').textContent = '';
+    document.getElementById('taskId').value = task ? task.id : '';
+    document.getElementById('fTitle').value = task ? task.title : '';
+    document.getElementById('fDesc').value = task ? (task.description || '') : '';
+    document.getElementById('fDue').value = task?.due_date || '';
+    document.getElementById('fStatus').value = task ? (task.status || 'open') : 'open';
+    document.getElementById('fPriority').value = task ? (task.priority || 'medium') : 'medium';
+    const assigned = new Set(task ? assigneesOf(task.id).map(a => a.user_id) : []);
+    document.getElementById('fAssignees').innerHTML = OFFICERS.length ? OFFICERS.map(o =>
+      `<label class="modal-assignee-option">
+        <input type="checkbox" value="${o.id}" ${assigned.has(o.id) ? 'checked' : ''}>
+        <span class="modal-assignee-check" aria-hidden="true"></span>
+        <span class="modal-assignee-name">${esc(o.full_name)}</span>
+      </label>`).join('') : '<div class="modal-assignee-empty">No officers available.</div>';
+    document.getElementById('modalTitle').textContent = task ? 'Edit task' : 'New task';
+    overlay.style.display = 'flex';
+  }
+  const closeModal = () => { overlay.style.display = 'none'; };
+  function openDetails(t) {
+    document.getElementById('detpopTitle').textContent = t.title || 'Task';
+    const parts = [`<span class="status-badge ${statusClass(t.status)}">${esc(statusLabel(t.status))}</span>`];
+    if (t.due_date) parts.push(`<span>📅 ${esc(t.due_date)}</span>`);
+    if (t.priority) parts.push(`<span style="text-transform:capitalize">Priority: ${esc(t.priority)}</span>`);
+    const who = assigneesOf(t.id).map(a => a.name).join(', ');
+    if (who) parts.push(`<span>👤 ${esc(who)}</span>`);
+    document.getElementById('detpopMeta').innerHTML = parts.join('');
+    const d = document.getElementById('detpopDesc');
+    if (t.description && String(t.description).trim()) { d.classList.remove('empty'); d.textContent = t.description; }
+    else { d.classList.add('empty'); d.textContent = 'No description provided.'; }
+    detpop.style.display = 'flex';
+  }
+  const closeDetails = () => { detpop.style.display = 'none'; };
+  document.getElementById('detpopClose').onclick = closeDetails;
+  detpop.addEventListener('click', (e) => { if (e.target === detpop) closeDetails(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (detpop.style.display !== 'none') closeDetails();
+    else if (overlay.style.display !== 'none') closeModal();
+  });
+  document.getElementById('newTaskBtn').onclick = () => openModal(null);
+  document.getElementById('cancelBtn').onclick = closeModal;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+  document.getElementById('saveBtn').onclick = async () => {
+    const id = document.getElementById('taskId').value;
+    const title = document.getElementById('fTitle').value.trim();
+    const err = document.getElementById('formErr');
+    const say = (m) => { err.textContent = m; err.className = 'notice error'; };
+    if (!title) return say('Title is required.');
+    const payload = {
+      title,
+      description: document.getElementById('fDesc').value.trim() || null,
+      due_date: document.getElementById('fDue').value || null,
+      status: document.getElementById('fStatus').value,
+      priority: document.getElementById('fPriority').value,
+    };
+    let taskId = id ? +id : null;
+    if (taskId) {
+      const { error } = await supabase.from('tasks').update(payload).eq('id', taskId);
+      if (error) return say(error.message);
+    } else {
+      const { data, error } = await supabase.from('tasks').insert({
+        ...payload, created_by: ctx.user.id,
+        pos_x: 40 + (TASKS.length % 4) * 260,
+        pos_y: 40 + Math.floor(TASKS.length / 4) * 200,
+      }).select('id').single();
+      if (error) return say(error.message);
+      taskId = data.id;
+    }
+    const picks = [...document.querySelectorAll('#fAssignees input:checked')].map(cb => cb.value);
+    await supabase.from('task_assignees').delete().eq('task_id', taskId);
+    if (picks.length) await supabase.from('task_assignees').insert(picks.map(u => ({ task_id: taskId, user_id: u })));
+    closeModal();
+    load();
+  };
+
+  // ---------- delegated board actions ----------
+  document.getElementById('board').addEventListener('click', async (e) => {
+    const tg = e.target.closest('[data-toggle]');
+    const mb = e.target.closest('[data-menu]');
+    const edit = e.target.closest('[data-edit]');
+    const del = e.target.closest('[data-del]');
+    const un = e.target.closest('[data-unassign]');
+    if (tg) {
+      const t = TASKS.find(x => x.id === +tg.dataset.toggle);
+      if (t) openDetails(t);
+      return;
+    }
+    if (mb) {
+      const menu = document.querySelector(`.card-menu[data-menufor="${mb.dataset.menu}"]`);
+      const isOpen = menu?.classList.contains('open');
+      document.querySelectorAll('.card-menu.open').forEach(x => x.classList.remove('open'));
+      if (menu && !isOpen) menu.classList.add('open');
+      return;
+    }
+    if (edit) {
+      const t = TASKS.find(x => x.id === +edit.dataset.edit);
+      if (t) openModal(t);
+    } else if (del) {
+      const t = TASKS.find(x => x.id === +del.dataset.del);
+      if (t && confirm(`Delete "${t.title}"? This cannot be undone.`)) {
+        const { error } = await supabase.from('tasks').delete().eq('id', t.id);
+        if (error) alert(error.message); else load();
+      }
+    } else if (un) {
+      await supabase.from('task_assignees').delete()
+        .eq('task_id', +un.dataset.unassign).eq('user_id', un.dataset.uid);
+      load();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.card-menu') || e.target.closest('[data-menu]')) return;
+    document.querySelectorAll('.card-menu.open').forEach(x => x.classList.remove('open'));
+  });
+  document.getElementById('board').addEventListener('change', async (e) => {
+    const add = e.target.closest('[data-add]');
+    if (add && add.value) {
+      await supabase.from('task_assignees').insert({ task_id: +add.dataset.add, user_id: add.value });
+      load();
+    }
+  });
+
+  // ---------- pan & zoom wiring ----------
+  (function setupCanvas() {
+    const board = document.getElementById('board');
+    board.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+    }, { passive: false });
+    let panning = false, psx = 0, psy = 0, pcx = 0, pcy = 0;
+    board.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.tcard') || e.target.closest('.board-search') || e.target.closest('.zoom-controls')
+        || e.target.closest('.minimap') || (e.target.dataset && e.target.dataset.edgeId)) return;
+      e.preventDefault();
+      panning = true; psx = e.clientX; psy = e.clientY; pcx = CAM.x; pcy = CAM.y;
+      board.classList.add('panning');
+      try { board.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    board.addEventListener('pointermove', (e) => {
+      if (!panning) return;
+      CAM.x = pcx + (e.clientX - psx);
+      CAM.y = pcy + (e.clientY - psy);
+      applyCam();
+    });
+    const endPan = () => { if (!panning) return; panning = false; board.classList.remove('panning'); saveCam(); };
+    board.addEventListener('pointerup', endPan);
+    board.addEventListener('pointercancel', endPan);
+    document.getElementById('zoomInBtn').addEventListener('click', () => zoomAt(1.2));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => zoomAt(1 / 1.2));
+    document.getElementById('zoomFitBtn').addEventListener('click', fitToView);
+
+    // search
+    const searchInput = document.getElementById('boardSearch');
+    const sr = document.getElementById('searchResults');
+    function runSearch(q) {
+      q = (q || '').trim().toLowerCase();
+      if (!q) { sr.classList.remove('open'); sr.innerHTML = ''; return; }
+      const matches = TASKS.filter(t => (t.title || '').toLowerCase().includes(q)).slice(0, 8);
+      sr.innerHTML = matches.length
+        ? matches.map(t => `<div class="sr-item" data-fly="${t.id}">${esc(t.title)}</div>`).join('')
+        : '<div class="sr-empty">No matches</div>';
+      sr.classList.add('open');
+    }
+    searchInput.addEventListener('input', function () { runSearch(this.value); });
+    searchInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        const first = sr.querySelector('.sr-item');
+        if (first) { flyToTask(+first.dataset.fly); this.blur(); sr.classList.remove('open'); }
+      } else if (e.key === 'Escape') { this.value = ''; sr.classList.remove('open'); }
+    });
+    sr.addEventListener('click', (e) => {
+      const it = e.target.closest('.sr-item');
+      if (!it) return;
+      flyToTask(+it.dataset.fly);
+      sr.classList.remove('open');
+      searchInput.value = '';
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.board-search')) sr.classList.remove('open');
+    });
+    document.getElementById('minimap').addEventListener('click', minimapPanTo);
+    document.getElementById('taskListBody').addEventListener('click', (e) => {
+      const row = e.target.closest('[data-fly]');
+      if (row) flyToTask(+row.dataset.fly);
+    });
+    applyCam();
+  })();
+
+  // ---------- Kanban ----------
+  const kanbanParentOf = (taskId) => {
+    const e = EDGES.find(e => e.to_id === taskId);
+    return e ? TASKS.find(t => t.id === e.from_id) || null : null;
+  };
+  const kanbanIsRoot = (taskId) =>
+    EDGES.some(e => e.from_id === taskId) && !EDGES.some(e => e.to_id === taskId);
+  const kanbanInitials = (name) => {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+  };
+  function kanbanCardHTML(t) {
+    const root = kanbanIsRoot(t.id);
+    const parent = kanbanParentOf(t.id);
+    const priority = String(t.priority || 'medium').toLowerCase();
+    let dueClass = '', dueLabel = 'No due date';
+    if (t.due_date) {
+      dueLabel = esc(t.due_date);
+      if (t.due_date < new Date().toLocaleDateString('en-CA') && t.status !== 'done') dueClass = ' overdue';
+    }
+    const people = assigneesOf(t.id);
+    let avatars = people.slice(0, 3).map(a => `<span class="kavatar" title="${esc(a.name)}">${esc(kanbanInitials(a.name))}</span>`).join('');
+    if (people.length > 3) avatars += `<span class="kavatar more">+${people.length - 3}</span>`;
+    return `<article class="kcard${root ? ' kroot' : ''}" draggable="true" data-id="${t.id}" data-priority="${esc(priority)}">
+      <div class="kcard-head"><div class="kcard-title-row">${root ? '<span class="kcard-parent-badge">PARENT</span>' : ''}<div class="kcard-title">${esc(t.title || '#' + t.id)}</div></div>
+      <div class="kcard-actions">
+        <button type="button" class="kcard-edit" data-kedit="${t.id}" draggable="false" title="Edit task"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.2L19.6 8.6a2 2 0 0 0 0-2.8l-1.4-1.4a2 2 0 0 0-2.8 0L4 15.8V20Zm3.4-2H6v-1.4L14.8 7.8l1.4 1.4L7.4 18Zm8.8-11.6 1.4-1.4 1.4 1.4-1.4 1.4-1.4-1.4Z" fill="currentColor"/></svg></button>
+        <button type="button" class="kcard-toggle" data-ktoggle="${t.id}" draggable="false" title="Show description">▸</button>
+      </div></div>
+      <div class="kcard-meta"><span class="kcard-chip${dueClass}">📅 ${dueLabel}</span><span class="kcard-chip priority">● ${esc(priority)}</span></div>
+      ${parent ? `<div class="kcard-parent" title="Parent: ${esc(parent.title)}">↳ <span>${esc(parent.title)}</span></div>` : ''}
+      <div class="kcard-desc">${t.description ? esc(String(t.description)) : 'No description provided.'}</div>
+      <div class="kcard-footer">${people.length ? `<div class="kcard-assignees">${avatars}</div>` : '<span class="kcard-unassigned">Unassigned</span>'}<span class="kcard-id">#${t.id}</span></div>
+    </article>`;
+  }
+  function renderKanban() {
+    const kb = document.getElementById('kanban');
+    if (!kb || !document.body.classList.contains('kanban-mode')) return;
+    kb.querySelectorAll('.kanban-col-body').forEach(b => { b.innerHTML = ''; });
+    const counts = { 'main': 0, 'open': 0, 'in-progress': 0, 'done': 0 };
+    TASKS.forEach(t => {
+      let target;
+      if (kanbanIsRoot(t.id)) { target = kb.querySelector('.kanban-col-body[data-status="main"]'); counts.main++; }
+      else { target = kb.querySelector(`.kanban-col-body[data-status="${t.status}"]`); counts[t.status] = (counts[t.status] || 0) + 1; }
+      if (target) target.insertAdjacentHTML('beforeend', kanbanCardHTML(t));
+    });
+    kb.querySelectorAll('.kanban-col-count').forEach(c => { c.textContent = counts[c.dataset.count] || 0; });
+  }
+  document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-kedit]');
+    if (editBtn) {
+      e.preventDefault(); e.stopPropagation();
+      const t = TASKS.find(t => t.id === +editBtn.dataset.kedit);
+      if (t) openModal(t);
+      return;
+    }
+    const btn = e.target.closest('.kcard-toggle');
+    if (btn) {
+      e.preventDefault(); e.stopPropagation();
+      const desc = btn.closest('.kcard')?.querySelector('.kcard-desc');
+      if (!desc) return;
+      const open = desc.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.title = open ? 'Hide description' : 'Show description';
+    }
+  });
+  let kanbanDragId = null;
+  document.addEventListener('dragstart', (e) => {
+    if (e.target.closest && e.target.closest('.kcard-actions')) { e.preventDefault(); return; }
+    const card = e.target.closest && e.target.closest('.kcard');
+    if (!card) return;
+    kanbanDragId = +card.dataset.id;
+    card.classList.add('dragging');
+    if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(kanbanDragId)); } catch (_) {} }
+  });
+  document.addEventListener('dragend', (e) => {
+    e.target.closest && e.target.closest('.kcard')?.classList.remove('dragging');
+    document.querySelectorAll('.drop-hover').forEach(el => el.classList.remove('drop-hover'));
+  });
+  const kanbanDropZone = (el) => el.closest ? el.closest('.kanban-col') : null;
+  document.addEventListener('dragover', (e) => {
+    const zone = kanbanDropZone(e.target);
+    if (!zone || !document.body.classList.contains('kanban-mode')) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.drop-hover').forEach(el => { if (el !== zone) el.classList.remove('drop-hover'); });
+    zone.classList.add('drop-hover');
+  });
+  document.addEventListener('dragleave', (e) => {
+    const zone = kanbanDropZone(e.target);
+    if (zone && !zone.contains(e.relatedTarget)) zone.classList.remove('drop-hover');
+  });
+  document.addEventListener('drop', async (e) => {
+    const zone = kanbanDropZone(e.target);
+    if (!zone || kanbanDragId == null) return;
+    e.preventDefault();
+    zone.classList.remove('drop-hover');
+    const newStatus = zone.querySelector('[data-status]')?.dataset.status;
+    const movingId = kanbanDragId;
+    kanbanDragId = null;
+    if (!newStatus || newStatus === 'main') return;
+    const t = TASKS.find(x => x.id === movingId);
+    if (!t || t.status === newStatus) return;
+    const prev = t.status;
+    t.status = newStatus;
+    renderKanban();
+    const { error } = await supabase.from('tasks').update({ status: newStatus }).eq('id', movingId);
+    if (error) { t.status = prev; renderKanban(); }
+  });
+
+  // ---------- view toggle ----------
+  (function () {
+    const vt = document.getElementById('viewToggle');
+    function setView(view) {
+      document.body.classList.toggle('kanban-mode', view === 'kanban');
+      vt.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+      try { localStorage.setItem('vsa-tasks-view', view); } catch (_) {}
+      if (view === 'kanban') renderKanban();
+      else { renderBoard(); }
+    }
+    vt.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (b) setView(b.dataset.view);
+    });
+    let saved = null;
+    try { saved = localStorage.getItem('vsa-tasks-view'); } catch (_) {}
+    if (saved === 'kanban') setView('kanban');
+  })();
+
+  // ---------- live sync (poll every 5s, like the legacy board) ----------
+  (function () {
+    const POLL_MS = 5000;
+    const modalOpen = () => overlay.style.display !== 'none' || detpop.style.display !== 'none';
+    async function refresh() {
+      if (modalOpen() || CARD_DRAGGING || LINKING || document.hidden) return;
+      try {
+        const d = await fetchAll();
+        const changed = JSON.stringify(d.tasks) !== JSON.stringify(TASKS)
+          || JSON.stringify(d.edges) !== JSON.stringify(EDGES)
+          || JSON.stringify(d.assignees) !== JSON.stringify(ASSIGNEES)
+          || JSON.stringify(d.officers) !== JSON.stringify(OFFICERS);
+        if (!changed || modalOpen() || CARD_DRAGGING || LINKING) return;
+        TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
+        renderBoard(); renderTaskList(); renderKanban();
+      } catch (e) {}
+    }
+    setInterval(refresh, POLL_MS);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  })();
 
   await load();
 </script>
