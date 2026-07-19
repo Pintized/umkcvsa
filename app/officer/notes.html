@@ -356,6 +356,8 @@
         <button class="rt-btn" data-cmd="insertUnorderedList" title="Bullet list">•≡</button>
         <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">1≡</button>
         <button class="rt-btn" data-cmd="cklist" title="Checklist">☑</button>
+        <button class="rt-btn" data-cmd="outdent" title="Outdent (Shift+Tab)">⇤</button>
+        <button class="rt-btn" data-cmd="indent" title="Indent (Tab)">⇥</button>
         <button class="rt-btn" data-cmd="table" title="Insert table">⊞</button>
         <button class="rt-btn" data-cmd="image" title="Insert image">🖼</button>
       </div>
@@ -410,6 +412,44 @@
     document.execCommand('styleWithCSS', false, true);
 
     const contentEl = document.getElementById('ed-content');
+
+    // ---- list indenting (Tab / Shift+Tab / toolbar), up to 10 levels ----
+    const MAX_LIST_DEPTH = 10;
+    const curLi = () => {
+      const s = document.getSelection();
+      if (!s?.anchorNode) return null;
+      const el = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
+      const li = el?.closest('li');
+      return li && contentEl.contains(li) ? li : null;
+    };
+    const listDepth = (li) => {
+      let d = 0;
+      for (let p = li.parentElement; p && p !== contentEl; p = p.parentElement) {
+        if (p.tagName === 'UL' || p.tagName === 'OL') d++;
+      }
+      return d;
+    };
+    // returns false when the caret isn't in a list (caller may fall back)
+    function indentList(dir) {
+      const li = curLi();
+      if (!li) return false;
+      if (dir > 0 && listDepth(li) >= MAX_LIST_DEPTH) return true; // cap reached — swallow
+      // styleWithCSS off so indent nests the list instead of styling margins
+      document.execCommand('styleWithCSS', false, false);
+      document.execCommand(dir > 0 ? 'indent' : 'outdent');
+      document.execCommand('styleWithCSS', false, true);
+      // sublists born inside a checklist stay checklists
+      contentEl.querySelectorAll('ul.cklist ul:not(.cklist)').forEach(u => u.classList.add('cklist'));
+      markDirty();
+      updateToolbarState();
+      return true;
+    }
+    contentEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      if (!curLi()) return; // outside lists Tab keeps its normal behavior
+      e.preventDefault();
+      indentList(e.shiftKey ? -1 : 1);
+    });
 
     // ---- size plumbing ----
     // execCommand('fontSize') materializes as EITHER <font size=N> or a
@@ -478,6 +518,9 @@
             + '<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>');
         } else if (cmd === 'image') {
           document.getElementById('ed-img-file').click();
+        } else if (cmd === 'indent' || cmd === 'outdent') {
+          // outside a list, fall through to the plain command (block indent)
+          if (!indentList(cmd === 'indent' ? 1 : -1)) document.execCommand(cmd, false, null);
         } else {
           document.execCommand(cmd, false, null);
         }
