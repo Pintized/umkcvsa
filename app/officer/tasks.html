@@ -292,6 +292,22 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
 .kcard-id { color:var(--muted); opacity:.7; font-size:.62rem; font-weight:700; }
 @media (max-width:900px) { .kanban-columns { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; } .kanban-columns .kanban-col { flex:0 0 min(86vw, 320px); scroll-snap-align:start; } .kanban-main-col .kanban-col-body { grid-template-columns:1fr; } }
 @media (prefers-reduced-motion:reduce) { .kcard, .kcard-toggle { transition:none; } }
+
+/* overdue on the canvas */
+.tcard.overdue { box-shadow:0 0 0 2px rgba(200, 32, 47, .55), var(--shadow-sm); }
+.tcard.overdue .card-date { color:var(--red); font-weight:700; }
+.tcard .status-badge { cursor:pointer; }
+.tcard .status-badge:hover { filter:brightness(1.15); }
+.tl-meta.overdue { color:var(--red); font-weight:600; }
+
+/* toast */
+.tb-toast {
+  position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
+  background:var(--surface); color:var(--text); border:1px solid rgba(201, 155, 63, .5);
+  border-radius:10px; padding:10px 18px; font-size:.86rem; font-weight:600;
+  box-shadow:var(--shadow-lg); opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+}
+.tb-toast.show { opacity:1; transform:translate(-50%, 0); }
 </style>
 </head>
 <body>
@@ -306,13 +322,43 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Tasks');
 
+  const STATUSES = ['open', 'in-progress', 'done'];
   let TASKS = [], EDGES = [], ASSIGNEES = [], OFFICERS = [];
+  let HIDE_DONE = false;
+  try { HIDE_DONE = localStorage.getItem('vsa-tasks-hide-done') === '1'; } catch (e) {}
   const esc = (s) => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const snap = (v) => Math.max(0, Math.round(v / GRID) * GRID);
   const statusClass = (s) => 'status-' + (s || 'open').replace(/[^a-z-]/g, '');
   const statusLabel = (s) => (s || 'open').replace('-', ' ');
+  const isOverdue = (t) => !!t.due_date && t.status !== 'done' && t.due_date < new Date().toLocaleDateString('en-CA');
+  const visibleTasks = () => HIDE_DONE ? TASKS.filter(t => t.status !== 'done') : TASKS;
   const assigneesOf = (taskId) => ASSIGNEES.filter(a => a.task_id === taskId)
     .map(a => ({ user_id: a.user_id, name: OFFICERS.find(o => o.id === a.user_id)?.full_name || 'Member' }));
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'tb-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2600);
+  }
+  function confirmDialog(msg) {
+    return new Promise(res => {
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `<div class="modal" style="max-width:380px">
+        <h2>Are you sure?</h2>
+        <p style="color:var(--muted); margin-bottom:6px">${msg}</p>
+        <div class="row-btns"><button class="btn ghost" id="cd-no">Cancel</button><button class="btn" id="cd-yes">Delete</button></div>
+      </div>`;
+      document.body.appendChild(back);
+      const done = (v) => { back.remove(); res(v); };
+      back.querySelector('#cd-no').onclick = () => done(false);
+      back.querySelector('#cd-yes').onclick = () => done(true);
+      back.addEventListener('click', (e) => { if (e.target === back) done(false); });
+    });
+  }
 
   // ---------- layout ----------
   page.innerHTML = `
@@ -322,6 +368,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
         <p>Drag cards to organize — they snap to the grid and the layout saves. Drag empty space to pan, scroll to zoom, and pull the gold dot on a card onto another to link them.</p>
       </div>
       <div class="tb-actions">
+        <button class="chip-btn" id="hideDoneBtn" title="Hide finished tasks on the grid">Hide done</button>
         <div class="mode-toggle" id="viewToggle">
           <button type="button" data-view="grid" class="on">Grid</button>
           <button type="button" data-view="kanban">Kanban</button>
@@ -487,11 +534,12 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     const svg = document.getElementById('minimapSvg');
     if (!svg) return;
     while (svg.firstChild) svg.removeChild(svg.firstChild);
-    if (!TASKS.length) return;
+    const shown = visibleTasks();
+    if (!shown.length) return;
     const NS = 'http://www.w3.org/2000/svg';
     const board = document.getElementById('board');
     let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
-    TASKS.forEach(t => {
+    shown.forEach(t => {
       const x = t.pos_x || 40, y = t.pos_y || 40;
       minx = Math.min(minx, x); miny = Math.min(miny, y);
       maxx = Math.max(maxx, x + 240); maxy = Math.max(maxy, y + 96);
@@ -503,7 +551,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     const mmx = (x) => (x - minx) * k + offx, mmy = (y) => (y - miny) * k + offy;
     svg.dataset.minx = minx; svg.dataset.miny = miny; svg.dataset.k = k; svg.dataset.offx = offx; svg.dataset.offy = offy;
     EDGES.forEach(e => {
-      const a = TASKS.find(t => t.id === e.from_id), b = TASKS.find(t => t.id === e.to_id);
+      const a = shown.find(t => t.id === e.from_id), b = shown.find(t => t.id === e.to_id);
       if (!a || !b) return;
       const ln = document.createElementNS(NS, 'line');
       ln.setAttribute('class', 'mm-edge');
@@ -511,7 +559,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
       ln.setAttribute('x2', mmx((b.pos_x || 40) + 120)); ln.setAttribute('y2', mmy((b.pos_y || 40) + 48));
       svg.appendChild(ln);
     });
-    TASKS.forEach(t => {
+    shown.forEach(t => {
       const r = document.createElementNS(NS, 'rect');
       r.setAttribute('class', 'mm-node ' + (t.priority || 'medium'));
       r.setAttribute('x', mmx(t.pos_x || 40)); r.setAttribute('y', mmy(t.pos_y || 40));
@@ -566,13 +614,13 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
   }
   function renderCard(task) {
     const el = document.createElement('div');
-    el.className = 'tcard';
+    el.className = 'tcard' + (isOverdue(task) ? ' overdue' : '');
     el.style.left = (task.pos_x || 40) + 'px';
     el.style.top = (task.pos_y || 40) + 'px';
     el.dataset.id = task.id;
     el.dataset.priority = task.priority || 'medium';
     const who = assigneesOf(task.id);
-    const due = task.due_date ? `<span>📅 ${esc(task.due_date)}</span>` : '<span class="muted-due">No due date</span>';
+    const due = task.due_date ? `<span>📅 ${esc(task.due_date)}${isOverdue(task) ? ' — overdue' : ''}</span>` : '<span class="muted-due">No due date</span>';
     const aRows = who.map(a =>
       `<div class="assignee-row"><span>${esc(a.name)}</span><span class="x" data-unassign="${task.id}" data-uid="${a.user_id}">✕</span></div>`
     ).join('') || '<div class="assignee-row" style="color:var(--muted)">No one assigned</div>';
@@ -580,7 +628,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
       <div class="card-head">
         <div class="card-head-main">
           <span class="ttl">${esc(task.title)}</span>
-          <span class="status-badge ${statusClass(task.status)}">${esc(statusLabel(task.status))}</span>
+          <span class="status-badge ${statusClass(task.status)}" data-cycle="${task.id}" title="Click to change status">${esc(statusLabel(task.status))}</span>
           ${progressRingHTML(taskProgress(task.id))}
         </div>
         <button class="card-menu-btn" data-menu="${task.id}" title="More" aria-label="More">⋮</button>
@@ -609,15 +657,18 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
   function renderTaskList() {
     const body = document.getElementById('taskListBody');
     if (!body) return;
-    const active = TASKS.filter(t => (t.status || 'open') !== 'done');
-    const closed = TASKS.filter(t => (t.status || 'open') === 'done');
+    const byDue = (a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1
+      : (a.due_date || '9999') > (b.due_date || '9999') ? 1 : 0;
+    const active = TASKS.filter(t => (t.status || 'open') !== 'done').sort(byDue);
+    const closed = TASKS.filter(t => (t.status || 'open') === 'done').sort(byDue);
     const row = (t) => {
       const who = assigneesOf(t.id).map(a => a.name).join(', ') || 'Unassigned';
-      const due = t.due_date ? ` · due ${esc(t.due_date)}` : '';
+      const late = isOverdue(t);
+      const due = t.due_date ? ` · due ${esc(t.due_date)}${late ? ' (overdue)' : ''}` : '';
       return `<div class="tl-item" data-fly="${t.id}">
         <span class="tl-dot ${(t.status || 'open') !== 'done' ? 'open' : 'closed'}"></span>
         <div class="tl-body"><div class="tl-title">${esc(t.title || '(untitled)')}</div>
-        <div class="tl-meta">${statusLabel(t.status)}${due} · ${esc(who)}</div></div></div>`;
+        <div class="tl-meta${late ? ' overdue' : ''}">${statusLabel(t.status)}${due} · ${esc(who)}</div></div></div>`;
     };
     body.innerHTML =
       `<div class="tl-group-title">Active (${active.length})</div>` +
@@ -630,7 +681,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     const canvas = document.getElementById('boardCanvas');
     canvas.querySelectorAll('.tcard').forEach(c => c.remove());
     document.getElementById('boardEmpty').style.display = TASKS.length ? 'none' : 'flex';
-    TASKS.forEach(t => canvas.appendChild(renderCard(t)));
+    visibleTasks().forEach(t => canvas.appendChild(renderCard(t)));
     renderEdges();
     applyCam();
   }
@@ -655,6 +706,9 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     const NS = 'http://www.w3.org/2000/svg';
     EDGES.forEach(edge => {
+      // only draw edges whose cards are both on the board (hide-done can remove one)
+      if (!document.querySelector(`.tcard[data-id="${edge.from_id}"]`)
+        || !document.querySelector(`.tcard[data-id="${edge.to_id}"]`)) return;
       const a = nodeCenter(edge.from_id), b = nodeCenter(edge.to_id);
       if (!a || !b) return;
       const d = edgePath(a, b);
@@ -722,6 +776,8 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
       if (!tgt) return;
       const toId = +tgt.dataset.id;
       if (!toId || toId === link.fromId) return;
+      if (EDGES.some(x => x.from_id === link.fromId && x.to_id === toId)) return; // already linked
+      if (wouldCycle(link.fromId, toId)) { toast('That link would create a loop — not allowed.'); return; }
       const { error } = await supabase.from('task_edges').insert({ from_id: link.fromId, to_id: toId });
       if (!error) {
         const { data } = await supabase.from('task_edges').select('*');
@@ -729,6 +785,19 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
         renderBoard(); renderKanban();
       }
     });
+  }
+  // walking downstream from `to`: if we can reach `from`, the new link closes a loop
+  function wouldCycle(fromId, toId) {
+    const seen = new Set([toId]);
+    const queue = [toId];
+    while (queue.length) {
+      const cur = queue.shift();
+      if (cur === fromId) return true;
+      EDGES.filter(e => e.from_id === cur).forEach(e => {
+        if (!seen.has(e.to_id)) { seen.add(e.to_id); queue.push(e.to_id); }
+      });
+    }
+    return false;
   }
 
   // ---------- edge delete popup ----------
@@ -798,7 +867,8 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     let sx, sy, ox, oy, dragging = false;
     el.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.connector') || e.target.closest('.card-toggle') || e.target.closest('.card-menu-btn')
-        || e.target.closest('.card-menu') || e.target.closest('.assignees') || e.target.closest('select')) return;
+        || e.target.closest('.card-menu') || e.target.closest('.assignees') || e.target.closest('select')
+        || e.target.closest('.status-badge')) return;
       dragging = true; CARD_DRAGGING = true;
       el.classList.add('dragging');
       try { el.setPointerCapture(e.pointerId); } catch (_) {}
@@ -825,7 +895,9 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
   }
 
   // ---------- modals ----------
-  function openModal(task) {
+  let pendingPos = null; // canvas spot for a double-click-created task
+  function openModal(task, atPos) {
+    pendingPos = (!task && atPos) ? atPos : null;
     document.getElementById('formErr').className = 'notice';
     document.getElementById('formErr').textContent = '';
     document.getElementById('taskId').value = task ? task.id : '';
@@ -890,8 +962,8 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     } else {
       const { data, error } = await supabase.from('tasks').insert({
         ...payload, created_by: ctx.user.id,
-        pos_x: 40 + (TASKS.length % 4) * 260,
-        pos_y: 40 + Math.floor(TASKS.length / 4) * 200,
+        pos_x: pendingPos ? pendingPos.x : 40 + (TASKS.length % 4) * 260,
+        pos_y: pendingPos ? pendingPos.y : 40 + Math.floor(TASKS.length / 4) * 200,
       }).select('id').single();
       if (error) return say(error.message);
       taskId = data.id;
@@ -910,6 +982,17 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     const edit = e.target.closest('[data-edit]');
     const del = e.target.closest('[data-del]');
     const un = e.target.closest('[data-unassign]');
+    const cyc = e.target.closest('[data-cycle]');
+    if (cyc) {
+      const t = TASKS.find(x => x.id === +cyc.dataset.cycle);
+      if (!t) return;
+      const next = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length];
+      const { error } = await supabase.from('tasks').update({ status: next }).eq('id', t.id);
+      if (error) { toast(error.message); return; }
+      t.status = next;
+      renderBoard(); renderTaskList(); renderKanban();
+      return;
+    }
     if (tg) {
       const t = TASKS.find(x => x.id === +tg.dataset.toggle);
       if (t) openDetails(t);
@@ -927,9 +1010,9 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
       if (t) openModal(t);
     } else if (del) {
       const t = TASKS.find(x => x.id === +del.dataset.del);
-      if (t && confirm(`Delete "${t.title}"? This cannot be undone.`)) {
+      if (t && await confirmDialog(`Delete "${esc(t.title)}"? This cannot be undone.`)) {
         const { error } = await supabase.from('tasks').delete().eq('id', t.id);
-        if (error) alert(error.message); else load();
+        if (error) toast(error.message); else load();
       }
     } else if (un) {
       await supabase.from('task_assignees').delete()
@@ -956,24 +1039,77 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
       e.preventDefault();
       zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
     }, { passive: false });
+
+    // double-click empty canvas -> new task right there
+    board.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.tcard') || e.target.closest('.board-search') || e.target.closest('.zoom-controls')
+        || e.target.closest('.minimap') || (e.target.dataset && e.target.dataset.edgeId)) return;
+      const p = clientToCanvas(e.clientX, e.clientY);
+      openModal(null, { x: snap(p.x - 120), y: snap(p.y - 40) });
+    });
+
+    // one finger (or mouse) pans; two fingers pinch-zoom
     let panning = false, psx = 0, psy = 0, pcx = 0, pcy = 0;
+    const touches = new Map();
+    let pinchDist = null;
+    const pinchSpread = () => {
+      const [a, b] = [...touches.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
+    const pinchMid = () => {
+      const [a, b] = [...touches.values()];
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    };
     board.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.tcard') || e.target.closest('.board-search') || e.target.closest('.zoom-controls')
         || e.target.closest('.minimap') || (e.target.dataset && e.target.dataset.edgeId)) return;
       e.preventDefault();
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try { board.setPointerCapture(e.pointerId); } catch (_) {}
+      if (touches.size === 2) {
+        panning = false;
+        board.classList.remove('panning');
+        pinchDist = pinchSpread();
+        return;
+      }
       panning = true; psx = e.clientX; psy = e.clientY; pcx = CAM.x; pcy = CAM.y;
       board.classList.add('panning');
-      try { board.setPointerCapture(e.pointerId); } catch (_) {}
     });
     board.addEventListener('pointermove', (e) => {
+      if (!touches.has(e.pointerId)) return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2 && pinchDist) {
+        const d = pinchSpread();
+        if (d > 0 && pinchDist > 0) {
+          const mid = pinchMid();
+          zoomAt(d / pinchDist, mid.x, mid.y);
+        }
+        pinchDist = d;
+        return;
+      }
       if (!panning) return;
       CAM.x = pcx + (e.clientX - psx);
       CAM.y = pcy + (e.clientY - psy);
       applyCam();
     });
-    const endPan = () => { if (!panning) return; panning = false; board.classList.remove('panning'); saveCam(); };
+    const endPan = (e) => {
+      if (e) touches.delete(e.pointerId);
+      if (touches.size < 2) pinchDist = null;
+      if (!panning) return;
+      panning = false; board.classList.remove('panning'); saveCam();
+    };
     board.addEventListener('pointerup', endPan);
     board.addEventListener('pointercancel', endPan);
+
+    // hide-done toggle (grid only — Done stays visible in Kanban by design)
+    const hd = document.getElementById('hideDoneBtn');
+    hd.classList.toggle('on', HIDE_DONE);
+    hd.addEventListener('click', () => {
+      HIDE_DONE = !HIDE_DONE;
+      hd.classList.toggle('on', HIDE_DONE);
+      try { localStorage.setItem('vsa-tasks-hide-done', HIDE_DONE ? '1' : '0'); } catch (_) {}
+      renderBoard();
+    });
     document.getElementById('zoomInBtn').addEventListener('click', () => zoomAt(1.2));
     document.getElementById('zoomOutBtn').addEventListener('click', () => zoomAt(1 / 1.2));
     document.getElementById('zoomFitBtn').addEventListener('click', fitToView);
@@ -1145,25 +1281,39 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     if (saved === 'kanban') setView('kanban');
   })();
 
-  // ---------- live sync (poll every 5s, like the legacy board) ----------
+  // ---------- live sync (Supabase Realtime; 60s poll as a safety net) ----------
   (function () {
-    const POLL_MS = 5000;
     const modalOpen = () => overlay.style.display !== 'none' || detpop.style.display !== 'none';
+    const busy = () => modalOpen() || CARD_DRAGGING || !!LINKING;
+    let refreshTimer = null;
     async function refresh() {
-      if (modalOpen() || CARD_DRAGGING || LINKING || document.hidden) return;
+      if (busy() || document.hidden) return;
       try {
         const d = await fetchAll();
         const changed = JSON.stringify(d.tasks) !== JSON.stringify(TASKS)
           || JSON.stringify(d.edges) !== JSON.stringify(EDGES)
           || JSON.stringify(d.assignees) !== JSON.stringify(ASSIGNEES)
           || JSON.stringify(d.officers) !== JSON.stringify(OFFICERS);
-        if (!changed || modalOpen() || CARD_DRAGGING || LINKING) return;
+        if (!changed || busy()) return;
         TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
         renderBoard(); renderTaskList(); renderKanban();
       } catch (e) {}
     }
-    setInterval(refresh, POLL_MS);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    // debounce bursts of change events; retry while a drag/modal is in flight
+    function scheduleRefresh(delay = 150) {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        if (busy()) { scheduleRefresh(800); return; }
+        refresh();
+      }, delay);
+    }
+    supabase.channel('task-board')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => scheduleRefresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_edges' }, () => scheduleRefresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, () => scheduleRefresh())
+      .subscribe();
+    setInterval(() => { if (!document.hidden) scheduleRefresh(); }, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh(); });
   })();
 
   await load();
