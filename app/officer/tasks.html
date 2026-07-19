@@ -293,6 +293,21 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
 @media (max-width:900px) { .kanban-columns { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; } .kanban-columns .kanban-col { flex:0 0 min(86vw, 320px); scroll-snap-align:start; } .kanban-main-col .kanban-col-body { grid-template-columns:1fr; } }
 @media (prefers-reduced-motion:reduce) { .kcard, .kcard-toggle { transition:none; } }
 
+/* ===== List view ===== */
+.listview { display:none; }
+body.list-mode .board, body.list-mode .task-list-panel { display:none; }
+body.list-mode .task-layout { display:block; width:100%; }
+body.list-mode .listview { display:block; }
+.listview .lv-card { border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:var(--shadow-sm); padding:16px; }
+.listview th { cursor:pointer; user-select:none; white-space:nowrap; }
+.listview th:hover { color:var(--gold); }
+.listview th .dir { font-size:.7rem; margin-left:3px; }
+.listview .status-badge { border:none; font:inherit; font-size:.68rem; font-weight:700; cursor:pointer; }
+.listview .status-badge:hover { filter:brightness(1.15); }
+.listview .lv-title { cursor:pointer; }
+.listview .lv-title:hover { color:var(--gold); }
+.listview td.due-overdue { color:var(--red); font-weight:700; }
+
 /* overdue on the canvas */
 .tcard.overdue { box-shadow:0 0 0 2px rgba(200, 32, 47, .55), var(--shadow-sm); }
 .tcard.overdue .card-date { color:var(--red); font-weight:700; }
@@ -372,6 +387,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
         <div class="mode-toggle" id="viewToggle">
           <button type="button" data-view="grid" class="on">Grid</button>
           <button type="button" data-view="kanban">Kanban</button>
+          <button type="button" data-view="list">List</button>
         </div>
         <button class="btn" id="newTaskBtn">+ New task</button>
       </div>
@@ -416,6 +432,19 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
           </section>
         </div>
       </div>
+      <div class="listview" id="listView"><div class="lv-card">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr>
+            <th data-sort="title">Task<span class="dir"></span></th>
+            <th data-sort="status">Status<span class="dir"></span></th>
+            <th data-sort="priority">Priority<span class="dir"></span></th>
+            <th data-sort="due">Due<span class="dir"></span></th>
+            <th>Assignees</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="lv-body"></tbody>
+        </table></div>
+      </div></div>
     </div>
 
     <div class="modal-back" id="detpopOverlay" style="display:none">
@@ -472,7 +501,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
   async function load() {
     const d = await fetchAll();
     TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
-    renderBoard(); renderTaskList(); renderKanban();
+    renderBoard(); renderTaskList(); renderKanban(); renderListView();
   }
 
   // ---------- camera (pan/zoom) ----------
@@ -990,7 +1019,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
       const { error } = await supabase.from('tasks').update({ status: next }).eq('id', t.id);
       if (error) { toast(error.message); return; }
       t.status = next;
-      renderBoard(); renderTaskList(); renderKanban();
+      renderBoard(); renderTaskList(); renderKanban(); renderListView();
       return;
     }
     if (tg) {
@@ -1151,6 +1180,76 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     applyCam();
   })();
 
+  // ---------- List view ----------
+  let LV_SORT = { key: 'due', dir: 1 };
+  function renderListView() {
+    if (!document.body.classList.contains('list-mode')) return;
+    const body = document.getElementById('lv-body');
+    const prioRank = { high: 0, medium: 1, low: 2 };
+    const statusRank = { 'open': 0, 'in-progress': 1, 'done': 2 };
+    const cmp = {
+      title: (a, b) => (a.title || '').localeCompare(b.title || ''),
+      status: (a, b) => statusRank[a.status] - statusRank[b.status],
+      priority: (a, b) => prioRank[a.priority] - prioRank[b.priority],
+      due: (a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : (a.due_date || '9999') > (b.due_date || '9999') ? 1 : 0,
+    }[LV_SORT.key];
+    const sorted = TASKS.slice().sort((a, b) => LV_SORT.dir * cmp(a, b));
+    document.querySelectorAll('.listview th[data-sort]').forEach(th => {
+      th.querySelector('.dir').textContent = th.dataset.sort === LV_SORT.key ? (LV_SORT.dir > 0 ? '▲' : '▼') : '';
+    });
+    body.innerHTML = sorted.map(t => {
+      const late = isOverdue(t);
+      const who = assigneesOf(t.id).map(a => a.name).join(', ');
+      return `<tr>
+        <td><strong class="lv-title" data-details="${t.id}">${esc(t.title)}</strong>${
+          t.description ? `<br><small style="color:var(--muted)">${esc(t.description.length > 90 ? t.description.slice(0, 90) + '…' : t.description)}</small>` : ''}</td>
+        <td><button class="status-badge ${statusClass(t.status)}" data-lcycle="${t.id}" title="Click to change status">${esc(statusLabel(t.status))}</button></td>
+        <td style="text-transform:capitalize">${esc(t.priority)}</td>
+        <td class="${late ? 'due-overdue' : ''}">${t.due_date
+          ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + (late ? ' (overdue)' : '')
+          : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${esc(who) || '<span style="color:var(--muted)">—</span>'}</td>
+        <td class="actions">
+          <button class="btn sm secondary" data-ledit="${t.id}">Edit</button>
+          <button class="btn sm ghost" data-ldel="${t.id}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="color:var(--muted)">No tasks yet.</td></tr>';
+  }
+  document.querySelectorAll('.listview th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (LV_SORT.key === key) LV_SORT.dir = -LV_SORT.dir;
+    else LV_SORT = { key, dir: 1 };
+    renderListView();
+  }));
+  document.getElementById('listView').addEventListener('click', async (e) => {
+    const cyc = e.target.closest('[data-lcycle]');
+    const edit = e.target.closest('[data-ledit]');
+    const del = e.target.closest('[data-ldel]');
+    const det = e.target.closest('[data-details]');
+    if (cyc) {
+      const t = TASKS.find(x => x.id === +cyc.dataset.lcycle);
+      if (!t) return;
+      const next = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length];
+      const { error } = await supabase.from('tasks').update({ status: next }).eq('id', t.id);
+      if (error) { toast(error.message); return; }
+      t.status = next;
+      renderListView(); renderTaskList();
+    } else if (edit) {
+      const t = TASKS.find(x => x.id === +edit.dataset.ledit);
+      if (t) openModal(t);
+    } else if (del) {
+      const t = TASKS.find(x => x.id === +del.dataset.ldel);
+      if (t && await confirmDialog(`Delete "${esc(t.title)}"? This cannot be undone.`)) {
+        const { error } = await supabase.from('tasks').delete().eq('id', t.id);
+        if (error) toast(error.message); else load();
+      }
+    } else if (det) {
+      const t = TASKS.find(x => x.id === +det.dataset.details);
+      if (t) openDetails(t);
+    }
+  });
+
   // ---------- Kanban ----------
   const kanbanParentOf = (taskId) => {
     const e = EDGES.find(e => e.to_id === taskId);
@@ -1267,10 +1366,12 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     const vt = document.getElementById('viewToggle');
     function setView(view) {
       document.body.classList.toggle('kanban-mode', view === 'kanban');
+      document.body.classList.toggle('list-mode', view === 'list');
       vt.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
       try { localStorage.setItem('vsa-tasks-view', view); } catch (_) {}
       if (view === 'kanban') renderKanban();
-      else { renderBoard(); }
+      else if (view === 'list') renderListView();
+      else renderBoard();
     }
     vt.addEventListener('click', (e) => {
       const b = e.target.closest('button');
@@ -1278,7 +1379,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
     });
     let saved = null;
     try { saved = localStorage.getItem('vsa-tasks-view'); } catch (_) {}
-    if (saved === 'kanban') setView('kanban');
+    if (saved === 'kanban' || saved === 'list') setView(saved);
   })();
 
   // ---------- live sync (Supabase Realtime; 60s poll as a safety net) ----------
@@ -1296,7 +1397,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
           || JSON.stringify(d.officers) !== JSON.stringify(OFFICERS);
         if (!changed || busy()) return;
         TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
-        renderBoard(); renderTaskList(); renderKanban();
+        renderBoard(); renderTaskList(); renderKanban(); renderListView();
       } catch (e) {}
     }
     // debounce bursts of change events; retry while a drag/modal is in flight
