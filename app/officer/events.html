@@ -25,43 +25,53 @@
   const page = renderShell(ctx, 'Events');
 
   let events = [];
-  let rsvpCounts = new Map(); // event_id -> {going, maybe}
+  let rsvps = [];                  // {event_id, status, user_id}
+  let attendance = [];             // {event_id, user_id}
+  let people = [];                 // profiles
+  let tab = 'upcoming';
 
+  const todayStr = () => new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
   const fmtTime = (t) => {
     if (!t) return '';
     const [h, m] = t.split(':').map(Number);
     return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
   };
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const nameOf = (uid) => people.find(p => p.id === uid)?.full_name || 'Unknown';
 
   async function load() {
-    const [evRes, rsvpRes] = await Promise.all([
+    const [evRes, rsvpRes, attRes, pplRes] = await Promise.all([
       supabase.from('events').select('*').order('event_date').order('start_time'),
-      supabase.from('rsvps').select('event_id, status'),
+      supabase.from('rsvps').select('event_id, status, user_id'),
+      supabase.from('event_attendance').select('event_id, user_id'),
+      supabase.from('profiles').select('id, full_name').order('full_name'),
     ]);
     events = evRes.data || [];
-    rsvpCounts = new Map();
-    (rsvpRes.data || []).forEach(r => {
-      const c = rsvpCounts.get(r.event_id) || { going: 0, maybe: 0 };
-      if (r.status === 'going') c.going++;
-      if (r.status === 'maybe') c.maybe++;
-      rsvpCounts.set(r.event_id, c);
-    });
+    rsvps = rsvpRes.data || [];
+    attendance = attRes.data || [];
+    people = pplRes.data || [];
     render();
   }
 
-  function render() {
-    const today = new Date().toISOString().slice(0, 10);
-    const upcoming = events.filter(e => e.event_date >= today).length;
-    const q = (document.getElementById('search')?.value || '').toLowerCase();
+  const rsvpsFor = (id) => rsvps.filter(r => r.event_id === id);
+  const attFor = (id) => attendance.filter(a => a.event_id === id);
 
-    const rows = events
+  function render() {
+    const today = todayStr();
+    const q = (document.getElementById('search')?.value || '').toLowerCase();
+    const upcoming = events.filter(e => e.event_date >= today);
+    const past = events.filter(e => e.event_date < today).slice().reverse(); // newest past first
+    const list = tab === 'upcoming' ? upcoming : past;
+
+    const rows = list
       .filter(e => !q || e.name.toLowerCase().includes(q) || (e.location || '').toLowerCase().includes(q))
       .map(e => {
-        const c = rsvpCounts.get(e.id) || { going: 0, maybe: 0 };
-        const past = e.event_date < today;
+        const rs = rsvpsFor(e.id);
+        const going = rs.filter(r => r.status === 'going').length;
+        const maybe = rs.filter(r => r.status === 'maybe').length;
+        const att = attFor(e.id).length;
         return `
-          <tr style="${past ? 'opacity:.55' : ''}">
+          <tr>
             <td style="width:56px">${e.photo_path
               ? `<img src="${EV_IMG + e.photo_path}" style="width:48px; height:32px; border-radius:6px; object-fit:cover; border:1px solid var(--line)">`
               : ''}</td>
@@ -69,9 +79,13 @@
             <td>${new Date(e.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
             <td>${fmtTime(e.start_time)}${e.end_time ? '–' + fmtTime(e.end_time) : ''}</td>
             <td>${esc(e.location)}</td>
-            <td>${c.going} going${c.maybe ? ` · ${c.maybe} maybe` : ''}</td>
+            <td>${rs.length
+              ? `<button class="link-btn" data-rsvps="${e.id}" title="See who's coming">${going} going${maybe ? ` · ${maybe} maybe` : ''}</button>`
+              : '<span style="color:var(--muted)">—</span>'}</td>
+            <td><button class="link-btn" data-checkin="${e.id}" title="Check members in">${att ? `✓ ${att}` : 'Check-in'}</button></td>
             <td class="actions">
               <button class="btn sm secondary" data-edit="${e.id}">Edit</button>
+              <button class="btn sm ghost" data-dup="${e.id}" title="Duplicate this event">Dup</button>
               <button class="btn sm ghost" data-del="${e.id}">Delete</button>
             </td>
           </tr>`;
@@ -82,28 +96,42 @@
         <h2>Overview</h2>
         <div class="stat-grid">
           <div class="stat"><div class="num">${events.length}</div><div class="lbl">Total events</div></div>
-          <div class="stat"><div class="num">${upcoming}</div><div class="lbl">Upcoming</div></div>
+          <div class="stat"><div class="num">${upcoming.length}</div><div class="lbl">Upcoming</div></div>
+          <div class="stat"><div class="num">${attendance.length}</div><div class="lbl">Total check-ins</div></div>
         </div>
       </div>
       <div class="card">
-        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px">
-          <input class="searchbar" id="search" type="search" placeholder="Search events…" value="${esc(q)}" style="margin:0">
-          <button class="btn" id="new">+ New event</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px">
+          <div class="mode-toggle">
+            <button id="tab-up" class="${tab === 'upcoming' ? 'on' : ''}">Upcoming (${upcoming.length})</button>
+            <button id="tab-past" class="${tab === 'past' ? 'on' : ''}">Past (${past.length})</button>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap">
+            <input class="searchbar" id="search" type="search" placeholder="Search events…" value="${esc(q)}" style="margin:0">
+            <button class="btn" id="new">+ New event</button>
+          </div>
         </div>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th></th><th>Event</th><th>Date</th><th>Time</th><th>Location</th><th>RSVPs</th><th></th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="7" style="color:var(--muted)">No events yet — create the first one!</td></tr>'}</tbody>
+            <thead><tr><th></th><th>Event</th><th>Date</th><th>Time</th><th>Location</th><th>RSVPs</th><th>Attended</th><th></th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="8" style="color:var(--muted)">${
+              q ? 'No events match your search.'
+                : tab === 'upcoming' ? 'No upcoming events — create the next one!' : 'No past events yet.'}</td></tr>`}</tbody>
           </table>
         </div>
       </div>`;
 
+    document.getElementById('tab-up').onclick = () => { tab = 'upcoming'; render(); };
+    document.getElementById('tab-past').onclick = () => { tab = 'past'; render(); };
     document.getElementById('new').onclick = () => openModal();
     document.getElementById('search').oninput = render;
     page.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openModal(events.find(e => e.id === +b.dataset.edit)));
+    page.querySelectorAll('[data-dup]').forEach(b => b.onclick = () => openModal(events.find(e => e.id === +b.dataset.dup), true));
+    page.querySelectorAll('[data-rsvps]').forEach(b => b.onclick = () => openRsvpModal(events.find(e => e.id === +b.dataset.rsvps)));
+    page.querySelectorAll('[data-checkin]').forEach(b => b.onclick = () => openCheckinModal(events.find(e => e.id === +b.dataset.checkin)));
     page.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       const ev = events.find(e => e.id === +b.dataset.del);
-      if (!confirm(`Delete "${ev.name}"? RSVPs for it will also be removed.`)) return;
+      if (!confirm(`Delete "${ev.name}"? RSVPs and check-ins for it will also be removed.`)) return;
       const { error } = await supabase.from('events').delete().eq('id', ev.id);
       if (error) { alert(error.message); return; }
       if (ev.photo_path) await supabase.storage.from('event-images').remove([ev.photo_path]);
@@ -111,27 +139,112 @@
     });
   }
 
-  function openModal(ev) {
+  // ----- who's coming -----
+  function openRsvpModal(ev) {
+    const rs = rsvpsFor(ev.id);
+    const going = rs.filter(r => r.status === 'going').map(r => nameOf(r.user_id)).sort();
+    const maybe = rs.filter(r => r.status === 'maybe').map(r => nameOf(r.user_id)).sort();
     const back = document.createElement('div');
     back.className = 'modal-back';
     back.innerHTML = `
       <div class="modal">
-        <h2>${ev ? 'Edit event' : 'New event'}</h2>
+        <h2>RSVPs — ${esc(ev.name)}</h2>
+        ${going.length ? `<h3 style="margin:10px 0 6px">Going (${going.length})</h3>
+          <ul style="margin:0 0 6px 20px">${going.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+        ${maybe.length ? `<h3 style="margin:10px 0 6px">Maybe (${maybe.length})</h3>
+          <ul style="margin:0 0 6px 20px">${maybe.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+        ${!rs.length ? '<p style="color:var(--muted)">No RSVPs yet.</p>' : ''}
+        <div class="row-btns">
+          ${going.length ? '<button type="button" class="btn secondary" id="m-copy" style="margin-right:auto">Copy going list</button>' : ''}
+          <button type="button" class="btn ghost" id="m-cancel">Close</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-copy')?.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(going.join('\n'));
+      back.querySelector('#m-copy').textContent = 'Copied!';
+      setTimeout(() => { const b = back.querySelector('#m-copy'); if (b) b.textContent = 'Copy going list'; }, 1500);
+    });
+  }
+
+  // ----- door check-in -----
+  function openCheckinModal(ev) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>Check-in — ${esc(ev.name)}</h2>
+        <p style="color:var(--muted); font-size:.85rem; margin-bottom:10px">
+          Tick everyone who's here — saves instantly. <strong id="ci-count"></strong></p>
+        <input class="searchbar" id="ci-search" type="search" placeholder="Find a member…" style="margin-bottom:10px">
+        <div class="check-list" id="ci-list" style="max-height:320px; overflow:auto"></div>
+        <div class="row-btns"><button type="button" class="btn ghost" id="m-cancel">Done</button></div>
+      </div>`;
+    document.body.appendChild(back);
+
+    const listEl = back.querySelector('#ci-list');
+    const countEl = back.querySelector('#ci-count');
+    const here = new Set(attFor(ev.id).map(a => a.user_id));
+    const updateCount = () => { countEl.textContent = `${here.size} checked in.`; };
+
+    const renderList = () => {
+      const q = back.querySelector('#ci-search').value.toLowerCase();
+      listEl.innerHTML = people
+        .filter(p => !q || p.full_name.toLowerCase().includes(q))
+        .map(p => `<label><input type="checkbox" data-uid="${p.id}" ${here.has(p.id) ? 'checked' : ''}> ${esc(p.full_name)}</label>`)
+        .join('') || '<p style="color:var(--muted)">No members match.</p>';
+      listEl.querySelectorAll('input[data-uid]').forEach(cb => cb.onchange = async () => {
+        const uid = cb.dataset.uid;
+        cb.disabled = true;
+        const { error } = cb.checked
+          ? await supabase.from('event_attendance').insert({ event_id: ev.id, user_id: uid, checked_in_by: ctx.user.id })
+          : await supabase.from('event_attendance').delete().eq('event_id', ev.id).eq('user_id', uid);
+        cb.disabled = false;
+        if (error) { cb.checked = !cb.checked; alert(error.message); return; }
+        if (cb.checked) {
+          here.add(uid);
+          attendance.push({ event_id: ev.id, user_id: uid });
+        } else {
+          here.delete(uid);
+          attendance = attendance.filter(a => !(a.event_id === ev.id && a.user_id === uid));
+        }
+        updateCount();
+      });
+    };
+
+    updateCount();
+    renderList();
+    back.querySelector('#ci-search').oninput = renderList;
+    const close = () => { back.remove(); render(); };
+    back.querySelector('#m-cancel').onclick = close;
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+  }
+
+  // ----- create / edit / duplicate -----
+  function openModal(ev, dup = false) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${dup ? 'Duplicate event' : ev ? 'Edit event' : 'New event'}</h2>
         <div class="notice" id="m-notice"></div>
         <form id="ev-form">
           <div class="field"><label>Name</label><input id="f-name" required value="${esc(ev?.name)}"></div>
           <div class="field-row">
-            <div class="field"><label>Date</label><input type="date" id="f-date" required value="${ev?.event_date || ''}"></div>
+            <div class="field"><label>Date</label><input type="date" id="f-date" required value="${dup ? '' : (ev?.event_date || '')}"></div>
             <div class="field"><label>Start</label><input type="time" id="f-start" value="${(ev?.start_time || '').slice(0, 5)}"></div>
             <div class="field"><label>End</label><input type="time" id="f-end" value="${(ev?.end_time || '').slice(0, 5)}"></div>
           </div>
           <div class="field"><label>Location</label><input id="f-loc" value="${esc(ev?.location)}"></div>
           <div class="field"><label>Description</label><textarea id="f-desc">${esc(ev?.description)}</textarea></div>
-          <div class="field"><label>Event image (shown on the homepage & calendar, max 11 MB)</label>
+          <div class="field"><label>Event image (shown on the homepage & calendar, max 11 MB)${
+            dup && ev?.photo_path ? ' — the original’s image is copied unless you pick a new one' : ''}</label>
             <input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp"></div>
           <div class="row-btns">
             <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
-            <button type="submit" class="btn">${ev ? 'Save' : 'Create'}</button>
+            <button type="submit" class="btn">${dup ? 'Create copy' : ev ? 'Save' : 'Create'}</button>
           </div>
         </form>
       </div>`;
@@ -158,17 +271,19 @@
         const { error: upErr } = await supabase.storage.from('event-images')
           .upload(path, up, { contentType: up.type });
         if (upErr) return say(upErr.message);
-        if (ev?.photo_path) await supabase.storage.from('event-images').remove([ev.photo_path]);
+        if (ev?.photo_path && !dup) await supabase.storage.from('event-images').remove([ev.photo_path]);
         payload.photo_path = path;
+      } else if (dup && ev?.photo_path) {
+        // give the copy its own storage object so deleting one event
+        // never strands the other's image
+        const copyPath = `${crypto.randomUUID()}.${ev.photo_path.split('.').pop()}`;
+        const { error: cpErr } = await supabase.storage.from('event-images').copy(ev.photo_path, copyPath);
+        if (!cpErr) payload.photo_path = copyPath;
       }
-      const { error } = ev
+      const { error } = (ev && !dup)
         ? await supabase.from('events').update(payload).eq('id', ev.id)
         : await supabase.from('events').insert({ ...payload, created_by: ctx.user.id });
-      if (error) {
-        const n = back.querySelector('#m-notice');
-        n.textContent = error.message; n.className = 'notice error';
-        return;
-      }
+      if (error) return say(error.message);
       back.remove();
       load();
     });

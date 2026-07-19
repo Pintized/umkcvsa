@@ -1,7 +1,7 @@
-/* ============================================================
-   UMKC VSA portal — "Lacquer & Gold" design system
-   Deep ink-navy lacquer surfaces · warm gold accents · red actions
-   Playfair Display display type · diamond-lattice motif
+﻿/* ============================================================
+   UMKC VSA portal â€” "Lacquer & Gold" design system
+   Deep ink-navy lacquer surfaces Â· warm gold accents Â· red actions
+   Playfair Display display type Â· diamond-lattice motif
    Light: warm cream. Dark: rich ink. html.dark-mode ('vsa-theme')
    ============================================================ */
 :root {
@@ -229,7 +229,7 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
 .side-toggle svg { width: 14px; height: 14px; transition: transform .32s cubic-bezier(.4, 0, .2, 1); }
 .shell.side-collapsed .side-toggle svg { transform: rotate(180deg); }
 
-/* collapsed: slim icon rail — everything flows, nothing teleports */
+/* collapsed: slim icon rail â€” everything flows, nothing teleports */
 .shell.side-collapsed .sidebar { width: 76px; }
 .shell.side-collapsed .brand-name,
 .shell.side-collapsed .nav-lb {
@@ -709,7 +709,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .task-card.prio-low { border-left-color: var(--ok); }
 .task-card h4 { font-family: var(--sans); font-size: .92rem; margin-bottom: 5px; }
 .task-card .meta { font-size: .75rem; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
-.task-card .st {
+.task-card .st, .st-pill {
   display: inline-block;
   border-radius: 999px;
   padding: 1px 9px;
@@ -718,8 +718,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   background: var(--surface-2);
   border: 1px solid var(--line);
 }
-.task-card .st.in-progress { background: rgba(232, 163, 61, .15); color: #b97b18; border-color: rgba(232, 163, 61, .4); }
-.task-card .st.done { background: rgba(47, 158, 99, .15); color: var(--ok); border-color: rgba(47, 158, 99, .4); }
+.task-card .st.in-progress, .st-pill.in-progress { background: rgba(232, 163, 61, .15); color: #b97b18; border-color: rgba(232, 163, 61, .4); }
+.task-card .st.done, .st-pill.done { background: rgba(47, 158, 99, .15); color: var(--ok); border-color: rgba(47, 158, 99, .4); }
 .task-card .edit-hit { position: absolute; top: 7px; right: 9px; cursor: pointer; opacity: .5; font-size: .85rem; }
 .task-card .edit-hit:hover { opacity: 1; color: var(--gold); }
 
@@ -910,10 +910,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .rt-content ul.cklist { list-style: none; padding-left: 4px; }
 .rt-content ul.cklist li { cursor: pointer; padding: 2px 0 2px 26px; position: relative; }
 .rt-content ul.cklist li::before {
-  content: "○"; position: absolute; left: 2px; color: var(--gold); font-size: 1rem;
+  content: "â—‹"; position: absolute; left: 2px; color: var(--gold); font-size: 1rem;
 }
 .rt-content ul.cklist li.done { color: var(--muted); text-decoration: line-through; }
-.rt-content ul.cklist li.done::before { content: "●"; color: var(--ok); }
+.rt-content ul.cklist li.done::before { content: "â—"; color: var(--ok); }
 
 .icon-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
 .icon-grid button { min-width: 0; font-size: 1.1rem; padding: 6px 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
@@ -1102,3 +1102,37 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   .sidebar .brand { height: 60px; }
   .userchip .name { display: none; }
 }
+
+/* ---- officer tool refinements (events/tasks/inventory) ---- */
+.link-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--gold); font: inherit; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(201, 155, 63, .45);
+}
+.link-btn:hover { color: var(--gold-bright); text-decoration-color: currentColor; }
+
+.chip-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 999px; padding: 4px 13px;
+  font-size: .8rem; font-weight: 600; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.chip-btn:hover { border-color: var(--gold); color: var(--text); }
+.chip-btn.on {
+  background: rgba(201, 155, 63, .14);
+  border-color: rgba(201, 155, 63, .5);
+  color: var(--gold);
+}
+.chip-btn.on.warn-chip {
+  background: rgba(200, 32, 47, .12);
+  border-color: rgba(200, 32, 47, .45);
+  color: var(--red);
+}
+
+.task-card .st, .st-pill { cursor: pointer; }
+.task-card .st:hover, .st-pill:hover { filter: brightness(1.12); }
+.task-card.overdue { box-shadow: 0 0 0 2px rgba(200, 32, 47, .55), var(--shadow-sm); }
+.task-card.overdue .due { color: var(--red); font-weight: 700; }
+.task-card.due-soon { box-shadow: 0 0 0 2px rgba(224, 180, 92, .55), var(--shadow-sm); }
+.task-card.due-soon .due { color: var(--gold); font-weight: 700; }

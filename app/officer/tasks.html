@@ -19,12 +19,19 @@
   import { supabase } from '/app/shared/supabase.js';
 
   const GRID = 40;
+  const STATUSES = ['open', 'in-progress', 'done'];
   const ctx = await requireOfficer();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Tasks');
 
   let tasks = [], edges = [], assignees = [], officers = [];
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const todayStr = () => new Date().toLocaleDateString('en-CA');
+
+  // view + filter preferences survive reloads
+  let prefs = { view: 'board', status: 'all', prio: 'all', who: 'all', hideDone: false };
+  try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem('vsa-tasks-prefs') || '{}') }; } catch (e) {}
+  const savePrefs = () => { try { localStorage.setItem('vsa-tasks-prefs', JSON.stringify(prefs)); } catch (e) {} };
 
   async function load() {
     const [t, e, a, p] = await Promise.all([
@@ -38,17 +45,70 @@
   }
 
   const nameOf = (uid) => officers.find(o => o.id === uid)?.first_name || '?';
+  const whoFor = (taskId) => assignees.filter(a => a.task_id === taskId).map(a => a.user_id);
+
+  function dueClass(t) {
+    if (!t.due_date || t.status === 'done') return '';
+    const today = todayStr();
+    if (t.due_date < today) return 'overdue';
+    const week = new Date(); week.setDate(week.getDate() + 7);
+    return t.due_date <= week.toLocaleDateString('en-CA') ? 'due-soon' : '';
+  }
+
+  function visible(t) {
+    if (prefs.hideDone && t.status === 'done') return false;
+    if (prefs.status !== 'all' && t.status !== prefs.status) return false;
+    if (prefs.prio !== 'all' && t.priority !== prefs.prio) return false;
+    if (prefs.who !== 'all' && !whoFor(t.id).includes(prefs.who)) return false;
+    return true;
+  }
+
+  async function cycleStatus(t) {
+    const next = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length];
+    const { error } = await supabase.from('tasks').update({ status: next }).eq('id', t.id);
+    if (error) { alert(error.message); return; }
+    t.status = next;
+    render();
+  }
 
   function render() {
+    const shown = tasks.filter(visible);
+    const assignedIds = [...new Set(assignees.map(a => a.user_id))];
+    const overdue = tasks.filter(t => dueClass(t) === 'overdue').length;
+
     page.innerHTML = `
       <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px">
           <div>
             <h2 style="margin-bottom:2px">Task board</h2>
-            <p style="color:var(--muted); font-size:.85rem">Drag cards to arrange — they snap to the grid and the layout saves automatically. ✎ to edit.</p>
+            <p style="color:var(--muted); font-size:.85rem">${prefs.view === 'board'
+              ? 'Drag cards to arrange — layout saves automatically. Click a status pill to cycle it, ✎ to edit.'
+              : 'Sorted by due date. Click a status pill to cycle it.'}${overdue
+              ? ` <strong style="color:var(--red)">${overdue} overdue.</strong>` : ''}</p>
           </div>
           <button class="btn" id="new">+ New task</button>
         </div>
+        <div class="filter-bar">
+          <div class="mode-toggle">
+            <button id="v-board" class="${prefs.view === 'board' ? 'on' : ''}">Board</button>
+            <button id="v-list" class="${prefs.view === 'list' ? 'on' : ''}">List</button>
+          </div>
+          <select id="f-status" title="Filter by status">
+            <option value="all">All statuses</option>
+            ${STATUSES.map(s => `<option value="${s}" ${prefs.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+          <select id="f-prio" title="Filter by priority">
+            <option value="all">All priorities</option>
+            ${['high', 'medium', 'low'].map(p => `<option value="${p}" ${prefs.prio === p ? 'selected' : ''}>${p}</option>`).join('')}
+          </select>
+          <select id="f-who" title="Filter by assignee">
+            <option value="all">Anyone</option>
+            ${assignedIds.map(id => `<option value="${id}" ${prefs.who === id ? 'selected' : ''}>${esc(officers.find(o => o.id === id)?.full_name || '?')}</option>`).join('')}
+          </select>
+          <button class="chip-btn ${prefs.hideDone ? 'on' : ''}" id="f-hide-done">Hide done</button>
+          ${shown.length !== tasks.length ? `<span style="color:var(--muted); font-size:.8rem">${shown.length} of ${tasks.length} shown</span>` : ''}
+        </div>
+        ${prefs.view === 'board' ? `
         <div class="board-scroll">
           <div class="board" id="board">
             <svg class="edges" id="edge-svg">
@@ -59,32 +119,78 @@
               </defs>
             </svg>
           </div>
-        </div>
+        </div>` : `
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Task</th><th>Status</th><th>Priority</th><th>Due</th><th>Assignees</th><th></th></tr></thead>
+            <tbody id="list-body"></tbody>
+          </table>
+        </div>`}
       </div>`;
 
-    const board = document.getElementById('board');
-    tasks.forEach(t => board.appendChild(cardEl(t)));
-    drawEdges();
     document.getElementById('new').onclick = () => openModal();
+    document.getElementById('v-board').onclick = () => { prefs.view = 'board'; savePrefs(); render(); };
+    document.getElementById('v-list').onclick = () => { prefs.view = 'list'; savePrefs(); render(); };
+    document.getElementById('f-status').onchange = (e) => { prefs.status = e.target.value; savePrefs(); render(); };
+    document.getElementById('f-prio').onchange = (e) => { prefs.prio = e.target.value; savePrefs(); render(); };
+    document.getElementById('f-who').onchange = (e) => { prefs.who = e.target.value; savePrefs(); render(); };
+    document.getElementById('f-hide-done').onclick = () => { prefs.hideDone = !prefs.hideDone; savePrefs(); render(); };
+
+    if (prefs.view === 'board') {
+      const board = document.getElementById('board');
+      shown.forEach(t => board.appendChild(cardEl(t)));
+      drawEdges();
+    } else {
+      renderList(shown);
+    }
+  }
+
+  function renderList(shown) {
+    const body = document.getElementById('list-body');
+    const sorted = shown.slice().sort((a, b) =>
+      (a.due_date || '9999') < (b.due_date || '9999') ? -1
+      : (a.due_date || '9999') > (b.due_date || '9999') ? 1
+      : a.created_at < b.created_at ? -1 : 1);
+    body.innerHTML = sorted.map(t => {
+      const dc = dueClass(t);
+      const who = whoFor(t.id).map(nameOf).join(', ');
+      return `
+        <tr>
+          <td><strong>${esc(t.title)}</strong>${t.description ? `<br><small style="color:var(--muted)">${esc(t.description)}</small>` : ''}</td>
+          <td><button class="st-pill ${t.status}" data-cycle="${t.id}" title="Click to change status">${t.status}</button></td>
+          <td style="text-transform:capitalize">${t.priority}</td>
+          <td style="${dc === 'overdue' ? 'color:var(--red); font-weight:700' : dc === 'due-soon' ? 'color:var(--gold); font-weight:700' : ''}">${
+            t.due_date ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}${
+            dc === 'overdue' ? ' (overdue)' : ''}</td>
+          <td>${esc(who) || '<span style="color:var(--muted)">—</span>'}</td>
+          <td class="actions"><button class="btn sm secondary" data-edit="${t.id}">Edit</button></td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="6" style="color:var(--muted)">Nothing matches these filters.</td></tr>';
+    body.querySelectorAll('[data-cycle]').forEach(b => b.onclick = () => cycleStatus(tasks.find(t => t.id === +b.dataset.cycle)));
+    body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openModal(tasks.find(t => t.id === +b.dataset.edit)));
   }
 
   function cardEl(t) {
     const el = document.createElement('div');
-    el.className = `task-card prio-${t.priority}`;
+    const dc = dueClass(t);
+    el.className = `task-card prio-${t.priority}${dc ? ' ' + dc : ''}`;
     el.style.left = t.pos_x + 'px';
     el.style.top = t.pos_y + 'px';
     el.dataset.id = t.id;
-    const who = assignees.filter(a => a.task_id === t.id).map(a => nameOf(a.user_id)).join(', ');
+    const who = whoFor(t.id).map(nameOf).join(', ');
     el.innerHTML = `
       <span class="edit-hit" title="Edit">✎</span>
       <h4>${esc(t.title)}</h4>
       <div class="meta">
-        <span class="st ${t.status}">${t.status}</span>
-        ${t.due_date ? `<span>📅 ${new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>` : ''}
+        <span class="st ${t.status}" title="Click to change status">${t.status}</span>
+        ${t.due_date ? `<span class="due">📅 ${new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${dc === 'overdue' ? ' ⚠' : ''}</span>` : ''}
         ${who ? `<span>👤 ${esc(who)}</span>` : ''}
       </div>`;
     el.querySelector('.edit-hit').addEventListener('pointerdown', (e) => e.stopPropagation());
     el.querySelector('.edit-hit').addEventListener('click', () => openModal(t));
+    const st = el.querySelector('.st');
+    st.addEventListener('pointerdown', (e) => e.stopPropagation());
+    st.addEventListener('click', () => cycleStatus(t));
     dragify(el, t);
     return el;
   }
@@ -129,7 +235,7 @@
     edges.forEach(ed => {
       const a = document.querySelector(`.task-card[data-id="${ed.from_id}"]`);
       const b = document.querySelector(`.task-card[data-id="${ed.to_id}"]`);
-      if (!a || !b) return;
+      if (!a || !b) return; // filtered-out cards keep their edges hidden too
       const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       l.setAttribute('x1', a.offsetLeft + a.offsetWidth / 2);
       l.setAttribute('y1', a.offsetTop + a.offsetHeight / 2);
@@ -158,13 +264,13 @@
           <div class="field-row">
             <div class="field"><label>Due date</label><input type="date" id="f-due" value="${t?.due_date || ''}"></div>
             <div class="field"><label>Priority</label>
-              <select id="f-prio">
+              <select id="f-prio-m">
                 ${['low', 'medium', 'high'].map(p => `<option ${t?.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
               </select>
             </div>
             <div class="field"><label>Status</label>
-              <select id="f-status">
-                ${['open', 'in-progress', 'done'].map(s => `<option ${t?.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+              <select id="f-status-m">
+                ${STATUSES.map(s => `<option ${t?.status === s ? 'selected' : ''}>${s}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -205,8 +311,8 @@
         title: back.querySelector('#f-title').value.trim(),
         description: back.querySelector('#f-desc').value.trim() || null,
         due_date: back.querySelector('#f-due').value || null,
-        priority: back.querySelector('#f-prio').value,
-        status: back.querySelector('#f-status').value,
+        priority: back.querySelector('#f-prio-m').value,
+        status: back.querySelector('#f-status-m').value,
       };
       let taskId = t?.id;
       if (t) {
