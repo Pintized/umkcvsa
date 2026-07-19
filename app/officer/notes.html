@@ -446,9 +446,10 @@
     }
     contentEl.addEventListener('keydown', (e) => {
       if (e.key !== 'Tab') return;
-      if (!curLi()) return; // outside lists Tab keeps its normal behavior
-      e.preventDefault();
-      indentList(e.shiftKey ? -1 : 1);
+      e.preventDefault(); // Tab never leaves the editor
+      if (indentList(e.shiftKey ? -1 : 1)) return;
+      // plain text: Tab types spacing instead of jumping focus away
+      if (!e.shiftKey) document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
     });
 
     // ---- size plumbing ----
