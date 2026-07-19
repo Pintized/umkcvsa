@@ -1136,3 +1136,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .task-card.overdue .due { color: var(--red); font-weight: 700; }
 .task-card.due-soon { box-shadow: 0 0 0 2px rgba(224, 180, 92, .55), var(--shadow-sm); }
 .task-card.due-soon .due { color: var(--gold); font-weight: 700; }
+
+/* ---- nested lists in the notes editor (Tab-indentable, 10 levels) ---- */
+.rt-content ul ul, .rt-content ul ol,
+.rt-content ol ol, .rt-content ol ul { margin: 2px 0; }
+.rt-content ul { list-style: disc; }
+.rt-content ul ul { list-style: circle; }
+.rt-content ul ul ul { list-style: square; }
+.rt-content ul ul ul ul { list-style: disc; }
+.rt-content ul ul ul ul ul { list-style: circle; }
+.rt-content ul ul ul ul ul ul { list-style: square; }
+.rt-content ul.cklist ul.cklist { padding-left: 26px; }
