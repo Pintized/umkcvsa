@@ -1,7 +1,7 @@
-﻿/* ============================================================
-   UMKC VSA portal â€” "Lacquer & Gold" design system
-   Deep ink-navy lacquer surfaces Â· warm gold accents Â· red actions
-   Playfair Display display type Â· diamond-lattice motif
+/* ============================================================
+   UMKC VSA portal — "Lacquer & Gold" design system
+   Deep ink-navy lacquer surfaces · warm gold accents · red actions
+   Playfair Display display type · diamond-lattice motif
    Light: warm cream. Dark: rich ink. html.dark-mode ('vsa-theme')
    ============================================================ */
 :root {
@@ -229,7 +229,7 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
 .side-toggle svg { width: 14px; height: 14px; transition: transform .32s cubic-bezier(.4, 0, .2, 1); }
 .shell.side-collapsed .side-toggle svg { transform: rotate(180deg); }
 
-/* collapsed: slim icon rail â€” everything flows, nothing teleports */
+/* collapsed: slim icon rail — everything flows, nothing teleports */
 .shell.side-collapsed .sidebar { width: 76px; }
 .shell.side-collapsed .brand-name,
 .shell.side-collapsed .nav-lb {
@@ -910,10 +910,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .rt-content ul.cklist { list-style: none; padding-left: 4px; }
 .rt-content ul.cklist li { cursor: pointer; padding: 2px 0 2px 26px; position: relative; }
 .rt-content ul.cklist li::before {
-  content: "â—‹"; position: absolute; left: 2px; color: var(--gold); font-size: 1rem;
+  content: "○"; position: absolute; left: 2px; color: var(--gold); font-size: 1rem;
 }
 .rt-content ul.cklist li.done { color: var(--muted); text-decoration: line-through; }
-.rt-content ul.cklist li.done::before { content: "â—"; color: var(--ok); }
+.rt-content ul.cklist li.done::before { content: "●"; color: var(--ok); }
 
 .icon-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
 .icon-grid button { min-width: 0; font-size: 1.1rem; padding: 6px 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
