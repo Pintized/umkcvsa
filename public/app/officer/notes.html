@@ -22,7 +22,40 @@
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Notes');
 
-  const EMOJIS = ['📝','📁','📌','🎉','💰','🍜','🎓','📷','🧧','🏮','⭐','🗳️','🎨','🏐','🤝','📣'];
+  // Custom line-icon set — same stroke language as the sidebar nav icons.
+  const NSVG = (inner) =>
+    `<svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+  const ICON_SET = {
+    note:      NSVG('<rect x="5" y="3.6" width="14" height="16.8" rx="2"/><path d="M9 8.4h6M9 12h6M9 15.6h3.6"/>'),
+    folder:    NSVG('<path d="M3.6 6.8a1.6 1.6 0 0 1 1.6-1.6h4.2l2 2.4h7.4a1.6 1.6 0 0 1 1.6 1.6v9a1.6 1.6 0 0 1-1.6 1.6H5.2a1.6 1.6 0 0 1-1.6-1.6V6.8Z"/>'),
+    pin:       NSVG('<path d="M12 21S5.6 15.4 5.6 10.4a6.4 6.4 0 0 1 12.8 0C18.4 15.4 12 21 12 21Z"/><circle cx="12" cy="10.4" r="2.4"/>'),
+    spark:     NSVG('<path d="M12 3v3.6M12 17.4V21M3 12h3.6M17.4 12H21M5.9 5.9l2.5 2.5M15.6 15.6l2.5 2.5M18.1 5.9l-2.5 2.5M8.4 15.6l-2.5 2.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>'),
+    coin:      NSVG('<circle cx="12" cy="12" r="8.2"/><path d="M12 7.4v9.2M14.8 9.4c-.5-1-1.5-1.6-2.8-1.6-1.6 0-2.8.9-2.8 2.1s1.2 1.9 2.8 2.1c1.6.2 2.8.9 2.8 2.1s-1.2 2.1-2.8 2.1c-1.3 0-2.3-.6-2.8-1.6"/>'),
+    bowl:      NSVG('<path d="M4 11.6h16a8 8 0 0 1-16 0Z"/><path d="M9 19h6"/><path d="M8.2 8.4 15 3.4M11.4 8.4l5.2-3.8"/>'),
+    gradcap:   NSVG('<path d="M3 9.6 12 5.4 21 9.6 12 13.8 3 9.6Z"/><path d="M6.6 11.6v3.8c0 1.4 2.4 2.6 5.4 2.6s5.4-1.2 5.4-2.6v-3.8"/><path d="M21 9.6v4.6"/>'),
+    camera:    NSVG('<path d="M4 7.6h3l1.6-2.4h6.8L17 7.6h3a1.4 1.4 0 0 1 1.4 1.4v9a1.4 1.4 0 0 1-1.4 1.4H4A1.4 1.4 0 0 1 2.6 18V9A1.4 1.4 0 0 1 4 7.6Z"/><circle cx="12" cy="13.4" r="3.6"/>'),
+    envelope:  NSVG('<rect x="6.6" y="3.6" width="10.8" height="16.8" rx="1.6"/><path d="M6.6 7.6c3 1.7 7.8 1.7 10.8 0"/><circle cx="12" cy="12.8" r="1.8"/>'),
+    lantern:   NSVG('<path d="M9.4 5.6h5.2M12 3.6v2"/><path d="M12 5.6c3.1 0 5.2 2.9 5.2 6.4s-2.1 6.4-5.2 6.4-5.2-2.9-5.2-6.4 2.1-6.4 5.2-6.4Z"/><path d="M9.6 6.2v12M14.4 6.2v12"/><path d="M12 18.4v2.2"/>'),
+    star:      NSVG('<path d="M12 3.8l2.4 5 5.4.7-4 3.8 1 5.4L12 16.2l-4.8 2.5 1-5.4-4-3.8 5.4-.7L12 3.8Z"/>'),
+    ballot:    NSVG('<rect x="4" y="11" width="16" height="9" rx="1.4"/><path d="M9.4 11h5.2"/><path d="M9 11V5.4A1.4 1.4 0 0 1 10.4 4h3.2A1.4 1.4 0 0 1 15 5.4V11"/>'),
+    palette:   NSVG('<path d="M12 3.8a8.2 8.2 0 1 0 0 16.4c1.4 0 1.9-.9 1.5-1.9-.5-1.2.2-2.3 1.6-2.3h1.7c1.9 0 3.4-1.5 3.4-3.6C20.2 7 16.6 3.8 12 3.8Z"/><circle cx="8.2" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.8" cy="10" r="1.1" fill="currentColor" stroke="none"/>'),
+    ball:      NSVG('<circle cx="12" cy="12" r="8.2"/><path d="M12 3.8c2.8 2.6 3.9 6.8 2.9 12.2M6 6.2c4.2 1.3 8.8 1 12.3-1M4.5 14.4c4.7 2.5 10.5 1.9 14.2-1.4"/>'),
+    heart:     NSVG('<path d="M12 20s-7.4-4.6-7.4-9.8C4.6 7.6 6.6 6 8.8 6c1.4 0 2.6.7 3.2 1.8C12.6 6.7 13.8 6 15.2 6c2.2 0 4.2 1.6 4.2 4.2 0 5.2-7.4 9.8-7.4 9.8Z"/>'),
+    megaphone: NSVG('<path d="M3.6 10v4a1.4 1.4 0 0 0 1.4 1.4h2L18.4 20V4L7 8.6H5A1.4 1.4 0 0 0 3.6 10Z"/><path d="M8.4 15.8l.8 4.2h2.6l-.8-4.4"/>'),
+  };
+  const ICON_KEYS = Object.keys(ICON_SET);
+  // notes saved before the custom set stored raw emoji — map them over
+  const LEGACY_ICON = {
+    '📝': 'note', '📁': 'folder', '📌': 'pin', '🎉': 'spark', '💰': 'coin', '🍜': 'bowl',
+    '🎓': 'gradcap', '📷': 'camera', '🧧': 'envelope', '🏮': 'lantern', '⭐': 'star',
+    '🗳️': 'ballot', '🎨': 'palette', '🏐': 'ball', '🤝': 'heart', '📣': 'megaphone',
+  };
+  function iconHTML(val, fallback) {
+    if (val && ICON_SET[val]) return ICON_SET[val];
+    if (val && LEGACY_ICON[val]) return ICON_SET[LEGACY_ICON[val]];
+    if (val) return esc(val); // unrecognized legacy value — show as-is
+    return ICON_SET[fallback];
+  }
   const COLORS = ['#e0b45c','#c8202f','#3f7fbf','#2f9e63','#8b5cf6','#e8a33d'];
 
   let folders = [], notes = [], roster = [];
@@ -218,16 +251,16 @@
     const folder = folders.find(f => f.id === n.folder_id);
     const preview = stripHtml(n.content).slice(0, 64);
     return `
-      <div class="note-item ${n.id === selNote ? 'sel' : ''}" data-n="${n.id}"
+      <div class="note-item ${n.id === selNote ? 'sel' : ''}" data-n="${n.id}" draggable="true"
            style="border-left-color:${n.id === selNote ? '' : (n.color || 'transparent')}">
         <div class="trow">
-          <span class="ic">${n.icon || '📝'}</span>
+          <span class="ic">${iconHTML(n.icon, 'note')}</span>
           <span class="t">${esc(n.title)}</span>
           <button class="star-btn ${n.starred ? 'on' : ''}" data-star="${n.id}" title="Star">${n.starred ? '⭐' : '☆'}</button>
           <span class="acts"><span data-deln="${n.id}" title="Delete note">✕</span></span>
         </div>
         <div class="meta">
-          ${showFolder && folder ? `<span class="fold">${folder.icon || '📁'} ${esc(folder.name)} · </span>` : ''}
+          ${showFolder && folder ? `<span class="fold">${iconHTML(folder.icon, 'folder')} ${esc(folder.name)} · </span>` : ''}
           ${n.meeting_date ? fmtDate(n.meeting_date) + ' · ' : ''}${esc(preview)}
         </div>
         ${(n.tags || []).length ? `<div class="chips">${n.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : ''}
@@ -257,7 +290,7 @@
         <div class="f-group ${openFolders.has(f.id) ? 'open' : ''}" data-fg="${f.id}">
           <div class="item ${f.id === selFolder ? 'sel' : ''}" data-f="${f.id}"
                style="border-left:3px solid ${f.color || 'transparent'}">
-            <span><span class="f-chev">▶</span><span class="ic">${f.icon || '📁'}</span> ${esc(f.name)} <small>(${fNotes.length})</small></span>
+            <span><span class="f-chev">▶</span><span class="ic">${iconHTML(f.icon, 'folder')}</span> ${esc(f.name)} <small>(${fNotes.length})</small></span>
             <span class="acts"><span data-editf="${f.id}" title="Edit folder">✎</span></span>
           </div>
           <div class="f-notes"><div class="f-notes-inner"><div class="f-notes-pad">
@@ -267,40 +300,82 @@
     }).join('')
       || '<p class="empty-state"><span class="big">📁</span>No folders yet.<br>Create one to get started.</p>';
 
-    pane.querySelectorAll('[data-f]').forEach(el => el.onclick = async (e) => {
-      if (e.target.dataset.editf) return;
-      await flushSave();
-      const id = +el.dataset.f;
-      const group = el.closest('.f-group');
-      if (selFolder === id) {
-        // clicking the selected folder again just toggles its dropdown
-        if (openFolders.has(id)) openFolders.delete(id); else openFolders.add(id);
-        group.classList.toggle('open');
-      } else {
-        selFolder = id;
-        openFolders.add(id);
-        pane.querySelectorAll('.item.sel').forEach(x => x.classList.remove('sel'));
-        el.classList.add('sel');
-        group.classList.add('open'); // class toggle (not re-render) so the dropdown animates
-        const nb = document.getElementById('new-note');
-        if (nb) nb.disabled = false;
-      }
-      saveOpen();
+    pane.querySelectorAll('[data-f]').forEach(el => {
+      el.onclick = async (e) => {
+        if (e.target.dataset.editf) return;
+        await flushSave();
+        const id = +el.dataset.f;
+        const group = el.closest('.f-group');
+        if (selFolder === id) {
+          // clicking the selected folder again just toggles its dropdown
+          if (openFolders.has(id)) openFolders.delete(id); else openFolders.add(id);
+          group.classList.toggle('open');
+        } else {
+          selFolder = id;
+          openFolders.add(id);
+          pane.querySelectorAll('.item.sel').forEach(x => x.classList.remove('sel'));
+          el.classList.add('sel');
+          group.classList.add('open'); // class toggle (not re-render) so the dropdown animates
+          const nb = document.getElementById('new-note');
+          if (nb) nb.disabled = false;
+        }
+        saveOpen();
+      };
+      // folders accept notes dragged from anywhere in the tree
+      el.addEventListener('dragover', (e) => {
+        if (dragNoteId == null) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        el.classList.add('drop-hover');
+      });
+      el.addEventListener('dragleave', () => el.classList.remove('drop-hover'));
+      el.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        el.classList.remove('drop-hover');
+        const nid = dragNoteId;
+        dragNoteId = null;
+        if (nid == null) return;
+        const fid = +el.dataset.f;
+        const n = noteById(nid);
+        if (!n || n.folder_id === fid) return;
+        const { error } = await supabase.from('notes').update({ folder_id: fid }).eq('id', nid);
+        if (error) { alert(error.message); return; }
+        n.folder_id = fid;
+        openFolders.add(fid); saveOpen();
+        if (selNote === nid) selFolder = fid;
+        renderTree();
+      });
     });
     pane.querySelectorAll('[data-editf]').forEach(el => el.onclick = () =>
       folderModal(folders.find(x => x.id === +el.dataset.editf)));
     wireNoteItems(pane);
   }
 
+  let dragNoteId = null;
   function wireNoteItems(pane) {
-    pane.querySelectorAll('[data-n]').forEach(el => el.onclick = async (e) => {
-      if (e.target.dataset.star || e.target.dataset.deln) return;
-      await flushSave();
-      const n = noteById(+el.dataset.n);
-      selNote = n.id; mode = 'view';
-      if (!searchQ.trim() && n.folder_id != null) selFolder = n.folder_id;
-      typingSizePx = null; // sticky size doesn't carry across notes
-      renderTree(); buildEditor();
+    pane.querySelectorAll('[data-n]').forEach(el => {
+      el.onclick = async (e) => {
+        if (e.target.dataset.star || e.target.dataset.deln) return;
+        await flushSave();
+        const n = noteById(+el.dataset.n);
+        selNote = n.id; mode = 'view';
+        if (!searchQ.trim() && n.folder_id != null) selFolder = n.folder_id;
+        typingSizePx = null; // sticky size doesn't carry across notes
+        renderTree(); buildEditor();
+      };
+      el.addEventListener('dragstart', (e) => {
+        dragNoteId = +el.dataset.n;
+        el.classList.add('dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain', el.dataset.n); } catch (_) {}
+        }
+      });
+      el.addEventListener('dragend', () => {
+        dragNoteId = null;
+        el.classList.remove('dragging');
+        document.querySelectorAll('.drop-hover').forEach(x => x.classList.remove('drop-hover'));
+      });
     });
     pane.querySelectorAll('[data-star]').forEach(el => el.onclick = async () => {
       const n = noteById(+el.dataset.star);
@@ -330,7 +405,7 @@
 
     pane.innerHTML = `
       <div class="note-ed-head">
-        <button class="icon-btn" id="ed-icon" title="${editing ? 'Change icon & color' : 'Icon'}" ${editing ? '' : 'disabled'}>${n.icon || '📝'}</button>
+        <button class="icon-btn" id="ed-icon" title="${editing ? 'Change icon & color' : 'Icon'}" ${editing ? '' : 'disabled'}>${iconHTML(n.icon, 'note')}</button>
         ${editing
           ? `<input class="title-edit" id="ed-title" value="${esc(n.title)}" maxlength="180">`
           : `<div class="title-view">${esc(n.title)}</div>`}
@@ -751,8 +826,8 @@
   function pickerRows(currentIcon, currentColor) {
     return `
       <label style="font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)">Icon</label>
-      <div class="icon-grid">${EMOJIS.map(e =>
-        `<button type="button" data-ic="${e}" class="${currentIcon === e ? 'on' : ''}">${e}</button>`).join('')}</div>
+      <div class="icon-grid">${ICON_KEYS.map(k =>
+        `<button type="button" data-ic="${k}" class="${currentIcon === k || LEGACY_ICON[currentIcon] === k ? 'on' : ''}">${ICON_SET[k]}</button>`).join('')}</div>
       <label style="font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)">Color</label>
       <div class="swatch-row">${COLORS.map(c =>
         `<button type="button" data-sw="${c}" class="${currentColor === c ? 'on' : ''}" style="background:${c}"></button>`).join('')}
@@ -771,7 +846,7 @@
   }
 
   function folderModal(f) {
-    const state = { icon: f?.icon || '📁', color: f?.color || null };
+    const state = { icon: f?.icon || 'folder', color: f?.color || null };
     const back = baseModal(`
       <h2>${f ? 'Edit folder' : 'New folder'}</h2>
       <div class="field"><label>Name</label><input id="fm-name" required value="${esc(f?.name)}" maxlength="120"></div>
@@ -805,7 +880,7 @@
   }
 
   function iconModal(n) {
-    const state = { icon: n.icon || '📝', color: n.color || null };
+    const state = { icon: n.icon || 'note', color: n.color || null };
     const back = baseModal(`
       <h2>Note icon & color</h2>
       ${pickerRows(state.icon, state.color)}
@@ -899,7 +974,7 @@
         title: back.querySelector('#nm-title').value.trim(),
         meeting_date: back.querySelector('#nm-date').value,
         content,
-        icon: '📝',
+        icon: 'note',
         created_by: ctx.user.id,
       }).select('id').single();
       if (error) { alert(error.message); return; }
