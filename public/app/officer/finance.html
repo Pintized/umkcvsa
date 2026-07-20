@@ -64,7 +64,19 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 .st-draft, .st-submitted { background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
 
 .rcpt-link { cursor:pointer; }
-.dues-paid td { background:rgba(47, 158, 99, .06); }
+
+/* budget planner */
+.plan-group { border:1px solid var(--line); border-radius:12px; margin-bottom:14px; overflow:hidden; }
+.plan-head {
+  display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 14px; background:var(--surface-2); border-bottom:1px solid var(--line);
+}
+.plan-head-r { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.rcpt-x { cursor:pointer; color:var(--red); font-weight:700; padding:0 2px; }
+.plan-totals {
+  display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  margin-top:12px; padding-top:12px; border-top:1px solid var(--line); font-size:.9rem;
+}
 .tb-toast {
   position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
   background:var(--surface); color:var(--text); border:1px solid rgba(201, 155, 63, .5);
@@ -101,7 +113,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   };
   const CURRENT_TERM = termOf(new Date().toLocaleDateString('en-CA'));
 
-  let TX = [], DUES = [], FUNDRAISERS = [], SPONSORSHIPS = [], REQUESTS = [], REIMB = [], BUDGETS = [], PEOPLE = [], EVENTS = [], SPONSOR_NAMES = [];
+  let TX = [], FUNDRAISERS = [], SPONSORSHIPS = [], REQUESTS = [], REIMB = [], PLAN_ITEMS = [], PLAN_RECEIPTS = [], PEOPLE = [], EVENTS = [], SPONSOR_NAMES = [];
   let TAB = 'overview';
   let TERM = CURRENT_TERM;
   let LEDGER_Q = '';
@@ -131,21 +143,21 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   const nameOf = (uid) => PEOPLE.find(p => p.id === uid)?.full_name || 'Member';
 
   async function load() {
-    const [tx, du, fr, sp, rq, rb, bg, pp, ev, sn] = await Promise.all([
+    const [tx, fr, sp, rq, rb, pi, pr, pp, ev, sn] = await Promise.all([
       supabase.from('finance_transactions').select('*').order('occurred_on', { ascending: false }).order('id', { ascending: false }),
-      supabase.from('finance_dues').select('*'),
       supabase.from('finance_fundraisers').select('*').order('created_at'),
       supabase.from('finance_sponsorships').select('*').order('created_at'),
       supabase.from('finance_requests').select('*').order('created_at'),
       supabase.from('finance_reimbursements').select('*').order('created_at', { ascending: false }),
-      supabase.from('finance_budgets').select('*').order('created_at'),
+      supabase.from('finance_planner_items').select('*').order('tx_code').order('id'),
+      supabase.from('finance_planner_receipts').select('*').order('created_at'),
       supabase.from('profiles').select('id, full_name').order('full_name'),
       supabase.from('events').select('id, name, event_date').order('event_date', { ascending: false }),
       supabase.from('sponsors').select('id, name'),
     ]);
-    TX = tx.data || []; DUES = du.data || []; FUNDRAISERS = fr.data || []; SPONSORSHIPS = sp.data || [];
-    REQUESTS = rq.data || []; REIMB = rb.data || []; BUDGETS = bg.data || []; PEOPLE = pp.data || [];
-    EVENTS = ev.data || []; SPONSOR_NAMES = sn.data || [];
+    TX = tx.data || []; FUNDRAISERS = fr.data || []; SPONSORSHIPS = sp.data || [];
+    REQUESTS = rq.data || []; REIMB = rb.data || []; PLAN_ITEMS = pi.data || []; PLAN_RECEIPTS = pr.data || [];
+    PEOPLE = pp.data || []; EVENTS = ev.data || []; SPONSOR_NAMES = sn.data || [];
     render();
   }
 
@@ -161,7 +173,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 
   function termOptions() {
     const set = new Set([CURRENT_TERM]);
-    [TX, DUES, FUNDRAISERS, SPONSORSHIPS, REQUESTS, REIMB, BUDGETS].forEach(a => a.forEach(r => r.term && set.add(r.term)));
+    [TX, FUNDRAISERS, SPONSORSHIPS, REQUESTS, REIMB, PLAN_ITEMS].forEach(a => a.forEach(r => r.term && set.add(r.term)));
     const order = { 'Spring': 0, 'Summer': 1, 'Fall': 2 };
     const terms = [...set].sort((a, b) => {
       const [sa, ya] = a.split(' '), [sb, yb] = b.split(' ');
@@ -204,8 +216,8 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         </div>
       </div>
       <div class="mode-toggle fin-tabs" id="fin-tabs">
-        ${['overview', 'ledger', 'dues', 'reimburse', 'budgets', 'funding'].map(t =>
-          `<button data-tab="${t}" class="${TAB === t ? 'on' : ''}" style="text-transform:capitalize">${t}</button>`).join('')}
+        ${[['overview', 'Overview'], ['ledger', 'Ledger'], ['planner', 'Budget Planner'], ['reimburse', 'Reimburse'], ['funding', 'Funding']].map(([t, l]) =>
+          `<button data-tab="${t}" class="${TAB === t ? 'on' : ''}">${l}</button>`).join('')}
       </div>
       <div id="fin-body"></div>`;
     document.getElementById('fin-term').onchange = (e) => { TERM = e.target.value; render(); };
@@ -215,7 +227,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       if (b) { TAB = b.dataset.tab; render(); }
     });
     const body = document.getElementById('fin-body');
-    ({ overview: renderOverview, ledger: renderLedger, dues: renderDues, reimburse: renderReimb, budgets: renderBudgets, funding: renderFunding })[TAB](body, { inc, exp });
+    ({ overview: renderOverview, ledger: renderLedger, planner: renderPlanner, reimburse: renderReimb, funding: renderFunding })[TAB](body, { inc, exp });
   }
 
   // ---------- OVERVIEW ----------
@@ -458,84 +470,203 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     };
   }
 
-  // ---------- DUES ----------
-  function renderDues(body) {
-    if (TERM === 'all') { body.innerHTML = '<div class="card"><p style="color:var(--muted)">Pick a specific term to track dues.</p></div>'; return; }
-    const paid = new Map(DUES.filter(d => d.term === TERM).map(d => [d.user_id, d]));
-    const rows = PEOPLE.map(p => {
-      const d = paid.get(p.id);
-      return `<tr class="${d ? 'dues-paid' : ''}">
-        <td><strong>${esc(p.full_name)}</strong></td>
-        <td>${d ? `<span class="st-tag st-paid">paid</span>` : '<span class="st-tag st-pending">unpaid</span>'}</td>
-        <td>${d ? money(d.amount) : '—'}</td>
-        <td style="text-transform:capitalize">${d ? (esc(d.method) || '—') : '—'}</td>
-        <td>${d ? fmtD(d.paid_on) : '—'}</td>
-        <td class="actions">${d
-          ? `<button class="btn sm ghost" data-undue="${d.id}">Undo</button>`
-          : `<button class="btn sm secondary" data-due="${p.id}">Mark paid</button>`}</td></tr>`;
+  // ---------- BUDGET PLANNER ----------
+  // Per-event purchase planning. Items group by transaction code —
+  // one code per store receipt, receipts uploaded on the group.
+  let PLAN_EVENT = null;
+  const PLAN_ACCOUNTS = { safc: 'SAFC (A+EE)', sgr: 'SGR', personal: 'VSA Personal' };
+  const rowTotal = (i) => Number(i.quantity) * Number(i.unit_price) + Number(i.tax || 0);
+
+  function renderPlanner(body) {
+    if (!EVENTS.length) {
+      body.innerHTML = '<div class="card"><p style="color:var(--muted)">Create an event first — the planner organizes purchases per event.</p></div>';
+      return;
+    }
+    if (PLAN_EVENT == null || !EVENTS.some(e => e.id === PLAN_EVENT)) PLAN_EVENT = EVENTS[0].id;
+    const items = PLAN_ITEMS.filter(i => i.event_id === PLAN_EVENT);
+    const codes = [...new Set(items.map(i => i.tx_code))].sort();
+
+    const groups = codes.map(code => {
+      const rows = items.filter(i => i.tx_code === code);
+      const store = rows.find(r => r.store_name)?.store_name || '';
+      const rcpts = PLAN_RECEIPTS.filter(r => r.event_id === PLAN_EVENT && r.tx_code === code);
+      const sub = rows.reduce((s, i) => s + rowTotal(i), 0);
+      return `<div class="plan-group">
+        <div class="plan-head">
+          <div><strong>${esc(code)}</strong>${store ? ` · ${esc(store)}` : ''} <span class="chip">${PLAN_ACCOUNTS[rows[0]?.account] || ''}</span></div>
+          <div class="plan-head-r">
+            ${rcpts.map((r, i) => `<span class="link-btn rcpt-link" data-rcpt="${esc(r.receipt_path)}">receipt ${i + 1}</span><span class="rcpt-x" data-delrcpt="${r.id}" title="Remove receipt">✕</span>`).join(' ')}
+            <button class="btn sm ghost" data-uprcpt="${esc(code)}">+ Receipt</button>
+            <strong>${money(sub)}</strong>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th></th><th>Item</th><th>Type</th><th>Qty</th><th>Unit price</th><th>Tax</th><th>Total</th><th>Link</th><th></th></tr></thead>
+          <tbody>${rows.map(i => `
+            <tr style="${i.purchased ? 'opacity:.6' : ''}">
+              <td><input type="checkbox" data-bought="${i.id}" ${i.purchased ? 'checked' : ''} title="Purchased" style="width:16px; height:16px; cursor:pointer"></td>
+              <td><strong style="${i.purchased ? 'text-decoration:line-through' : ''}">${esc(i.item_name)}</strong></td>
+              <td style="text-transform:capitalize">${esc(i.item_type)}</td>
+              <td>${+i.quantity}</td>
+              <td>${money(i.unit_price)}</td>
+              <td>${Number(i.tax) ? money(i.tax) : '—'}</td>
+              <td><strong>${money(rowTotal(i))}</strong></td>
+              <td>${i.url ? `<a class="link-btn" href="${esc(i.url)}" target="_blank" rel="noopener">open</a>` : '—'}</td>
+              <td class="actions">
+                <button class="btn sm secondary" data-editi="${i.id}">Edit</button>
+                <button class="btn sm ghost" data-deli="${i.id}">Delete</button>
+              </td>
+            </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
     }).join('');
-    const collected = DUES.filter(d => d.term === TERM).reduce((s, d) => s + Number(d.amount), 0);
+
+    const acctTotals = Object.entries(PLAN_ACCOUNTS).map(([k, v]) => {
+      const sum = items.filter(i => i.account === k).reduce((s, i) => s + rowTotal(i), 0);
+      return sum ? `<span>${v}: <strong>${money(sum)}</strong></span>` : '';
+    }).filter(Boolean).join(' · ');
+    const grand = items.reduce((s, i) => s + rowTotal(i), 0);
+    const bought = items.filter(i => i.purchased).reduce((s, i) => s + rowTotal(i), 0);
+
     body.innerHTML = `
       <div class="card">
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
-          <h3>Dues — ${esc(TERM)}</h3>
-          <span style="color:var(--muted)">${paid.size}/${PEOPLE.length} paid · <strong style="color:var(--gold)">${money(collected)}</strong> collected</span>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+            <h3>Budget Planner</h3>
+            <select id="plan-ev" class="rt-btn" style="height:36px">${EVENTS.map(e =>
+              `<option value="${e.id}" ${e.id === PLAN_EVENT ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+          </div>
+          <button class="btn sm" id="new-item">+ Item</button>
         </div>
-        <div class="tbl-wrap"><table class="tbl">
-          <thead><tr><th>Member</th><th>Status</th><th>Amount</th><th>Method</th><th>Paid on</th><th></th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="6" style="color:var(--muted)">No members yet.</td></tr>'}</tbody>
-        </table></div>
-        <p style="color:var(--muted); font-size:.8rem; margin-top:10px">Marking someone paid also adds the income entry to the ledger.</p>
+        ${groups || '<p style="color:var(--muted)">Nothing planned for this event yet — add the first item.</p>'}
+        ${items.length ? `<div class="plan-totals">
+          <span>${acctTotals}</span>
+          <span>Purchased ${money(bought)} of <strong>${money(grand)}</strong></span>
+        </div>` : ''}
+        <p style="color:var(--muted); font-size:.8rem; margin-top:10px">
+          One transaction ID per store receipt — upload receipts on their group so paper matches the sheet.
+          Tax only applies to VSA Personal purchases (school accounts are tax-exempt).</p>
       </div>`;
-    body.querySelectorAll('[data-due]').forEach(b => b.onclick = () => duesModal(b.dataset.due));
-    body.querySelectorAll('[data-undue]').forEach(b => b.onclick = async () => {
-      const d = DUES.find(x => x.id === +b.dataset.undue);
-      if (!await confirmDialog(`Undo ${esc(nameOf(d.user_id))}'s dues payment? The ledger entry is removed too.`)) return;
-      if (d.transaction_id) await supabase.from('finance_transactions').delete().eq('id', d.transaction_id);
-      await supabase.from('finance_dues').delete().eq('id', d.id);
+
+    body.querySelector('#plan-ev').onchange = (e) => { PLAN_EVENT = +e.target.value; renderPlanner(body); };
+    body.querySelector('#new-item').onclick = () => itemModal();
+    body.querySelectorAll('.rcpt-link').forEach(el => el.onclick = () => openReceipt(el.dataset.rcpt));
+    body.querySelectorAll('[data-bought]').forEach(cb => cb.onchange = async () => {
+      const { error } = await supabase.from('finance_planner_items')
+        .update({ purchased: cb.checked }).eq('id', +cb.dataset.bought);
+      if (error) { toast(error.message); cb.checked = !cb.checked; return; }
+      const it = PLAN_ITEMS.find(x => x.id === +cb.dataset.bought);
+      it.purchased = cb.checked;
+      renderPlanner(body);
+    });
+    body.querySelectorAll('[data-editi]').forEach(b => b.onclick = () => itemModal(PLAN_ITEMS.find(x => x.id === +b.dataset.editi)));
+    body.querySelectorAll('[data-deli]').forEach(b => b.onclick = async () => {
+      const i = PLAN_ITEMS.find(x => x.id === +b.dataset.deli);
+      if (!await confirmDialog(`Remove "${esc(i.item_name)}" from the plan?`)) return;
+      await supabase.from('finance_planner_items').delete().eq('id', i.id);
+      load();
+    });
+    body.querySelectorAll('[data-uprcpt]').forEach(b => b.onclick = () => {
+      const code = b.dataset.uprcpt;
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = 'image/png,image/jpeg,image/webp';
+      inp.onchange = async () => {
+        const path = await uploadReceipt(inp.files[0]);
+        if (!path) return;
+        const { error } = await supabase.from('finance_planner_receipts')
+          .insert({ event_id: PLAN_EVENT, tx_code: code, receipt_path: path, created_by: ctx.user.id });
+        if (error) toast(error.message); else load();
+      };
+      inp.click();
+    });
+    body.querySelectorAll('[data-delrcpt]').forEach(b => b.onclick = async () => {
+      const r = PLAN_RECEIPTS.find(x => x.id === +b.dataset.delrcpt);
+      if (!await confirmDialog('Remove this receipt?')) return;
+      await supabase.storage.from('receipts').remove([r.receipt_path]);
+      await supabase.from('finance_planner_receipts').delete().eq('id', r.id);
       load();
     });
   }
-  function duesModal(userId) {
+
+  function itemModal(i) {
+    const evItems = PLAN_ITEMS.filter(x => x.event_id === PLAN_EVENT);
+    const codes = [...new Set(evItems.map(x => x.tx_code))];
+    const stores = [...new Set(evItems.map(x => x.store_name).filter(Boolean))];
     const back = document.createElement('div');
     back.className = 'modal-back';
     back.innerHTML = `
-      <div class="modal" style="max-width:400px">
-        <h2>Dues — ${esc(nameOf(userId))}</h2>
+      <div class="modal">
+        <h2>${i ? 'Edit item' : 'Plan an item'}</h2>
         <div class="notice" id="m-err"></div>
         <div class="field-row">
-          <div class="field"><label>Amount ($)</label><input type="number" id="f-amt" min="0.01" step="0.01" value="10"></div>
-          <div class="field"><label>Method</label>
-            <select id="f-method">${METHODS.map(m => `<option>${m}</option>`).join('')}</select></div>
-          <div class="field"><label>Into account</label>
-            <select id="f-acct">${Object.entries(ACCOUNTS).map(([k, v]) => `<option value="${k}" ${k === 'sgr' ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div class="field"><label>Transaction ID</label>
+            <input id="f-tx" list="tx-codes" value="${esc(i?.tx_code || 'T' + (codes.length + 1))}" placeholder="T1">
+            <datalist id="tx-codes">${codes.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+          <div class="field"><label>Store</label>
+            <input id="f-store" list="store-names" value="${esc(i?.store_name)}" placeholder="Costco, Amazon…">
+            <datalist id="store-names">${stores.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
         </div>
+        <div class="field-row">
+          <div class="field"><label>Account</label>
+            <select id="f-pacct">${Object.entries(PLAN_ACCOUNTS).map(([k, v]) =>
+              `<option value="${k}" ${(i?.account || 'safc') === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div class="field"><label>Item type</label>
+            <select id="f-type">${['food', 'supply'].map(t =>
+              `<option ${(i?.item_type || 'supply') === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label>Item name</label><input id="f-item" value="${esc(i?.item_name)}" placeholder="e.g. spring roll wrappers"></div>
+        <div class="field-row">
+          <div class="field"><label>Quantity</label><input type="number" id="f-qty" min="0.01" step="0.01" value="${i?.quantity ?? 1}"></div>
+          <div class="field"><label>Unit price ($)</label><input type="number" id="f-price" min="0" step="0.01" value="${i?.unit_price ?? ''}"></div>
+          <div class="field" id="tax-field"><label>Tax ($)</label><input type="number" id="f-tax" min="0" step="0.01" value="${i?.tax ?? ''}" placeholder="0.00"></div>
+        </div>
+        <div class="field"><label>URL / link (optional)</label><input id="f-url" value="${esc(i?.url)}" placeholder="https://…"></div>
         <div class="row-btns">
           <button class="btn ghost" id="m-cancel">Cancel</button>
-          <button class="btn" id="m-save">Mark paid</button>
+          <button class="btn" id="m-save">${i ? 'Save' : 'Add'}</button>
         </div>
       </div>`;
     document.body.appendChild(back);
+    // tax only exists for VSA Personal purchases
+    const syncTax = () => {
+      back.querySelector('#tax-field').style.display =
+        back.querySelector('#f-pacct').value === 'personal' ? '' : 'none';
+    };
+    back.querySelector('#f-pacct').onchange = syncTax;
+    syncTax();
+    // picking an existing transaction ID pulls in its store
+    back.querySelector('#f-tx').addEventListener('input', (e) => {
+      const match = evItems.find(x => x.tx_code === e.target.value.trim());
+      if (match) back.querySelector('#f-store').value = match.store_name || '';
+    });
     back.querySelector('#m-cancel').onclick = () => back.remove();
     back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
     back.querySelector('#m-save').onclick = async () => {
       const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
-      const amount = +back.querySelector('#f-amt').value;
-      if (!(amount > 0)) return say('Enter an amount.');
-      const method = back.querySelector('#f-method').value;
-      const account = back.querySelector('#f-acct').value;
-      const today = new Date().toLocaleDateString('en-CA');
-      const { data: txRow, error: e1 } = await supabase.from('finance_transactions').insert({
-        kind: 'income', amount, category: 'dues', method, account,
-        description: `Dues — ${nameOf(userId)} (${TERM})`,
-        occurred_on: today, term: TERM, created_by: ctx.user.id,
-      }).select('id').single();
-      if (e1) return say(e1.message);
-      const { error: e2 } = await supabase.from('finance_dues').insert({
-        user_id: userId, term: TERM, amount, method, paid_on: today,
-        transaction_id: txRow.id, created_by: ctx.user.id,
-      });
-      if (e2) return say(e2.message);
+      const item_name = back.querySelector('#f-item').value.trim();
+      const quantity = +back.querySelector('#f-qty').value;
+      if (!item_name) return say('Name the item.');
+      if (!(quantity > 0)) return say('Quantity must be above zero.');
+      const account = back.querySelector('#f-pacct').value;
+      const ev = EVENTS.find(e => e.id === PLAN_EVENT);
+      const payload = {
+        event_id: PLAN_EVENT,
+        account,
+        tx_code: back.querySelector('#f-tx').value.trim() || 'T1',
+        store_name: back.querySelector('#f-store').value.trim(),
+        item_name,
+        quantity,
+        unit_price: +back.querySelector('#f-price').value || 0,
+        tax: account === 'personal' ? (+back.querySelector('#f-tax').value || 0) : 0,
+        item_type: back.querySelector('#f-type').value,
+        url: back.querySelector('#f-url').value.trim() || null,
+        term: termOf(ev?.event_date || new Date().toLocaleDateString('en-CA')),
+      };
+      const { error } = i
+        ? await supabase.from('finance_planner_items').update(payload).eq('id', i.id)
+        : await supabase.from('finance_planner_items').insert({ ...payload, created_by: ctx.user.id });
+      if (error) return say(error.message);
       back.remove();
       load();
     };
@@ -653,83 +784,6 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         user_id: back.querySelector('#f-who').value, amount, reason, receipt_path,
         term: CURRENT_TERM,
       });
-      if (error) return say(error.message);
-      back.remove();
-      load();
-    };
-  }
-
-  // ---------- BUDGETS ----------
-  function renderBudgets(body) {
-    if (TERM === 'all') { body.innerHTML = '<div class="card"><p style="color:var(--muted)">Pick a specific term to manage budgets.</p></div>'; return; }
-    const tt = termTx();
-    const tiles = BUDGETS.filter(b => b.term === TERM).map(b => {
-      const label = b.event_id ? (EVENTS.find(e => e.id === b.event_id)?.name || 'Event #' + b.event_id) : b.category;
-      const spent = tt.filter(t => t.kind === 'expense' && (b.event_id ? t.event_id === b.event_id : t.category === b.category))
-        .reduce((s, t) => s + Number(t.amount), 0);
-      const pct = b.amount > 0 ? spent / Number(b.amount) : 0;
-      const cls = pct >= 1 ? 'over' : pct >= .8 ? 'warn' : '';
-      return `<div class="fin-tile">
-        <h4 style="text-transform:capitalize">${esc(label)}</h4>
-        <div class="sub">${b.event_id ? 'Event budget' : 'Category budget'}</div>
-        <div class="prog ${cls}">
-          <div class="track"><div class="fill" style="width:${Math.min(100, Math.round(pct * 100))}%"></div></div>
-          <div class="nums"><span>${money(spent)} spent</span><span>of ${money(b.amount)}${pct >= 1 ? ' — over!' : ''}</span></div>
-        </div>
-        <div class="acts"><button class="btn sm secondary" data-editb="${b.id}">Edit</button>
-        <button class="btn sm ghost" data-delb="${b.id}">Delete</button></div>
-      </div>`;
-    }).join('');
-    body.innerHTML = `
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
-          <h3>Budgets — ${esc(TERM)}</h3>
-          <button class="btn sm" id="new-budget">+ Budget</button>
-        </div>
-        ${tiles ? `<div class="fin-grid">${tiles}</div>` : '<p style="color:var(--muted)">No budgets set for this term.</p>'}
-      </div>`;
-    body.querySelector('#new-budget').onclick = () => budgetModal();
-    body.querySelectorAll('[data-editb]').forEach(b => b.onclick = () => budgetModal(BUDGETS.find(x => x.id === +b.dataset.editb)));
-    body.querySelectorAll('[data-delb]').forEach(b => b.onclick = async () => {
-      if (!await confirmDialog('Delete this budget?')) return;
-      await supabase.from('finance_budgets').delete().eq('id', +b.dataset.delb);
-      load();
-    });
-  }
-  function budgetModal(b) {
-    const back = document.createElement('div');
-    back.className = 'modal-back';
-    back.innerHTML = `
-      <div class="modal" style="max-width:430px">
-        <h2>${b ? 'Edit budget' : 'New budget'}</h2>
-        <div class="notice" id="m-err"></div>
-        <div class="field"><label>For</label>
-          <select id="f-target">
-            <optgroup label="Category">${CATEGORIES.map(c => `<option value="cat:${c}" ${b && !b.event_id && b.category === c ? 'selected' : ''}>${c}</option>`).join('')}</optgroup>
-            <optgroup label="Event">${EVENTS.map(e => `<option value="ev:${e.id}" ${b?.event_id === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>
-          </select></div>
-        <div class="field"><label>Budget ($)</label><input type="number" id="f-amt" min="1" step="0.01" value="${b?.amount ?? ''}"></div>
-        <div class="row-btns">
-          <button class="btn ghost" id="m-cancel">Cancel</button>
-          <button class="btn" id="m-save">${b ? 'Save' : 'Add'}</button>
-        </div>
-      </div>`;
-    document.body.appendChild(back);
-    back.querySelector('#m-cancel').onclick = () => back.remove();
-    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
-    back.querySelector('#m-save').onclick = async () => {
-      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
-      const amount = +back.querySelector('#f-amt').value;
-      if (!(amount > 0)) return say('Enter a budget amount.');
-      const [type, val] = back.querySelector('#f-target').value.split(':');
-      const payload = {
-        term: TERM, amount,
-        category: type === 'cat' ? val : null,
-        event_id: type === 'ev' ? +val : null,
-      };
-      const { error } = b
-        ? await supabase.from('finance_budgets').update(payload).eq('id', b.id)
-        : await supabase.from('finance_budgets').insert({ ...payload, created_by: ctx.user.id });
       if (error) return say(error.message);
       back.remove();
       load();
