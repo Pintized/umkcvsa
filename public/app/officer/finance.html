@@ -101,7 +101,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 
   const CATEGORIES = ['dues', 'fundraising', 'sponsorship', 'school funding', 'merch', 'food', 'decorations', 'venue', 'supplies', 'travel', 'reimbursement', 'misc'];
   const METHODS = ['cash', 'venmo', 'zelle', 'card', 'check', 'other'];
-  const ACCOUNTS = { 'safc-a': 'SAFC-A', 'safc-ee': 'SAFC-EE', 'sgr': 'SGR', 'cash': 'VSA Personal' };
+  const ACCOUNTS = { 'safc': 'SAFC (A+EE)', 'sgr': 'SGR', 'cash': 'VSA Personal' };
   const acctLabel = (a) => ACCOUNTS[a] || a || '—';
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const money = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -282,8 +282,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     body.innerHTML = `
       <div class="card"><h2>Accounts</h2>
         <div class="stat-grid">
-          <div class="stat"><div class="num">${money(acctBalance('safc-a', 'safc-ee'))}</div>
-            <div class="lbl">SAFC (A + EE)<br><small>A: ${money(acctBalance('safc-a'))} · EE: ${money(acctBalance('safc-ee'))}</small></div></div>
+          <div class="stat"><div class="num">${money(acctBalance('safc'))}</div><div class="lbl">SAFC (A + EE)</div></div>
           <div class="stat"><div class="num">${money(acctBalance('sgr'))}</div><div class="lbl">SGR</div></div>
           <div class="stat"><div class="num">${money(acctBalance('cash'))}</div><div class="lbl">VSA Personal</div></div>
         </div>
@@ -601,7 +600,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         <div class="notice" id="m-err"></div>
         <div class="field-row">
           <div class="field"><label>Transaction ID</label>
-            <input id="f-tx" list="tx-codes" value="${esc(i?.tx_code || 'T' + (codes.length + 1))}" placeholder="T1">
+            <input id="f-tx" list="tx-codes" value="${esc(i?.tx_code || String(codes.reduce((m, c) => Math.max(m, parseInt(c, 10) || 0), 0) + 1).padStart(3, '0'))}" placeholder="001">
             <datalist id="tx-codes">${codes.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
           <div class="field"><label>Store</label>
             <input id="f-store" list="store-names" value="${esc(i?.store_name)}" placeholder="Costco, Amazon…">
@@ -653,7 +652,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       const payload = {
         event_id: PLAN_EVENT,
         account,
-        tx_code: back.querySelector('#f-tx').value.trim() || 'T1',
+        tx_code: back.querySelector('#f-tx').value.trim() || '001',
         store_name: back.querySelector('#f-store').value.trim(),
         item_name,
         quantity,
