@@ -89,6 +89,8 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 
   const CATEGORIES = ['dues', 'fundraising', 'sponsorship', 'school funding', 'merch', 'food', 'decorations', 'venue', 'supplies', 'travel', 'reimbursement', 'misc'];
   const METHODS = ['cash', 'venmo', 'zelle', 'card', 'check', 'other'];
+  const ACCOUNTS = { 'safc-a': 'SAFC-A', 'safc-ee': 'SAFC-EE', 'sgr': 'SGR', 'cash': 'Cash' };
+  const acctLabel = (a) => ACCOUNTS[a] || a || '—';
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const money = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtD = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -151,6 +153,10 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   const termTx = () => TX.filter(inTerm);
   const sumBy = (rows, kind) => rows.filter(t => t.kind === kind).reduce((s, t) => s + Number(t.amount), 0);
   const balance = () => sumBy(TX, 'income') - sumBy(TX, 'expense'); // all-time
+  const acctBalance = (...accts) => {
+    const rows = TX.filter(t => accts.includes(t.account));
+    return sumBy(rows, 'income') - sumBy(rows, 'expense');
+  };
   const receivedFor = (field, id) => TX.filter(t => t.kind === 'income' && t[field] === id).reduce((s, t) => s + Number(t.amount), 0);
 
   function termOptions() {
@@ -262,6 +268,14 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       <td class="${t.kind === 'income' ? 'amt-in' : 'amt-out'}">${t.kind === 'income' ? '+' : '−'}${money(t.amount)}</td></tr>`).join('');
 
     body.innerHTML = `
+      <div class="card"><h2>Accounts</h2>
+        <div class="stat-grid">
+          <div class="stat"><div class="num">${money(acctBalance('safc-a', 'safc-ee'))}</div>
+            <div class="lbl">SAFC (A + EE)<br><small>A: ${money(acctBalance('safc-a'))} · EE: ${money(acctBalance('safc-ee'))}</small></div></div>
+          <div class="stat"><div class="num">${money(acctBalance('sgr'))}</div><div class="lbl">SGR</div></div>
+          <div class="stat"><div class="num">${money(acctBalance('cash'))}</div><div class="lbl">Cash</div></div>
+        </div>
+      </div>
       <div class="card"><h2>Overview</h2>
         <div class="stat-grid">
           <div class="stat"><div class="num">${money(balance())}</div><div class="lbl">Balance (all time)</div></div>
@@ -290,7 +304,8 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   function renderLedger(body) {
     const q = LEDGER_Q.toLowerCase();
     const rows = termTx()
-      .filter(t => !q || (t.description || '').toLowerCase().includes(q) || t.category.toLowerCase().includes(q) || (t.method || '').includes(q))
+      .filter(t => !q || (t.description || '').toLowerCase().includes(q) || t.category.toLowerCase().includes(q)
+        || (t.method || '').includes(q) || acctLabel(t.account).toLowerCase().includes(q))
       .map(t => {
         const ev = t.event_id ? EVENTS.find(e => e.id === t.event_id) : null;
         return `<tr>
@@ -298,6 +313,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           <td><span class="kind-badge kind-${t.kind}">${t.kind}</span></td>
           <td style="text-transform:capitalize">${esc(t.category)}</td>
           <td>${esc(t.description) || '<span style="color:var(--muted)">—</span>'}${ev ? `<br><small style="color:var(--muted)">📍 ${esc(ev.name)}</small>` : ''}</td>
+          <td>${acctLabel(t.account)}</td>
           <td style="text-transform:capitalize">${esc(t.method) || '—'}</td>
           <td class="${t.kind === 'income' ? 'amt-in' : 'amt-out'}">${t.kind === 'income' ? '+' : '−'}${money(t.amount)}</td>
           <td>${t.receipt_path ? `<span class="link-btn rcpt-link" data-rcpt="${esc(t.receipt_path)}">view</span>` : '<span style="color:var(--muted)">—</span>'}</td>
@@ -314,8 +330,8 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           <button class="btn secondary sm" id="csv" style="align-self:center">Export CSV</button>
         </div>
         <div class="tbl-wrap"><table class="tbl">
-          <thead><tr><th>Date</th><th>Kind</th><th>Category</th><th>Description</th><th>Method</th><th>Amount</th><th>Receipt</th><th></th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="8" style="color:var(--muted)">No entries for this term yet.</td></tr>'}</tbody>
+          <thead><tr><th>Date</th><th>Kind</th><th>Category</th><th>Description</th><th>Account</th><th>Method</th><th>Amount</th><th>Receipt</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="9" style="color:var(--muted)">No entries for this term yet.</td></tr>'}</tbody>
         </table></div>
       </div>`;
     body.querySelector('#lq').oninput = (e) => {
@@ -329,11 +345,11 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   }
   function wireLedger(body) {
     body.querySelector('#csv').onclick = () => {
-      const head = 'date,kind,category,description,method,amount,term,event\n';
+      const head = 'date,kind,category,description,account,method,amount,term,event\n';
       const lines = termTx().map(t => {
         const ev = t.event_id ? (EVENTS.find(e => e.id === t.event_id)?.name || '') : '';
         const cell = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-        return [t.occurred_on, t.kind, t.category, cell(t.description), t.method || '', t.amount, t.term, cell(ev)].join(',');
+        return [t.occurred_on, t.kind, t.category, cell(t.description), acctLabel(t.account), t.method || '', t.amount, t.term, cell(ev)].join(',');
       }).join('\n');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([head + lines], { type: 'text/csv' }));
@@ -371,6 +387,9 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           <div class="field"><label>Category</label>
             <input id="f-cat" list="cat-list" value="${esc(t?.category || preset.category || '')}" placeholder="dues, food…">
             <datalist id="cat-list">${CATEGORIES.map(c => `<option value="${c}">`).join('')}</datalist></div>
+          <div class="field"><label>Account</label>
+            <select id="f-acct">${Object.entries(ACCOUNTS).map(([k, v]) =>
+              `<option value="${k}" ${(t?.account || preset.account || 'cash') === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
           <div class="field"><label>Method</label>
             <select id="f-method"><option value="">—</option>${METHODS.map(m => `<option ${((t?.method || preset.method) === m) ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
         </div>
@@ -414,6 +433,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         occurred_on: date,
         term: termOf(date),
         category: back.querySelector('#f-cat').value.trim().toLowerCase() || 'misc',
+        account: back.querySelector('#f-acct').value,
         method: back.querySelector('#f-method').value || null,
         description: back.querySelector('#f-desc').value.trim() || null,
         event_id: +back.querySelector('#f-event').value || null,
@@ -487,6 +507,8 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           <div class="field"><label>Amount ($)</label><input type="number" id="f-amt" min="0.01" step="0.01" value="10"></div>
           <div class="field"><label>Method</label>
             <select id="f-method">${METHODS.map(m => `<option>${m}</option>`).join('')}</select></div>
+          <div class="field"><label>Into account</label>
+            <select id="f-acct">${Object.entries(ACCOUNTS).map(([k, v]) => `<option value="${k}" ${k === 'sgr' ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
         </div>
         <div class="row-btns">
           <button class="btn ghost" id="m-cancel">Cancel</button>
@@ -501,9 +523,10 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       const amount = +back.querySelector('#f-amt').value;
       if (!(amount > 0)) return say('Enter an amount.');
       const method = back.querySelector('#f-method').value;
+      const account = back.querySelector('#f-acct').value;
       const today = new Date().toLocaleDateString('en-CA');
       const { data: txRow, error: e1 } = await supabase.from('finance_transactions').insert({
-        kind: 'income', amount, category: 'dues', method,
+        kind: 'income', amount, category: 'dues', method, account,
         description: `Dues — ${nameOf(userId)} (${TERM})`,
         occurred_on: today, term: TERM, created_by: ctx.user.id,
       }).select('id').single();
@@ -555,18 +578,37 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     };
     body.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => review(+b.dataset.approve, 'approved'));
     body.querySelectorAll('[data-deny]').forEach(b => b.onclick = () => review(+b.dataset.deny, 'denied'));
-    body.querySelectorAll('[data-pay]').forEach(b => b.onclick = async () => {
+    body.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => {
       const r = REIMB.find(x => x.id === +b.dataset.pay);
-      const today = new Date().toLocaleDateString('en-CA');
-      const { data: txRow, error: e1 } = await supabase.from('finance_transactions').insert({
-        kind: 'expense', amount: r.amount, category: 'reimbursement',
-        description: `Reimbursement — ${nameOf(r.user_id)}: ${r.reason}`,
-        occurred_on: today, term: termOf(today), created_by: ctx.user.id,
-      }).select('id').single();
-      if (e1) { toast(e1.message); return; }
-      const { error: e2 } = await supabase.from('finance_reimbursements')
-        .update({ status: 'paid', transaction_id: txRow.id, reviewed_by: ctx.user.id, reviewed_at: new Date().toISOString() }).eq('id', r.id);
-      if (e2) toast(e2.message); else load();
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `
+        <div class="modal" style="max-width:380px">
+          <h2>Pay ${money(r.amount)}</h2>
+          <div class="field"><label>Paid out of which account?</label>
+            <select id="f-acct">${Object.entries(ACCOUNTS).map(([k, v]) => `<option value="${k}" ${k === 'sgr' ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div class="row-btns">
+            <button class="btn ghost" id="m-cancel">Cancel</button>
+            <button class="btn" id="m-save">Mark paid</button>
+          </div>
+        </div>`;
+      document.body.appendChild(back);
+      back.querySelector('#m-cancel').onclick = () => back.remove();
+      back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+      back.querySelector('#m-save').onclick = async () => {
+        const account = back.querySelector('#f-acct').value;
+        const today = new Date().toLocaleDateString('en-CA');
+        const { data: txRow, error: e1 } = await supabase.from('finance_transactions').insert({
+          kind: 'expense', amount: r.amount, category: 'reimbursement', account,
+          description: `Reimbursement — ${nameOf(r.user_id)}: ${r.reason}`,
+          occurred_on: today, term: termOf(today), created_by: ctx.user.id,
+        }).select('id').single();
+        if (e1) { toast(e1.message); return; }
+        const { error: e2 } = await supabase.from('finance_reimbursements')
+          .update({ status: 'paid', transaction_id: txRow.id, reviewed_by: ctx.user.id, reviewed_at: new Date().toISOString() }).eq('id', r.id);
+        back.remove();
+        if (e2) toast(e2.message); else load();
+      };
     });
     body.querySelectorAll('[data-delr]').forEach(b => b.onclick = async () => {
       const r = REIMB.find(x => x.id === +b.dataset.delr);
