@@ -645,50 +645,128 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   }
 
   function itemModal(i) {
+    if (i) editItemModal(i); else newItemsModal();
+  }
+
+  // ----- single-item edit: store editable, transaction ID admin-only -----
+  function editItemModal(i) {
     const evItems = PLAN_ITEMS.filter(x => x.event_id === PLAN_EVENT);
     const codes = [...new Set(evItems.map(x => x.tx_code))];
     const stores = [...new Set(evItems.map(x => x.store_name).filter(Boolean))];
-    const nextCode = String(codes.reduce((m, c) => Math.max(m, parseInt(c, 10) || 0), 0) + 1).padStart(3, '0');
-    const rowHTML = (r = {}) => `
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal" style="max-width:640px">
+        <h2>Edit item</h2>
+        <div class="notice" id="m-err"></div>
+        <div class="field-row">
+          <div class="field"><label>Transaction ID${IS_ADMIN ? '' : ' <small style="text-transform:none">(admin edit only)</small>'}</label>
+            <input id="f-tx" value="${esc(i.tx_code)}"
+              ${IS_ADMIN ? 'list="tx-codes"' : 'readonly tabindex="-1" style="opacity:.65; cursor:not-allowed"'}>
+            <datalist id="tx-codes">${codes.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+          <div class="field"><label>Store</label>
+            <input id="f-store" list="store-names" value="${esc(i.store_name)}">
+            <datalist id="store-names">${stores.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
+          <div class="field"><label>Account</label>
+            <select id="f-pacct">${Object.entries(PLAN_ACCOUNTS).map(([k, v]) =>
+              `<option value="${k}" ${i.account === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label>Item name</label><input id="f-item" value="${esc(i.item_name)}"></div>
+        <div class="field-row">
+          <div class="field"><label>Quantity</label><input type="number" id="f-qty" min="1" step="1" value="${Math.round(i.quantity)}"></div>
+          <div class="field"><label>Unit price ($)</label><input type="number" id="f-price" min="0" step="0.01" value="${i.unit_price}"></div>
+          <div class="field" id="tax-field"><label>Tax ($)</label><input type="number" id="f-tax" min="0" step="0.01" value="${i.tax}"></div>
+          <div class="field"><label>Type</label>
+            <select id="f-type">${['food', 'supply'].map(t => `<option ${i.item_type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label>URL / link</label><input id="f-url" value="${esc(i.url)}"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    const syncTax = () => {
+      back.querySelector('#tax-field').style.display =
+        back.querySelector('#f-pacct').value === 'personal' ? '' : 'none';
+    };
+    back.querySelector('#f-pacct').onchange = syncTax;
+    syncTax();
+    // store already on the sheet keeps its transaction number
+    back.querySelector('#f-store').addEventListener('input', () => {
+      const st = back.querySelector('#f-store').value.trim().toLowerCase();
+      const match = evItems.find(x => x.id !== i.id && (x.store_name || '').toLowerCase() === st);
+      if (match) back.querySelector('#f-tx').value = match.tx_code;
+    });
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const item_name = back.querySelector('#f-item').value.trim();
+      const quantity = Math.round(+back.querySelector('#f-qty').value);
+      if (!item_name) return say('Name the item.');
+      if (!(quantity >= 1)) return say('Quantity must be a whole number of at least 1.');
+      const account = back.querySelector('#f-pacct').value;
+      const { error } = await supabase.from('finance_planner_items').update({
+        tx_code: back.querySelector('#f-tx').value.trim() || i.tx_code,
+        store_name: back.querySelector('#f-store').value.trim(),
+        account,
+        item_name,
+        quantity,
+        unit_price: +back.querySelector('#f-price').value || 0,
+        tax: account === 'personal' ? (+back.querySelector('#f-tax').value || 0) : 0,
+        item_type: back.querySelector('#f-type').value,
+        url: back.querySelector('#f-url').value.trim() || null,
+      }).eq('id', i.id);
+      if (error) return say(error.message);
+      back.remove();
+      load();
+    };
+  }
+
+  // ----- new items: store + transaction number resolve PER ROW, automatically -----
+  // URL → store; store already on the sheet → its number; new store → next
+  // free number; two rows with the same new store share one new number.
+  function newItemsModal() {
+    const evItems = PLAN_ITEMS.filter(x => x.event_id === PLAN_EVENT);
+    const stores = [...new Set(evItems.map(x => x.store_name).filter(Boolean))];
+    const rowHTML = () => `
       <div class="mi-row">
-        <div class="field" style="flex:2; min-width:170px"><label>Item</label><input class="r-name" value="${esc(r.item_name)}" placeholder="e.g. spring roll wrappers"></div>
-        <div class="field" style="min-width:92px"><label>Type</label>
-          <select class="r-type">${['food', 'supply'].map(t => `<option ${(r.item_type || 'supply') === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-        <div class="field" style="min-width:72px; flex:0 1 88px"><label>Qty</label><input type="number" class="r-qty" min="1" step="1" value="${Math.round(r.quantity ?? 1)}"></div>
-        <div class="field" style="min-width:92px; flex:0 1 110px"><label>Unit $</label><input type="number" class="r-price" min="0" step="0.01" value="${r.unit_price ?? ''}"></div>
-        <div class="field r-tax-f" style="min-width:84px; flex:0 1 100px"><label>Tax $</label><input type="number" class="r-tax" min="0" step="0.01" value="${r.tax ?? ''}"></div>
-        <div class="field" style="flex:2; min-width:170px"><label>URL / link</label><input class="r-url" value="${esc(r.url)}" placeholder="https://…"></div>
-        ${i ? '' : '<button type="button" class="btn sm ghost r-del" title="Remove this item">✕</button>'}
+        <div class="field" style="flex:2; min-width:160px"><label>Item</label><input class="r-name" placeholder="e.g. spring roll wrappers"></div>
+        <div class="field" style="min-width:90px"><label>Type</label>
+          <select class="r-type"><option>supply</option><option>food</option></select></div>
+        <div class="field" style="min-width:70px; flex:0 1 84px"><label>Qty</label><input type="number" class="r-qty" min="1" step="1" value="1"></div>
+        <div class="field" style="min-width:90px; flex:0 1 106px"><label>Unit $</label><input type="number" class="r-price" min="0" step="0.01"></div>
+        <div class="field r-tax-f" style="min-width:82px; flex:0 1 98px"><label>Tax $</label><input type="number" class="r-tax" min="0" step="0.01"></div>
+        <div class="field" style="flex:2; min-width:160px"><label>URL / link</label><input class="r-url" placeholder="https://…"></div>
+        <div class="field" style="min-width:120px; flex:0 1 150px"><label>Store</label><input class="r-store" list="store-names" placeholder="auto"></div>
+        <div class="field" style="min-width:52px; flex:0 0 auto"><label>ID</label>
+          <div class="r-tx" style="padding:11px 2px; font-weight:700; color:var(--gold); white-space:nowrap">—</div></div>
+        <button type="button" class="btn sm ghost r-del" title="Remove this item">✕</button>
       </div>`;
 
     const back = document.createElement('div');
     back.className = 'modal-back';
     back.innerHTML = `
-      <div class="modal" style="max-width:780px">
-        <h2>${i ? 'Edit item' : 'Plan items'}</h2>
+      <div class="modal" style="max-width:920px">
+        <h2>Plan items</h2>
         <div class="notice" id="m-err"></div>
-        <div class="field-row">
-          <div class="field"><label>Transaction ID${IS_ADMIN ? '' : ' <small style="text-transform:none">(auto — admin edit only)</small>'}</label>
-            <input id="f-tx" value="${esc(i?.tx_code || nextCode)}" placeholder="001"
-              ${IS_ADMIN ? 'list="tx-codes"' : 'readonly tabindex="-1" style="opacity:.65; cursor:not-allowed"'}>
-            <datalist id="tx-codes">${codes.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
-          <div class="field"><label>Store</label>
-            <input id="f-store" list="store-names" value="${esc(i?.store_name)}" placeholder="Costco, Amazon…">
-            <datalist id="store-names">${stores.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
-          <div class="field"><label>Account</label>
-            <select id="f-pacct">${Object.entries(PLAN_ACCOUNTS).map(([k, v]) =>
-              `<option value="${k}" ${(i?.account || 'safc') === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-        </div>
-        <div id="mi-rows">${rowHTML(i || {})}</div>
-        ${i ? '' : '<button type="button" class="btn ghost sm" id="mi-add">+ Add another item</button>'}
+        <div class="field" style="max-width:240px"><label>Account</label>
+          <select id="f-pacct">${Object.entries(PLAN_ACCOUNTS).map(([k, v]) =>
+            `<option value="${k}" ${k === 'safc' ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+        <div id="mi-rows">${rowHTML()}</div>
+        <button type="button" class="btn ghost sm" id="mi-add">+ Add another item</button>
+        <datalist id="store-names">${stores.map(s => `<option value="${esc(s)}">`).join('')}</datalist>
+        <p style="color:var(--muted); font-size:.8rem; margin-top:12px">
+          Store and transaction number fill themselves from each item's URL — a store already on the sheet
+          keeps its number, a new store gets the next one. Type the store yourself for in-person buys.</p>
         <div class="row-btns">
           <button class="btn ghost" id="m-cancel">Cancel</button>
-          <button class="btn" id="m-save">${i ? 'Save' : 'Add items'}</button>
+          <button class="btn" id="m-save">Add items</button>
         </div>
       </div>`;
     document.body.appendChild(back);
 
-    // tax only exists for VSA Personal purchases
     const syncTax = () => {
       const personal = back.querySelector('#f-pacct').value === 'personal';
       back.querySelectorAll('.r-tax-f').forEach(f => { f.style.display = personal ? '' : 'none'; });
@@ -696,37 +774,52 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     back.querySelector('#f-pacct').onchange = syncTax;
     syncTax();
 
-    // picking an existing transaction ID pulls in its store (admins only — the field is read-only otherwise)
-    if (IS_ADMIN) {
-      back.querySelector('#f-tx').addEventListener('input', (e) => {
-        const match = evItems.find(x => x.tx_code === e.target.value.trim());
-        if (match) back.querySelector('#f-store').value = match.store_name || '';
+    // batch-aware resolution: recompute every row's store/number together
+    function resolveBatch() {
+      const storeToCode = new Map();
+      evItems.forEach(x => { if (x.store_name) storeToCode.set(x.store_name.toLowerCase(), x.tx_code); });
+      let nextNum = Math.max(0, ...evItems.map(x => parseInt(x.tx_code, 10) || 0)) + 1;
+      const batchNew = new Map();
+      back.querySelectorAll('.mi-row').forEach(r => {
+        const store = r.querySelector('.r-store').value.trim();
+        let code = '';
+        if (store) {
+          const key = store.toLowerCase();
+          if (storeToCode.has(key)) code = storeToCode.get(key);
+          else if (batchNew.has(key)) code = batchNew.get(key);
+          else { code = String(nextNum++).padStart(3, '0'); batchNew.set(key, code); }
+        }
+        r.dataset.store = store;
+        r.dataset.code = code;
+        r.querySelector('.r-tx').textContent = code || '—';
       });
     }
-    // …and a store already on the sheet reuses its transaction number
-    const syncTxFromStore = () => {
-      const st = back.querySelector('#f-store').value.trim().toLowerCase();
-      if (!st) return;
-      const match = evItems.find(x => (x.store_name || '').toLowerCase() === st);
-      if (match) back.querySelector('#f-tx').value = match.tx_code;
-    };
-    back.querySelector('#f-store').addEventListener('input', syncTxFromStore);
-    // pasting a product URL fills the store when it's still blank
+    resolveBatch();
+
     back.addEventListener('input', (e) => {
-      if (!e.target.classList.contains('r-url')) return;
-      const st = back.querySelector('#f-store');
-      if (st.value.trim()) return;
-      const s = storeFromUrl(e.target.value.trim());
-      if (s) { st.value = s; syncTxFromStore(); }
+      if (e.target.classList.contains('r-url')) {
+        const row = e.target.closest('.mi-row');
+        const st = row.querySelector('.r-store');
+        // the URL drives the store unless the officer typed one by hand
+        if (!st.dataset.manual || !st.value.trim()) {
+          const s = storeFromUrl(e.target.value.trim());
+          if (s) { st.value = s; delete st.dataset.manual; }
+        }
+        resolveBatch();
+      } else if (e.target.classList.contains('r-store')) {
+        e.target.dataset.manual = '1';
+        resolveBatch();
+      }
     });
-    back.querySelector('#mi-add')?.addEventListener('click', () => {
+    back.querySelector('#mi-add').addEventListener('click', () => {
       back.querySelector('#mi-rows').insertAdjacentHTML('beforeend', rowHTML());
       syncTax();
+      resolveBatch();
     });
     back.addEventListener('click', (e) => {
       if (e.target.classList.contains('r-del')) {
         const rows = back.querySelectorAll('.mi-row');
-        if (rows.length > 1) e.target.closest('.mi-row').remove();
+        if (rows.length > 1) { e.target.closest('.mi-row').remove(); resolveBatch(); }
         else toast('Keep at least one item row.');
       }
       if (e.target === back) back.remove();
@@ -735,15 +828,10 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 
     back.querySelector('#m-save').onclick = async () => {
       const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      resolveBatch();
       const account = back.querySelector('#f-pacct').value;
       const ev = EVENTS.find(e => e.id === PLAN_EVENT);
-      const shared = {
-        event_id: PLAN_EVENT,
-        account,
-        tx_code: back.querySelector('#f-tx').value.trim() || '001',
-        store_name: back.querySelector('#f-store').value.trim(),
-        term: termOf(ev?.event_date || new Date().toLocaleDateString('en-CA')),
-      };
+      const term = termOf(ev?.event_date || new Date().toLocaleDateString('en-CA'));
       const rows = [...back.querySelectorAll('.mi-row')].map(r => ({
         item_name: r.querySelector('.r-name').value.trim(),
         item_type: r.querySelector('.r-type').value,
@@ -751,12 +839,16 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         unit_price: +r.querySelector('.r-price').value || 0,
         tax: account === 'personal' ? (+r.querySelector('.r-tax').value || 0) : 0,
         url: r.querySelector('.r-url').value.trim() || null,
+        store_name: r.dataset.store || '',
+        tx_code: r.dataset.code || '',
       })).filter(r => r.item_name);
       if (!rows.length) return say('Add at least one item.');
-      for (const r of rows) if (!(r.quantity >= 1)) return say(`Quantity must be a whole number of at least 1 ("${r.item_name}").`);
-      const { error } = i
-        ? await supabase.from('finance_planner_items').update({ ...rows[0], ...shared }).eq('id', i.id)
-        : await supabase.from('finance_planner_items').insert(rows.map(r => ({ ...r, ...shared, created_by: ctx.user.id })));
+      for (const r of rows) {
+        if (!(r.quantity >= 1)) return say(`Quantity must be a whole number of at least 1 ("${r.item_name}").`);
+        if (!r.store_name || !r.tx_code) return say(`Add a URL or store for "${r.item_name}".`);
+      }
+      const { error } = await supabase.from('finance_planner_items')
+        .insert(rows.map(r => ({ ...r, event_id: PLAN_EVENT, account, term, created_by: ctx.user.id })));
       if (error) return say(error.message);
       back.remove();
       load();
