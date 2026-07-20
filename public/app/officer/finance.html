@@ -89,7 +89,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 
   const CATEGORIES = ['dues', 'fundraising', 'sponsorship', 'school funding', 'merch', 'food', 'decorations', 'venue', 'supplies', 'travel', 'reimbursement', 'misc'];
   const METHODS = ['cash', 'venmo', 'zelle', 'card', 'check', 'other'];
-  const ACCOUNTS = { 'safc-a': 'SAFC-A', 'safc-ee': 'SAFC-EE', 'sgr': 'SGR', 'cash': 'Cash' };
+  const ACCOUNTS = { 'safc-a': 'SAFC-A', 'safc-ee': 'SAFC-EE', 'sgr': 'SGR', 'cash': 'VSA Personal' };
   const acctLabel = (a) => ACCOUNTS[a] || a || '—';
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const money = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -273,7 +273,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           <div class="stat"><div class="num">${money(acctBalance('safc-a', 'safc-ee'))}</div>
             <div class="lbl">SAFC (A + EE)<br><small>A: ${money(acctBalance('safc-a'))} · EE: ${money(acctBalance('safc-ee'))}</small></div></div>
           <div class="stat"><div class="num">${money(acctBalance('sgr'))}</div><div class="lbl">SGR</div></div>
-          <div class="stat"><div class="num">${money(acctBalance('cash'))}</div><div class="lbl">Cash</div></div>
+          <div class="stat"><div class="num">${money(acctBalance('cash'))}</div><div class="lbl">VSA Personal</div></div>
         </div>
       </div>
       <div class="card"><h2>Overview</h2>
