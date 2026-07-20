@@ -77,6 +77,12 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
   margin-top:12px; padding-top:12px; border-top:1px solid var(--line); font-size:.9rem;
 }
+.mi-row {
+  display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;
+  border-bottom:1px dashed var(--line); padding-bottom:2px; margin-bottom:12px;
+}
+.mi-row .field { margin-bottom:10px; }
+.mi-row .r-del { margin-bottom:12px; }
 .tb-toast {
   position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
   background:var(--surface); color:var(--text); border:1px solid rgba(201, 155, 63, .5);
@@ -588,83 +594,132 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     });
   }
 
+  // guess the store from a pasted product URL
+  const STORE_MAP = {
+    amazon: 'Amazon', walmart: 'Walmart', target: 'Target', costco: 'Costco',
+    samsclub: "Sam's Club", ebay: 'eBay', etsy: 'Etsy', aliexpress: 'AliExpress',
+    temu: 'Temu', dollartree: 'Dollar Tree', fivebelow: 'Five Below',
+    hobbylobby: 'Hobby Lobby', michaels: 'Michaels', joann: 'JOANN',
+    homedepot: 'Home Depot', lowes: "Lowe's", wholefoodsmarket: 'Whole Foods',
+    traderjoes: "Trader Joe's", aldi: 'ALDI', kroger: 'Kroger', hyvee: 'Hy-Vee',
+    walgreens: 'Walgreens', cvs: 'CVS', bestbuy: 'Best Buy',
+    dollargeneral: 'Dollar General', pricechopper: 'Price Chopper',
+    restaurantdepot: 'Restaurant Depot', webstaurantstore: 'WebstaurantStore',
+    instacart: 'Instacart', papermart: 'Paper Mart', uline: 'Uline',
+  };
+  function storeFromUrl(u) {
+    try {
+      const host = new URL(/^https?:\/\//.test(u) ? u : 'https://' + u).hostname
+        .replace(/^(www|m|smile|shop|order)\./, '');
+      const parts = host.split('.');
+      if (parts.length < 2) return '';
+      const sld = parts[parts.length - 2].toLowerCase();
+      return STORE_MAP[sld] || (sld.charAt(0).toUpperCase() + sld.slice(1));
+    } catch (e) { return ''; }
+  }
+
   function itemModal(i) {
     const evItems = PLAN_ITEMS.filter(x => x.event_id === PLAN_EVENT);
     const codes = [...new Set(evItems.map(x => x.tx_code))];
     const stores = [...new Set(evItems.map(x => x.store_name).filter(Boolean))];
+    const nextCode = String(codes.reduce((m, c) => Math.max(m, parseInt(c, 10) || 0), 0) + 1).padStart(3, '0');
+    const rowHTML = (r = {}) => `
+      <div class="mi-row">
+        <div class="field" style="flex:2; min-width:170px"><label>Item</label><input class="r-name" value="${esc(r.item_name)}" placeholder="e.g. spring roll wrappers"></div>
+        <div class="field" style="min-width:92px"><label>Type</label>
+          <select class="r-type">${['food', 'supply'].map(t => `<option ${(r.item_type || 'supply') === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="field" style="min-width:72px; flex:0 1 88px"><label>Qty</label><input type="number" class="r-qty" min="0.01" step="0.01" value="${r.quantity ?? 1}"></div>
+        <div class="field" style="min-width:92px; flex:0 1 110px"><label>Unit $</label><input type="number" class="r-price" min="0" step="0.01" value="${r.unit_price ?? ''}"></div>
+        <div class="field r-tax-f" style="min-width:84px; flex:0 1 100px"><label>Tax $</label><input type="number" class="r-tax" min="0" step="0.01" value="${r.tax ?? ''}"></div>
+        <div class="field" style="flex:2; min-width:170px"><label>URL / link</label><input class="r-url" value="${esc(r.url)}" placeholder="https://…"></div>
+        ${i ? '' : '<button type="button" class="btn sm ghost r-del" title="Remove this item">✕</button>'}
+      </div>`;
+
     const back = document.createElement('div');
     back.className = 'modal-back';
     back.innerHTML = `
-      <div class="modal">
-        <h2>${i ? 'Edit item' : 'Plan an item'}</h2>
+      <div class="modal" style="max-width:780px">
+        <h2>${i ? 'Edit item' : 'Plan items'}</h2>
         <div class="notice" id="m-err"></div>
         <div class="field-row">
           <div class="field"><label>Transaction ID</label>
-            <input id="f-tx" list="tx-codes" value="${esc(i?.tx_code || String(codes.reduce((m, c) => Math.max(m, parseInt(c, 10) || 0), 0) + 1).padStart(3, '0'))}" placeholder="001">
+            <input id="f-tx" list="tx-codes" value="${esc(i?.tx_code || nextCode)}" placeholder="001">
             <datalist id="tx-codes">${codes.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
           <div class="field"><label>Store</label>
             <input id="f-store" list="store-names" value="${esc(i?.store_name)}" placeholder="Costco, Amazon…">
             <datalist id="store-names">${stores.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
-        </div>
-        <div class="field-row">
           <div class="field"><label>Account</label>
             <select id="f-pacct">${Object.entries(PLAN_ACCOUNTS).map(([k, v]) =>
               `<option value="${k}" ${(i?.account || 'safc') === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="field"><label>Item type</label>
-            <select id="f-type">${['food', 'supply'].map(t =>
-              `<option ${(i?.item_type || 'supply') === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         </div>
-        <div class="field"><label>Item name</label><input id="f-item" value="${esc(i?.item_name)}" placeholder="e.g. spring roll wrappers"></div>
-        <div class="field-row">
-          <div class="field"><label>Quantity</label><input type="number" id="f-qty" min="0.01" step="0.01" value="${i?.quantity ?? 1}"></div>
-          <div class="field"><label>Unit price ($)</label><input type="number" id="f-price" min="0" step="0.01" value="${i?.unit_price ?? ''}"></div>
-          <div class="field" id="tax-field"><label>Tax ($)</label><input type="number" id="f-tax" min="0" step="0.01" value="${i?.tax ?? ''}" placeholder="0.00"></div>
-        </div>
-        <div class="field"><label>URL / link (optional)</label><input id="f-url" value="${esc(i?.url)}" placeholder="https://…"></div>
+        <div id="mi-rows">${rowHTML(i || {})}</div>
+        ${i ? '' : '<button type="button" class="btn ghost sm" id="mi-add">+ Add another item</button>'}
         <div class="row-btns">
           <button class="btn ghost" id="m-cancel">Cancel</button>
-          <button class="btn" id="m-save">${i ? 'Save' : 'Add'}</button>
+          <button class="btn" id="m-save">${i ? 'Save' : 'Add items'}</button>
         </div>
       </div>`;
     document.body.appendChild(back);
+
     // tax only exists for VSA Personal purchases
     const syncTax = () => {
-      back.querySelector('#tax-field').style.display =
-        back.querySelector('#f-pacct').value === 'personal' ? '' : 'none';
+      const personal = back.querySelector('#f-pacct').value === 'personal';
+      back.querySelectorAll('.r-tax-f').forEach(f => { f.style.display = personal ? '' : 'none'; });
     };
     back.querySelector('#f-pacct').onchange = syncTax;
     syncTax();
+
     // picking an existing transaction ID pulls in its store
     back.querySelector('#f-tx').addEventListener('input', (e) => {
       const match = evItems.find(x => x.tx_code === e.target.value.trim());
       if (match) back.querySelector('#f-store').value = match.store_name || '';
     });
+    // pasting a product URL fills the store when it's still blank
+    back.addEventListener('input', (e) => {
+      if (!e.target.classList.contains('r-url')) return;
+      const st = back.querySelector('#f-store');
+      if (st.value.trim()) return;
+      const s = storeFromUrl(e.target.value.trim());
+      if (s) st.value = s;
+    });
+    back.querySelector('#mi-add')?.addEventListener('click', () => {
+      back.querySelector('#mi-rows').insertAdjacentHTML('beforeend', rowHTML());
+      syncTax();
+    });
+    back.addEventListener('click', (e) => {
+      if (e.target.classList.contains('r-del')) {
+        const rows = back.querySelectorAll('.mi-row');
+        if (rows.length > 1) e.target.closest('.mi-row').remove();
+        else toast('Keep at least one item row.');
+      }
+      if (e.target === back) back.remove();
+    });
     back.querySelector('#m-cancel').onclick = () => back.remove();
-    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+
     back.querySelector('#m-save').onclick = async () => {
       const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
-      const item_name = back.querySelector('#f-item').value.trim();
-      const quantity = +back.querySelector('#f-qty').value;
-      if (!item_name) return say('Name the item.');
-      if (!(quantity > 0)) return say('Quantity must be above zero.');
       const account = back.querySelector('#f-pacct').value;
       const ev = EVENTS.find(e => e.id === PLAN_EVENT);
-      const payload = {
+      const shared = {
         event_id: PLAN_EVENT,
         account,
         tx_code: back.querySelector('#f-tx').value.trim() || '001',
         store_name: back.querySelector('#f-store').value.trim(),
-        item_name,
-        quantity,
-        unit_price: +back.querySelector('#f-price').value || 0,
-        tax: account === 'personal' ? (+back.querySelector('#f-tax').value || 0) : 0,
-        item_type: back.querySelector('#f-type').value,
-        url: back.querySelector('#f-url').value.trim() || null,
         term: termOf(ev?.event_date || new Date().toLocaleDateString('en-CA')),
       };
+      const rows = [...back.querySelectorAll('.mi-row')].map(r => ({
+        item_name: r.querySelector('.r-name').value.trim(),
+        item_type: r.querySelector('.r-type').value,
+        quantity: +r.querySelector('.r-qty').value,
+        unit_price: +r.querySelector('.r-price').value || 0,
+        tax: account === 'personal' ? (+r.querySelector('.r-tax').value || 0) : 0,
+        url: r.querySelector('.r-url').value.trim() || null,
+      })).filter(r => r.item_name);
+      if (!rows.length) return say('Add at least one item.');
+      for (const r of rows) if (!(r.quantity > 0)) return say(`Quantity must be above zero ("${r.item_name}").`);
       const { error } = i
-        ? await supabase.from('finance_planner_items').update(payload).eq('id', i.id)
-        : await supabase.from('finance_planner_items').insert({ ...payload, created_by: ctx.user.id });
+        ? await supabase.from('finance_planner_items').update({ ...rows[0], ...shared }).eq('id', i.id)
+        : await supabase.from('finance_planner_items').insert(rows.map(r => ({ ...r, ...shared, created_by: ctx.user.id })));
       if (error) return say(error.message);
       back.remove();
       load();
