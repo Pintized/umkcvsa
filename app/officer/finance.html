@@ -595,7 +595,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         const store = rows.find(r => r.store_name)?.store_name || '';
         const sub = rows.reduce((s, i) => s + rowTotal(i), 0);
         return [
-          `${store} ${code}`.trim(),
+          store || code, // header is just the store; code only as a fallback when unnamed
           ...rows.map(i => `${i.item_name}, ${+i.quantity}, ${money(i.unit_price)}, ${money(rowTotal(i))}`),
           `Subtotal, ${money(sub)}`,
         ].join('\n');
