@@ -809,34 +809,61 @@
     };
   }
 
+  // Pre-filled body for board meetings, modeled on the club's minutes doc:
+  // Time/Absentees header lines + the Agenda Item / Task Assignment table.
+  // (Date and attendees live in the note's own fields, not the body.)
+  const MEETING_TEMPLATE =
+    '<p><strong>Time:</strong>&nbsp;</p>'
+    + '<p><strong>Absentees:</strong>&nbsp;</p>'
+    + '<h2>VSA Board Meeting</h2>'
+    + '<table><tr><th>Agenda Item</th><th>Task Assignment</th></tr>'
+    + Array.from({ length: 6 }, () => '<tr><td>&nbsp;</td><td>&nbsp;</td></tr>').join('')
+    + '</table>'
+    + '<p><strong>Conclusion:</strong>&nbsp;</p>';
+
   function noteModal() {
     const today = new Date().toISOString().slice(0, 10);
     const back = baseModal(`
       <h2>New note</h2>
       <form id="nm-form">
         <div class="field"><label>Title *</label><input id="nm-title" required maxlength="180"></div>
-        <div class="field"><label>Date *</label><input type="date" id="nm-date" required value="${today}"></div>
+        <div class="field-row">
+          <div class="field"><label>Date *</label><input type="date" id="nm-date" required value="${today}"></div>
+          <div class="field"><label>Format</label>
+            <select id="nm-format">
+              <option value="meeting">Meeting minutes</option>
+              <option value="blank">Blank note</option>
+            </select>
+          </div>
+        </div>
         <div class="field"><label>Attendees</label>
           <div class="roster-list">
             ${roster.map(r => `<label><span>${esc(r.full_name)}</span><input type="checkbox" value="${r.id}"></label>`).join('')
               || '<p style="color:var(--muted); font-size:.85rem">No officers or interns found.</p>'}
           </div>
         </div>
-        <div class="field"><label>Body</label><textarea id="nm-body" placeholder="Meeting notes…"></textarea></div>
+        <div class="field" id="nm-body-field" style="display:none"><label>Body</label><textarea id="nm-body" placeholder="Meeting notes…"></textarea></div>
         <div class="row-btns">
           <button type="button" class="btn ghost" id="nm-cancel">Cancel</button>
           <button type="submit" class="btn">Create note</button>
         </div>
       </form>`, false);
     back.querySelector('#nm-cancel').onclick = () => back.remove();
+    // free-form body only makes sense for blank notes
+    back.querySelector('#nm-format').addEventListener('change', (e) => {
+      back.querySelector('#nm-body-field').style.display = e.target.value === 'blank' ? '' : 'none';
+    });
     back.querySelector('#nm-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const body = back.querySelector('#nm-body').value.trim();
+      const content = back.querySelector('#nm-format').value === 'meeting'
+        ? MEETING_TEMPLATE
+        : (body ? `<p>${esc(body).replace(/\n/g, '</p><p>')}</p>` : '');
       const { data, error } = await supabase.from('notes').insert({
         folder_id: selFolder,
         title: back.querySelector('#nm-title').value.trim(),
         meeting_date: back.querySelector('#nm-date').value,
-        content: body ? `<p>${esc(body).replace(/\n/g, '</p><p>')}</p>` : '',
+        content,
         icon: '📝',
         created_by: ctx.user.id,
       }).select('id').single();
