@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+/* ===== Finance workspace ===== */
+.fin-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.fin-head .grp { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.fin-tabs { margin-bottom:16px; }
+.fin-balance { font-family:var(--serif); font-size:1.05rem; }
+.fin-balance strong { color:var(--gold); }
+
+/* charts */
+.chart-card h3 { font-size:1rem; margin-bottom:12px; }
+.cashflow { display:flex; align-items:flex-end; gap:10px; height:150px; padding-top:6px; }
+.cf-month { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0; }
+.cf-bars { display:flex; align-items:flex-end; gap:3px; height:118px; }
+.cf-bar { width:16px; border-radius:4px 4px 0 0; min-height:2px; transition:height .4s ease; }
+.cf-bar.in { background:linear-gradient(180deg, var(--ok), #227a4b); }
+.cf-bar.out { background:linear-gradient(180deg, #d42a3a, var(--red-deep)); }
+.cf-lbl { font-size:.68rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.legend { display:flex; gap:14px; font-size:.75rem; color:var(--muted); margin-top:8px; }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+.catbars { display:flex; flex-direction:column; gap:9px; }
+.catbar .row1 { display:flex; justify-content:space-between; font-size:.8rem; margin-bottom:3px; }
+.catbar .row1 .amt { color:var(--muted); }
+.catbar .track { height:8px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line); overflow:hidden; }
+.catbar .fill { height:100%; border-radius:999px; background:linear-gradient(90deg, var(--gold), var(--gold-bright)); transition:width .4s ease; }
+.catbar .fill.expense { background:linear-gradient(90deg, #d42a3a, var(--red-deep)); }
+
+/* progress bars (budgets, fundraisers, requests) */
+.prog { margin-top:6px; }
+.prog .track { height:10px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line); overflow:hidden; }
+.prog .fill { height:100%; border-radius:999px; background:linear-gradient(90deg, var(--ok), #43b57a); transition:width .4s ease; }
+.prog.warn .fill { background:linear-gradient(90deg, var(--warn), #d18f2a); }
+.prog.over .fill { background:linear-gradient(90deg, #d42a3a, var(--red-deep)); }
+.prog .nums { display:flex; justify-content:space-between; font-size:.76rem; color:var(--muted); margin-top:4px; }
+
+.fin-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
+.fin-tile { border:1px solid var(--line); border-radius:14px; background:var(--surface-2); padding:14px 16px; }
+.fin-tile h4 { font-size:.95rem; margin-bottom:2px; overflow-wrap:anywhere; }
+.fin-tile .sub { font-size:.78rem; color:var(--muted); }
+.fin-tile .acts { display:flex; gap:6px; margin-top:10px; }
+
+.kind-badge { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+.kind-income { background:rgba(47, 158, 99, .16); color:var(--ok); }
+.kind-expense { background:rgba(200, 32, 47, .14); color:var(--red); }
+.amt-in { color:var(--ok); font-weight:700; }
+.amt-out { color:var(--red); font-weight:700; }
+.st-tag { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; }
+.st-pending { background:rgba(232, 163, 61, .16); color:#b97b18; }
+.st-approved { background:rgba(63, 127, 191, .16); color:#6ea8d8; }
+html:not(.dark-mode) .st-approved { color:#2a6099; }
+.st-paid, .st-received { background:rgba(47, 158, 99, .16); color:var(--ok); }
+.st-denied { background:rgba(200, 32, 47, .14); color:var(--red); }
+.st-draft, .st-submitted { background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
+
+.rcpt-link { cursor:pointer; }
+.dues-paid td { background:rgba(47, 158, 99, .06); }
+.tb-toast {
+  position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
+  background:var(--surface); color:var(--text); border:1px solid rgba(201, 155, 63, .5);
+  border-radius:10px; padding:10px 18px; font-size:.86rem; font-weight:600;
+  box-shadow:var(--shadow-lg); opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+}
+.tb-toast.show { opacity:1; transform:translate(-50%, 0); }
+@media (max-width:900px) { .cashflow { overflow-x:auto; } }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading finance…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+  import { compressImage, outExt } from '/app/shared/img.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Finance');
+
+  const CATEGORIES = ['dues', 'fundraising', 'sponsorship', 'school funding', 'merch', 'food', 'decorations', 'venue', 'supplies', 'travel', 'reimbursement', 'misc'];
+  const METHODS = ['cash', 'venmo', 'zelle', 'card', 'check', 'other'];
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const money = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtD = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  const termOf = (dateStr) => {
+    const dt = new Date(dateStr + 'T00:00:00');
+    const m = dt.getMonth();
+    return (m <= 4 ? 'Spring ' : m <= 6 ? 'Summer ' : 'Fall ') + dt.getFullYear();
+  };
+  const CURRENT_TERM = termOf(new Date().toLocaleDateString('en-CA'));
+
+  let TX = [], DUES = [], FUNDRAISERS = [], SPONSORSHIPS = [], REQUESTS = [], REIMB = [], BUDGETS = [], PEOPLE = [], EVENTS = [], SPONSOR_NAMES = [];
+  let TAB = 'overview';
+  let TERM = CURRENT_TERM;
+  let LEDGER_Q = '';
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'tb-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2600);
+  }
+  function confirmDialog(msg) {
+    return new Promise(res => {
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `<div class="modal" style="max-width:400px"><h2>Are you sure?</h2>
+        <p style="color:var(--muted); margin-bottom:6px">${msg}</p>
+        <div class="row-btns"><button class="btn ghost" id="cd-no">Cancel</button><button class="btn" id="cd-yes">Confirm</button></div></div>`;
+      document.body.appendChild(back);
+      const done = (v) => { back.remove(); res(v); };
+      back.querySelector('#cd-no').onclick = () => done(false);
+      back.querySelector('#cd-yes').onclick = () => done(true);
+      back.addEventListener('click', (e) => { if (e.target === back) done(false); });
+    });
+  }
+  const nameOf = (uid) => PEOPLE.find(p => p.id === uid)?.full_name || 'Member';
+
+  async function load() {
+    const [tx, du, fr, sp, rq, rb, bg, pp, ev, sn] = await Promise.all([
+      supabase.from('finance_transactions').select('*').order('occurred_on', { ascending: false }).order('id', { ascending: false }),
+      supabase.from('finance_dues').select('*'),
+      supabase.from('finance_fundraisers').select('*').order('created_at'),
+      supabase.from('finance_sponsorships').select('*').order('created_at'),
+      supabase.from('finance_requests').select('*').order('created_at'),
+      supabase.from('finance_reimbursements').select('*').order('created_at', { ascending: false }),
+      supabase.from('finance_budgets').select('*').order('created_at'),
+      supabase.from('profiles').select('id, full_name').order('full_name'),
+      supabase.from('events').select('id, name, event_date').order('event_date', { ascending: false }),
+      supabase.from('sponsors').select('id, name'),
+    ]);
+    TX = tx.data || []; DUES = du.data || []; FUNDRAISERS = fr.data || []; SPONSORSHIPS = sp.data || [];
+    REQUESTS = rq.data || []; REIMB = rb.data || []; BUDGETS = bg.data || []; PEOPLE = pp.data || [];
+    EVENTS = ev.data || []; SPONSOR_NAMES = sn.data || [];
+    render();
+  }
+
+  const inTerm = (row) => TERM === 'all' || row.term === TERM;
+  const termTx = () => TX.filter(inTerm);
+  const sumBy = (rows, kind) => rows.filter(t => t.kind === kind).reduce((s, t) => s + Number(t.amount), 0);
+  const balance = () => sumBy(TX, 'income') - sumBy(TX, 'expense'); // all-time
+  const receivedFor = (field, id) => TX.filter(t => t.kind === 'income' && t[field] === id).reduce((s, t) => s + Number(t.amount), 0);
+
+  function termOptions() {
+    const set = new Set([CURRENT_TERM]);
+    [TX, DUES, FUNDRAISERS, SPONSORSHIPS, REQUESTS, REIMB, BUDGETS].forEach(a => a.forEach(r => r.term && set.add(r.term)));
+    const order = { 'Spring': 0, 'Summer': 1, 'Fall': 2 };
+    const terms = [...set].sort((a, b) => {
+      const [sa, ya] = a.split(' '), [sb, yb] = b.split(' ');
+      return (+yb - +ya) || (order[sb] - order[sa]);
+    });
+    return terms.map(t => `<option value="${esc(t)}" ${TERM === t ? 'selected' : ''}>${esc(t)}</option>`).join('')
+      + `<option value="all" ${TERM === 'all' ? 'selected' : ''}>All time</option>`;
+  }
+
+  // ---------- receipts ----------
+  async function uploadReceipt(file) {
+    if (!file) return null;
+    if (file.size > 11 * 1024 * 1024) { toast('Receipt is larger than 11 MB.'); return null; }
+    const up = await compressImage(file, 1400, .85);
+    const path = `${crypto.randomUUID()}.${outExt(up, file)}`;
+    const { error } = await supabase.storage.from('receipts').upload(path, up, { contentType: up.type });
+    if (error) { toast(error.message); return null; }
+    return path;
+  }
+  async function openReceipt(path) {
+    const w = window.open('about:blank');
+    const { data, error } = await supabase.storage.from('receipts').createSignedUrl(path, 3600);
+    if (error || !data) { w?.close(); toast('Could not open receipt.'); return; }
+    if (w) w.location = data.signedUrl;
+  }
+
+  // ---------- shared render ----------
+  function render() {
+    const tt = termTx();
+    const inc = sumBy(tt, 'income'), exp = sumBy(tt, 'expense');
+    page.innerHTML = `
+      <div class="fin-head">
+        <div class="grp">
+          <h2 style="margin:0">Finance</h2>
+          <span class="fin-balance">Balance: <strong>${money(balance())}</strong></span>
+        </div>
+        <div class="grp">
+          <select id="fin-term" class="rt-btn" style="height:38px" title="Term">${termOptions()}</select>
+          <button class="btn" id="new-tx">+ Entry</button>
+        </div>
+      </div>
+      <div class="mode-toggle fin-tabs" id="fin-tabs">
+        ${['overview', 'ledger', 'dues', 'reimburse', 'budgets', 'funding'].map(t =>
+          `<button data-tab="${t}" class="${TAB === t ? 'on' : ''}" style="text-transform:capitalize">${t}</button>`).join('')}
+      </div>
+      <div id="fin-body"></div>`;
+    document.getElementById('fin-term').onchange = (e) => { TERM = e.target.value; render(); };
+    document.getElementById('new-tx').onclick = () => txModal();
+    document.getElementById('fin-tabs').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (b) { TAB = b.dataset.tab; render(); }
+    });
+    const body = document.getElementById('fin-body');
+    ({ overview: renderOverview, ledger: renderLedger, dues: renderDues, reimburse: renderReimb, budgets: renderBudgets, funding: renderFunding })[TAB](body, { inc, exp });
+  }
+
+  // ---------- OVERVIEW ----------
+  function renderOverview(body, { inc, exp }) {
+    const tt = termTx();
+    // monthly cash flow (within term view)
+    const months = new Map();
+    tt.forEach(t => {
+      const k = t.occurred_on.slice(0, 7);
+      if (!months.has(k)) months.set(k, { in: 0, out: 0 });
+      months.get(k)[t.kind === 'income' ? 'in' : 'out'] += Number(t.amount);
+    });
+    const mk = [...months.keys()].sort();
+    const peak = Math.max(1, ...[...months.values()].flatMap(m => [m.in, m.out]));
+    const cf = mk.map(k => {
+      const m = months.get(k);
+      const lbl = new Date(k + '-01T00:00:00').toLocaleDateString('en-US', { month: 'short' });
+      return `<div class="cf-month"><div class="cf-bars">
+        <div class="cf-bar in" style="height:${Math.round(m.in / peak * 100)}%" title="In ${money(m.in)}"></div>
+        <div class="cf-bar out" style="height:${Math.round(m.out / peak * 100)}%" title="Out ${money(m.out)}"></div>
+      </div><span class="cf-lbl">${lbl}</span></div>`;
+    }).join('');
+
+    // category breakdown (expenses)
+    const cats = new Map();
+    tt.filter(t => t.kind === 'expense').forEach(t => cats.set(t.category, (cats.get(t.category) || 0) + Number(t.amount)));
+    const catPeak = Math.max(1, ...cats.values());
+    const catRows = [...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `
+      <div class="catbar"><div class="row1"><span style="text-transform:capitalize">${esc(c)}</span><span class="amt">${money(v)}</span></div>
+      <div class="track"><div class="fill expense" style="width:${Math.round(v / catPeak * 100)}%"></div></div></div>`).join('');
+
+    // event P&L
+    const evIds = [...new Set(tt.filter(t => t.event_id).map(t => t.event_id))];
+    const pnl = evIds.map(id => {
+      const ev = EVENTS.find(e => e.id === id);
+      const rows = tt.filter(t => t.event_id === id);
+      const i = sumBy(rows, 'income'), o = sumBy(rows, 'expense'), net = i - o;
+      return `<div class="fin-tile"><h4>${esc(ev?.name || 'Event #' + id)}</h4>
+        <div class="sub">${ev ? fmtD(ev.event_date) : ''}</div>
+        <div style="margin-top:8px; font-size:.85rem">In <span class="amt-in">${money(i)}</span> · Out <span class="amt-out">${money(o)}</span></div>
+        <div style="margin-top:4px; font-weight:700; color:${net >= 0 ? 'var(--ok)' : 'var(--red)'}">Net ${net >= 0 ? '+' : '−'}${money(Math.abs(net))}</div>
+      </div>`;
+    }).join('');
+
+    const recent = tt.slice(0, 6).map(t => `
+      <tr><td>${fmtD(t.occurred_on)}</td>
+      <td><span class="kind-badge kind-${t.kind}">${t.kind}</span></td>
+      <td style="text-transform:capitalize">${esc(t.category)}</td>
+      <td>${esc(t.description) || '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="${t.kind === 'income' ? 'amt-in' : 'amt-out'}">${t.kind === 'income' ? '+' : '−'}${money(t.amount)}</td></tr>`).join('');
+
+    body.innerHTML = `
+      <div class="card"><h2>Overview</h2>
+        <div class="stat-grid">
+          <div class="stat"><div class="num">${money(balance())}</div><div class="lbl">Balance (all time)</div></div>
+          <div class="stat"><div class="num" style="color:var(--ok)">${money(inc)}</div><div class="lbl">Income · ${esc(TERM === 'all' ? 'all time' : TERM)}</div></div>
+          <div class="stat"><div class="num" style="color:var(--red)">${money(exp)}</div><div class="lbl">Spent · ${esc(TERM === 'all' ? 'all time' : TERM)}</div></div>
+          <div class="stat"><div class="num">${money(inc - exp)}</div><div class="lbl">Net · ${esc(TERM === 'all' ? 'all time' : TERM)}</div></div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px">
+        <div class="card chart-card"><h3>Monthly cash flow</h3>
+          ${mk.length ? `<div class="cashflow">${cf}</div>
+          <div class="legend"><span><i style="background:var(--ok)"></i>Money in</span><span><i style="background:var(--red)"></i>Money out</span></div>`
+          : '<p style="color:var(--muted)">No transactions yet — add the first entry.</p>'}
+        </div>
+        <div class="card chart-card"><h3>Spending by category</h3>
+          ${catRows ? `<div class="catbars">${catRows}</div>` : '<p style="color:var(--muted)">No expenses recorded yet.</p>'}
+        </div>
+      </div>
+      ${pnl ? `<div class="card"><h3 style="margin-bottom:12px">Event profit &amp; loss</h3><div class="fin-grid">${pnl}</div></div>` : ''}
+      ${recent ? `<div class="card"><h3 style="margin-bottom:12px">Recent activity</h3>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Kind</th><th>Category</th><th>Description</th><th>Amount</th></tr></thead>
+        <tbody>${recent}</tbody></table></div></div>` : ''}`;
+  }
+
+  // ---------- LEDGER ----------
+  function renderLedger(body) {
+    const q = LEDGER_Q.toLowerCase();
+    const rows = termTx()
+      .filter(t => !q || (t.description || '').toLowerCase().includes(q) || t.category.toLowerCase().includes(q) || (t.method || '').includes(q))
+      .map(t => {
+        const ev = t.event_id ? EVENTS.find(e => e.id === t.event_id) : null;
+        return `<tr>
+          <td>${fmtD(t.occurred_on)}</td>
+          <td><span class="kind-badge kind-${t.kind}">${t.kind}</span></td>
+          <td style="text-transform:capitalize">${esc(t.category)}</td>
+          <td>${esc(t.description) || '<span style="color:var(--muted)">—</span>'}${ev ? `<br><small style="color:var(--muted)">📍 ${esc(ev.name)}</small>` : ''}</td>
+          <td style="text-transform:capitalize">${esc(t.method) || '—'}</td>
+          <td class="${t.kind === 'income' ? 'amt-in' : 'amt-out'}">${t.kind === 'income' ? '+' : '−'}${money(t.amount)}</td>
+          <td>${t.receipt_path ? `<span class="link-btn rcpt-link" data-rcpt="${esc(t.receipt_path)}">view</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+          <td class="actions">
+            <button class="btn sm secondary" data-edit="${t.id}">Edit</button>
+            <button class="btn sm ghost" data-del="${t.id}">Delete</button>
+          </td></tr>`;
+      }).join('');
+
+    body.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px">
+          <input class="searchbar" id="lq" type="search" placeholder="Search entries…" value="${esc(LEDGER_Q)}" style="margin:0">
+          <button class="btn secondary sm" id="csv" style="align-self:center">Export CSV</button>
+        </div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Date</th><th>Kind</th><th>Category</th><th>Description</th><th>Method</th><th>Amount</th><th>Receipt</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="8" style="color:var(--muted)">No entries for this term yet.</td></tr>'}</tbody>
+        </table></div>
+      </div>`;
+    body.querySelector('#lq').oninput = (e) => {
+      LEDGER_Q = e.target.value;
+      renderLedger(body);
+      const i = body.querySelector('#lq');
+      i.focus();
+      i.setSelectionRange(i.value.length, i.value.length);
+    };
+    wireLedger(body);
+  }
+  function wireLedger(body) {
+    body.querySelector('#csv').onclick = () => {
+      const head = 'date,kind,category,description,method,amount,term,event\n';
+      const lines = termTx().map(t => {
+        const ev = t.event_id ? (EVENTS.find(e => e.id === t.event_id)?.name || '') : '';
+        const cell = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+        return [t.occurred_on, t.kind, t.category, cell(t.description), t.method || '', t.amount, t.term, cell(ev)].join(',');
+      }).join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([head + lines], { type: 'text/csv' }));
+      a.download = `vsa-finance-${TERM === 'all' ? 'all' : TERM.replace(' ', '-')}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+    body.querySelectorAll('[data-rcpt]').forEach(el => el.onclick = () => openReceipt(el.dataset.rcpt));
+    body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => txModal(TX.find(t => t.id === +b.dataset.edit)));
+    body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const t = TX.find(x => x.id === +b.dataset.del);
+      if (!await confirmDialog(`Delete this ${t.kind} of ${money(t.amount)}?`)) return;
+      const { error } = await supabase.from('finance_transactions').delete().eq('id', t.id);
+      if (error) { toast(error.message); return; }
+      if (t.receipt_path) await supabase.storage.from('receipts').remove([t.receipt_path]);
+      load();
+    });
+  }
+
+  function txModal(t, preset = {}) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    const kind = t?.kind || preset.kind || 'expense';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${t ? 'Edit entry' : 'New entry'}</h2>
+        <div class="notice" id="m-err"></div>
+        <div class="field-row">
+          <div class="field"><label>Kind</label>
+            <select id="f-kind">${['expense', 'income'].map(k => `<option ${kind === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+          <div class="field"><label>Amount ($)</label><input type="number" id="f-amt" min="0.01" step="0.01" value="${t?.amount ?? preset.amount ?? ''}"></div>
+          <div class="field"><label>Date</label><input type="date" id="f-date" value="${t?.occurred_on || new Date().toLocaleDateString('en-CA')}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Category</label>
+            <input id="f-cat" list="cat-list" value="${esc(t?.category || preset.category || '')}" placeholder="dues, food…">
+            <datalist id="cat-list">${CATEGORIES.map(c => `<option value="${c}">`).join('')}</datalist></div>
+          <div class="field"><label>Method</label>
+            <select id="f-method"><option value="">—</option>${METHODS.map(m => `<option ${((t?.method || preset.method) === m) ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label>Description</label><input id="f-desc" value="${esc(t?.description || preset.description || '')}"></div>
+        <div class="field-row">
+          <div class="field"><label>Event (optional)</label>
+            <select id="f-event"><option value="">—</option>${EVENTS.map(e => `<option value="${e.id}" ${t?.event_id === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></div>
+          <div class="field" id="link-field"><label>Link income to (optional)</label>
+            <select id="f-link">
+              <option value="">—</option>
+              ${FUNDRAISERS.map(f => `<option value="fundraiser:${f.id}" ${t?.fundraiser_id === f.id ? 'selected' : ''}>Fundraiser: ${esc(f.name)}</option>`).join('')}
+              ${SPONSORSHIPS.map(s => `<option value="sponsorship:${s.id}" ${t?.sponsorship_id === s.id ? 'selected' : ''}>Sponsor: ${esc(s.sponsor_name)}</option>`).join('')}
+              ${REQUESTS.map(r => `<option value="request:${r.id}" ${t?.request_id === r.id ? 'selected' : ''}>School: ${esc(r.title)}</option>`).join('')}
+            </select></div>
+        </div>
+        <div class="field"><label>Receipt photo${t?.receipt_path ? ' — picking a new one replaces it' : ''}</label>
+          <input type="file" id="f-rcpt" accept="image/png,image/jpeg,image/webp"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">${t ? 'Save' : 'Add'}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    if (preset.link) back.querySelector('#f-link').value = preset.link;
+    const linkField = back.querySelector('#link-field');
+    const syncLink = () => { linkField.style.display = back.querySelector('#f-kind').value === 'income' ? '' : 'none'; };
+    back.querySelector('#f-kind').onchange = syncLink;
+    syncLink();
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const amount = +back.querySelector('#f-amt').value;
+      const date = back.querySelector('#f-date').value;
+      if (!(amount > 0)) return say('Enter an amount.');
+      if (!date) return say('Pick a date.');
+      const [linkType, linkId] = (back.querySelector('#f-link').value || ':').split(':');
+      const payload = {
+        kind: back.querySelector('#f-kind').value,
+        amount,
+        occurred_on: date,
+        term: termOf(date),
+        category: back.querySelector('#f-cat').value.trim().toLowerCase() || 'misc',
+        method: back.querySelector('#f-method').value || null,
+        description: back.querySelector('#f-desc').value.trim() || null,
+        event_id: +back.querySelector('#f-event').value || null,
+        fundraiser_id: linkType === 'fundraiser' ? +linkId : null,
+        sponsorship_id: linkType === 'sponsorship' ? +linkId : null,
+        request_id: linkType === 'request' ? +linkId : null,
+      };
+      if (payload.kind !== 'income') { payload.fundraiser_id = null; payload.sponsorship_id = null; payload.request_id = null; }
+      const file = back.querySelector('#f-rcpt').files[0];
+      if (file) {
+        const path = await uploadReceipt(file);
+        if (!path) return;
+        if (t?.receipt_path) await supabase.storage.from('receipts').remove([t.receipt_path]);
+        payload.receipt_path = path;
+      }
+      const { error } = t
+        ? await supabase.from('finance_transactions').update(payload).eq('id', t.id)
+        : await supabase.from('finance_transactions').insert({ ...payload, created_by: ctx.user.id });
+      if (error) return say(error.message);
+      back.remove();
+      load();
+    };
+  }
+
+  // ---------- DUES ----------
+  function renderDues(body) {
+    if (TERM === 'all') { body.innerHTML = '<div class="card"><p style="color:var(--muted)">Pick a specific term to track dues.</p></div>'; return; }
+    const paid = new Map(DUES.filter(d => d.term === TERM).map(d => [d.user_id, d]));
+    const rows = PEOPLE.map(p => {
+      const d = paid.get(p.id);
+      return `<tr class="${d ? 'dues-paid' : ''}">
+        <td><strong>${esc(p.full_name)}</strong></td>
+        <td>${d ? `<span class="st-tag st-paid">paid</span>` : '<span class="st-tag st-pending">unpaid</span>'}</td>
+        <td>${d ? money(d.amount) : '—'}</td>
+        <td style="text-transform:capitalize">${d ? (esc(d.method) || '—') : '—'}</td>
+        <td>${d ? fmtD(d.paid_on) : '—'}</td>
+        <td class="actions">${d
+          ? `<button class="btn sm ghost" data-undue="${d.id}">Undo</button>`
+          : `<button class="btn sm secondary" data-due="${p.id}">Mark paid</button>`}</td></tr>`;
+    }).join('');
+    const collected = DUES.filter(d => d.term === TERM).reduce((s, d) => s + Number(d.amount), 0);
+    body.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+          <h3>Dues — ${esc(TERM)}</h3>
+          <span style="color:var(--muted)">${paid.size}/${PEOPLE.length} paid · <strong style="color:var(--gold)">${money(collected)}</strong> collected</span>
+        </div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Member</th><th>Status</th><th>Amount</th><th>Method</th><th>Paid on</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6" style="color:var(--muted)">No members yet.</td></tr>'}</tbody>
+        </table></div>
+        <p style="color:var(--muted); font-size:.8rem; margin-top:10px">Marking someone paid also adds the income entry to the ledger.</p>
+      </div>`;
+    body.querySelectorAll('[data-due]').forEach(b => b.onclick = () => duesModal(b.dataset.due));
+    body.querySelectorAll('[data-undue]').forEach(b => b.onclick = async () => {
+      const d = DUES.find(x => x.id === +b.dataset.undue);
+      if (!await confirmDialog(`Undo ${esc(nameOf(d.user_id))}'s dues payment? The ledger entry is removed too.`)) return;
+      if (d.transaction_id) await supabase.from('finance_transactions').delete().eq('id', d.transaction_id);
+      await supabase.from('finance_dues').delete().eq('id', d.id);
+      load();
+    });
+  }
+  function duesModal(userId) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal" style="max-width:400px">
+        <h2>Dues — ${esc(nameOf(userId))}</h2>
+        <div class="notice" id="m-err"></div>
+        <div class="field-row">
+          <div class="field"><label>Amount ($)</label><input type="number" id="f-amt" min="0.01" step="0.01" value="10"></div>
+          <div class="field"><label>Method</label>
+            <select id="f-method">${METHODS.map(m => `<option>${m}</option>`).join('')}</select></div>
+        </div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">Mark paid</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const amount = +back.querySelector('#f-amt').value;
+      if (!(amount > 0)) return say('Enter an amount.');
+      const method = back.querySelector('#f-method').value;
+      const today = new Date().toLocaleDateString('en-CA');
+      const { data: txRow, error: e1 } = await supabase.from('finance_transactions').insert({
+        kind: 'income', amount, category: 'dues', method,
+        description: `Dues — ${nameOf(userId)} (${TERM})`,
+        occurred_on: today, term: TERM, created_by: ctx.user.id,
+      }).select('id').single();
+      if (e1) return say(e1.message);
+      const { error: e2 } = await supabase.from('finance_dues').insert({
+        user_id: userId, term: TERM, amount, method, paid_on: today,
+        transaction_id: txRow.id, created_by: ctx.user.id,
+      });
+      if (e2) return say(e2.message);
+      back.remove();
+      load();
+    };
+  }
+
+  // ---------- REIMBURSEMENTS ----------
+  function renderReimb(body) {
+    const rows = REIMB.filter(inTerm).map(r => `
+      <tr>
+        <td><strong>${esc(nameOf(r.user_id))}</strong></td>
+        <td>${money(r.amount)}</td>
+        <td>${esc(r.reason)}</td>
+        <td>${r.receipt_path ? `<span class="link-btn rcpt-link" data-rcpt="${esc(r.receipt_path)}">view</span>` : '—'}</td>
+        <td><span class="st-tag st-${r.status}">${r.status}</span>${r.reviewed_by ? `<br><small style="color:var(--muted)">by ${esc(nameOf(r.reviewed_by))}</small>` : ''}</td>
+        <td class="actions">
+          ${r.status === 'pending' ? `<button class="btn sm secondary" data-approve="${r.id}">Approve</button>
+            <button class="btn sm ghost" data-deny="${r.id}">Deny</button>` : ''}
+          ${r.status === 'approved' ? `<button class="btn sm" data-pay="${r.id}">Mark paid</button>` : ''}
+          <button class="btn sm ghost" data-delr="${r.id}">Delete</button>
+        </td>
+      </tr>`).join('');
+    body.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+          <h3>Reimbursements</h3>
+          <button class="btn sm" id="new-reimb">+ Request</button>
+        </div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Who</th><th>Amount</th><th>Reason</th><th>Receipt</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6" style="color:var(--muted)">No reimbursement requests this term.</td></tr>'}</tbody>
+        </table></div>
+        <p style="color:var(--muted); font-size:.8rem; margin-top:10px">Marking a request paid adds the expense to the ledger automatically.</p>
+      </div>`;
+    body.querySelector('#new-reimb').onclick = () => reimbModal();
+    body.querySelectorAll('.rcpt-link').forEach(el => el.onclick = () => openReceipt(el.dataset.rcpt));
+    const review = async (id, status) => {
+      const { error } = await supabase.from('finance_reimbursements')
+        .update({ status, reviewed_by: ctx.user.id, reviewed_at: new Date().toISOString() }).eq('id', id);
+      if (error) toast(error.message); else load();
+    };
+    body.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => review(+b.dataset.approve, 'approved'));
+    body.querySelectorAll('[data-deny]').forEach(b => b.onclick = () => review(+b.dataset.deny, 'denied'));
+    body.querySelectorAll('[data-pay]').forEach(b => b.onclick = async () => {
+      const r = REIMB.find(x => x.id === +b.dataset.pay);
+      const today = new Date().toLocaleDateString('en-CA');
+      const { data: txRow, error: e1 } = await supabase.from('finance_transactions').insert({
+        kind: 'expense', amount: r.amount, category: 'reimbursement',
+        description: `Reimbursement — ${nameOf(r.user_id)}: ${r.reason}`,
+        occurred_on: today, term: termOf(today), created_by: ctx.user.id,
+      }).select('id').single();
+      if (e1) { toast(e1.message); return; }
+      const { error: e2 } = await supabase.from('finance_reimbursements')
+        .update({ status: 'paid', transaction_id: txRow.id, reviewed_by: ctx.user.id, reviewed_at: new Date().toISOString() }).eq('id', r.id);
+      if (e2) toast(e2.message); else load();
+    });
+    body.querySelectorAll('[data-delr]').forEach(b => b.onclick = async () => {
+      const r = REIMB.find(x => x.id === +b.dataset.delr);
+      if (!await confirmDialog(`Delete this reimbursement request${r.status === 'paid' ? ' (the ledger entry stays)' : ''}?`)) return;
+      if (r.receipt_path) await supabase.storage.from('receipts').remove([r.receipt_path]);
+      await supabase.from('finance_reimbursements').delete().eq('id', r.id);
+      load();
+    });
+  }
+  function reimbModal() {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>Reimbursement request</h2>
+        <div class="notice" id="m-err"></div>
+        <div class="field-row">
+          <div class="field"><label>Who paid</label>
+            <select id="f-who">${PEOPLE.map(p => `<option value="${p.id}" ${p.id === ctx.user.id ? 'selected' : ''}>${esc(p.full_name)}</option>`).join('')}</select></div>
+          <div class="field"><label>Amount ($)</label><input type="number" id="f-amt" min="0.01" step="0.01"></div>
+        </div>
+        <div class="field"><label>What was it for</label><input id="f-reason" placeholder="e.g. decorations for Tết"></div>
+        <div class="field"><label>Receipt photo</label><input type="file" id="f-rcpt" accept="image/png,image/jpeg,image/webp"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">Submit</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const amount = +back.querySelector('#f-amt').value;
+      const reason = back.querySelector('#f-reason').value.trim();
+      if (!(amount > 0)) return say('Enter an amount.');
+      if (!reason) return say('Say what it was for.');
+      let receipt_path = null;
+      const file = back.querySelector('#f-rcpt').files[0];
+      if (file) { receipt_path = await uploadReceipt(file); if (!receipt_path) return; }
+      const { error } = await supabase.from('finance_reimbursements').insert({
+        user_id: back.querySelector('#f-who').value, amount, reason, receipt_path,
+        term: CURRENT_TERM,
+      });
+      if (error) return say(error.message);
+      back.remove();
+      load();
+    };
+  }
+
+  // ---------- BUDGETS ----------
+  function renderBudgets(body) {
+    if (TERM === 'all') { body.innerHTML = '<div class="card"><p style="color:var(--muted)">Pick a specific term to manage budgets.</p></div>'; return; }
+    const tt = termTx();
+    const tiles = BUDGETS.filter(b => b.term === TERM).map(b => {
+      const label = b.event_id ? (EVENTS.find(e => e.id === b.event_id)?.name || 'Event #' + b.event_id) : b.category;
+      const spent = tt.filter(t => t.kind === 'expense' && (b.event_id ? t.event_id === b.event_id : t.category === b.category))
+        .reduce((s, t) => s + Number(t.amount), 0);
+      const pct = b.amount > 0 ? spent / Number(b.amount) : 0;
+      const cls = pct >= 1 ? 'over' : pct >= .8 ? 'warn' : '';
+      return `<div class="fin-tile">
+        <h4 style="text-transform:capitalize">${esc(label)}</h4>
+        <div class="sub">${b.event_id ? 'Event budget' : 'Category budget'}</div>
+        <div class="prog ${cls}">
+          <div class="track"><div class="fill" style="width:${Math.min(100, Math.round(pct * 100))}%"></div></div>
+          <div class="nums"><span>${money(spent)} spent</span><span>of ${money(b.amount)}${pct >= 1 ? ' — over!' : ''}</span></div>
+        </div>
+        <div class="acts"><button class="btn sm secondary" data-editb="${b.id}">Edit</button>
+        <button class="btn sm ghost" data-delb="${b.id}">Delete</button></div>
+      </div>`;
+    }).join('');
+    body.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+          <h3>Budgets — ${esc(TERM)}</h3>
+          <button class="btn sm" id="new-budget">+ Budget</button>
+        </div>
+        ${tiles ? `<div class="fin-grid">${tiles}</div>` : '<p style="color:var(--muted)">No budgets set for this term.</p>'}
+      </div>`;
+    body.querySelector('#new-budget').onclick = () => budgetModal();
+    body.querySelectorAll('[data-editb]').forEach(b => b.onclick = () => budgetModal(BUDGETS.find(x => x.id === +b.dataset.editb)));
+    body.querySelectorAll('[data-delb]').forEach(b => b.onclick = async () => {
+      if (!await confirmDialog('Delete this budget?')) return;
+      await supabase.from('finance_budgets').delete().eq('id', +b.dataset.delb);
+      load();
+    });
+  }
+  function budgetModal(b) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal" style="max-width:430px">
+        <h2>${b ? 'Edit budget' : 'New budget'}</h2>
+        <div class="notice" id="m-err"></div>
+        <div class="field"><label>For</label>
+          <select id="f-target">
+            <optgroup label="Category">${CATEGORIES.map(c => `<option value="cat:${c}" ${b && !b.event_id && b.category === c ? 'selected' : ''}>${c}</option>`).join('')}</optgroup>
+            <optgroup label="Event">${EVENTS.map(e => `<option value="ev:${e.id}" ${b?.event_id === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>
+          </select></div>
+        <div class="field"><label>Budget ($)</label><input type="number" id="f-amt" min="1" step="0.01" value="${b?.amount ?? ''}"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">${b ? 'Save' : 'Add'}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const amount = +back.querySelector('#f-amt').value;
+      if (!(amount > 0)) return say('Enter a budget amount.');
+      const [type, val] = back.querySelector('#f-target').value.split(':');
+      const payload = {
+        term: TERM, amount,
+        category: type === 'cat' ? val : null,
+        event_id: type === 'ev' ? +val : null,
+      };
+      const { error } = b
+        ? await supabase.from('finance_budgets').update(payload).eq('id', b.id)
+        : await supabase.from('finance_budgets').insert({ ...payload, created_by: ctx.user.id });
+      if (error) return say(error.message);
+      back.remove();
+      load();
+    };
+  }
+
+  // ---------- FUNDING (fundraisers, sponsorships, school requests) ----------
+  function renderFunding(body) {
+    const frTiles = FUNDRAISERS.filter(inTerm).map(f => {
+      const got = receivedFor('fundraiser_id', f.id);
+      const pct = f.goal > 0 ? got / Number(f.goal) : 0;
+      return `<div class="fin-tile">
+        <h4>${esc(f.name)}</h4><div class="sub">${esc(f.term)}${f.active ? '' : ' · closed'}</div>
+        <div class="prog">
+          <div class="track"><div class="fill" style="width:${Math.min(100, Math.round(pct * 100))}%"></div></div>
+          <div class="nums"><span>${money(got)} raised</span><span>goal ${money(f.goal)}</span></div>
+        </div>
+        <div class="acts">
+          <button class="btn sm" data-addinc="fundraiser:${f.id}" data-label="${esc(f.name)}">+ Income</button>
+          <button class="btn sm secondary" data-editf="${f.id}">Edit</button>
+          <button class="btn sm ghost" data-delf="${f.id}">Delete</button>
+        </div></div>`;
+    }).join('');
+    const spTiles = SPONSORSHIPS.filter(inTerm).map(s => {
+      const got = receivedFor('sponsorship_id', s.id);
+      const pct = s.pledged > 0 ? got / Number(s.pledged) : 0;
+      return `<div class="fin-tile">
+        <h4>${esc(s.sponsor_name)}</h4><div class="sub">${esc(s.term)}${s.notes ? ' · ' + esc(s.notes) : ''}</div>
+        <div class="prog">
+          <div class="track"><div class="fill" style="width:${Math.min(100, Math.round(pct * 100))}%"></div></div>
+          <div class="nums"><span>${money(got)} received</span><span>pledged ${money(s.pledged)}</span></div>
+        </div>
+        <div class="acts">
+          <button class="btn sm" data-addinc="sponsorship:${s.id}" data-label="${esc(s.sponsor_name)}">+ Income</button>
+          <button class="btn sm secondary" data-edits="${s.id}">Edit</button>
+          <button class="btn sm ghost" data-dels="${s.id}">Delete</button>
+        </div></div>`;
+    }).join('');
+    const rqTiles = REQUESTS.filter(inTerm).map(r => {
+      const got = receivedFor('request_id', r.id);
+      const ev = r.event_id ? EVENTS.find(e => e.id === r.event_id) : null;
+      return `<div class="fin-tile">
+        <h4>${esc(r.title)}</h4>
+        <div class="sub">${ev ? '📍 ' + esc(ev.name) + ' · ' : ''}<span class="st-tag st-${r.status}">${r.status}</span></div>
+        <div style="margin-top:9px; font-size:.85rem; line-height:1.7">
+          Requested <strong>${money(r.requested)}</strong><br>
+          Awarded ${r.awarded != null ? `<strong>${money(r.awarded)}</strong>` : '<span style="color:var(--muted)">— pending</span>'}<br>
+          Received <strong class="amt-in">${money(got)}</strong>
+        </div>
+        <div class="acts">
+          <button class="btn sm" data-addinc="request:${r.id}" data-label="${esc(r.title)}">+ Income</button>
+          <button class="btn sm secondary" data-editr="${r.id}">Edit</button>
+          <button class="btn sm ghost" data-delrq="${r.id}">Delete</button>
+        </div></div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+          <h3>Fundraisers</h3><button class="btn sm" id="new-fr">+ Fundraiser</button>
+        </div>
+        ${frTiles ? `<div class="fin-grid">${frTiles}</div>` : '<p style="color:var(--muted)">No fundraisers this term.</p>'}
+      </div>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+          <h3>Sponsorships</h3><button class="btn sm" id="new-sp">+ Sponsorship</button>
+        </div>
+        ${spTiles ? `<div class="fin-grid">${spTiles}</div>` : '<p style="color:var(--muted)">No sponsorships this term.</p>'}
+      </div>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px">
+          <h3>School funding requests</h3><button class="btn sm" id="new-rq">+ Request</button>
+        </div>
+        ${rqTiles ? `<div class="fin-grid">${rqTiles}</div>` : '<p style="color:var(--muted)">No school funding requests this term.</p>'}
+      </div>`;
+
+    body.querySelectorAll('[data-addinc]').forEach(b => b.onclick = () => {
+      const [type, id] = b.dataset.addinc.split(':');
+      txModal(null, {
+        kind: 'income', description: b.dataset.label, link: `${type}:${id}`,
+        category: type === 'fundraiser' ? 'fundraising' : type === 'sponsorship' ? 'sponsorship' : 'school funding',
+      });
+    });
+    body.querySelector('#new-fr').onclick = () => frModal();
+    body.querySelectorAll('[data-editf]').forEach(b => b.onclick = () => frModal(FUNDRAISERS.find(x => x.id === +b.dataset.editf)));
+    body.querySelectorAll('[data-delf]').forEach(b => b.onclick = async () => {
+      if (!await confirmDialog('Delete this fundraiser? Linked ledger entries stay.')) return;
+      await supabase.from('finance_fundraisers').delete().eq('id', +b.dataset.delf);
+      load();
+    });
+    body.querySelector('#new-sp').onclick = () => spModal();
+    body.querySelectorAll('[data-edits]').forEach(b => b.onclick = () => spModal(SPONSORSHIPS.find(x => x.id === +b.dataset.edits)));
+    body.querySelectorAll('[data-dels]').forEach(b => b.onclick = async () => {
+      if (!await confirmDialog('Delete this sponsorship? Linked ledger entries stay.')) return;
+      await supabase.from('finance_sponsorships').delete().eq('id', +b.dataset.dels);
+      load();
+    });
+    body.querySelector('#new-rq').onclick = () => rqModal();
+    body.querySelectorAll('[data-editr]').forEach(b => b.onclick = () => rqModal(REQUESTS.find(x => x.id === +b.dataset.editr)));
+    body.querySelectorAll('[data-delrq]').forEach(b => b.onclick = async () => {
+      if (!await confirmDialog('Delete this funding request? Linked ledger entries stay.')) return;
+      await supabase.from('finance_requests').delete().eq('id', +b.dataset.delrq);
+      load();
+    });
+  }
+  function frModal(f) {
+    simpleModal(f ? 'Edit fundraiser' : 'New fundraiser', `
+      <div class="field"><label>Name</label><input id="f-name" value="${esc(f?.name)}" placeholder="Matcha & coffee fundraiser"></div>
+      <div class="field"><label>Goal ($)</label><input type="number" id="f-goal" min="0" step="0.01" value="${f?.goal ?? ''}"></div>
+      ${f ? `<div class="field"><label style="text-transform:none; letter-spacing:normal"><input type="checkbox" id="f-active" ${f.active ? 'checked' : ''} style="width:auto; margin-right:6px"> Active</label></div>` : ''}`,
+      async (back) => {
+        const name = back.querySelector('#f-name').value.trim();
+        if (!name) return 'Give it a name.';
+        const payload = { name, goal: +back.querySelector('#f-goal').value || 0, term: f?.term || (TERM === 'all' ? CURRENT_TERM : TERM) };
+        if (f) payload.active = back.querySelector('#f-active')?.checked ?? f.active;
+        const { error } = f
+          ? await supabase.from('finance_fundraisers').update(payload).eq('id', f.id)
+          : await supabase.from('finance_fundraisers').insert({ ...payload, created_by: ctx.user.id });
+        return error?.message;
+      });
+  }
+  function spModal(s) {
+    simpleModal(s ? 'Edit sponsorship' : 'New sponsorship', `
+      <div class="field"><label>Sponsor</label>
+        <input id="f-name" list="sp-names" value="${esc(s?.sponsor_name)}" placeholder="Company name">
+        <datalist id="sp-names">${SPONSOR_NAMES.map(x => `<option value="${esc(x.name)}">`).join('')}</datalist></div>
+      <div class="field"><label>Pledged ($)</label><input type="number" id="f-pledged" min="0" step="0.01" value="${s?.pledged ?? ''}"></div>
+      <div class="field"><label>Notes</label><input id="f-notes" value="${esc(s?.notes)}" placeholder="in-kind? per event?"></div>`,
+      async (back) => {
+        const sponsor_name = back.querySelector('#f-name').value.trim();
+        if (!sponsor_name) return 'Who is the sponsor?';
+        const match = SPONSOR_NAMES.find(x => x.name.toLowerCase() === sponsor_name.toLowerCase());
+        const payload = {
+          sponsor_name, sponsor_id: match?.id || null,
+          pledged: +back.querySelector('#f-pledged').value || 0,
+          notes: back.querySelector('#f-notes').value.trim() || null,
+          term: s?.term || (TERM === 'all' ? CURRENT_TERM : TERM),
+        };
+        const { error } = s
+          ? await supabase.from('finance_sponsorships').update(payload).eq('id', s.id)
+          : await supabase.from('finance_sponsorships').insert({ ...payload, created_by: ctx.user.id });
+        return error?.message;
+      });
+  }
+  function rqModal(r) {
+    simpleModal(r ? 'Edit funding request' : 'New school funding request', `
+      <div class="field"><label>Title</label><input id="f-title" value="${esc(r?.title)}" placeholder="SGA funding — Tết 2027"></div>
+      <div class="field"><label>Purpose</label><input id="f-purpose" value="${esc(r?.purpose)}"></div>
+      <div class="field-row">
+        <div class="field"><label>Requested ($)</label><input type="number" id="f-req" min="0.01" step="0.01" value="${r?.requested ?? ''}"></div>
+        <div class="field"><label>Awarded ($)</label><input type="number" id="f-aw" min="0" step="0.01" value="${r?.awarded ?? ''}" placeholder="blank = pending"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Status</label>
+          <select id="f-status">${['draft', 'submitted', 'approved', 'denied', 'received'].map(x => `<option ${r?.status === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+        <div class="field"><label>Event (optional)</label>
+          <select id="f-ev"><option value="">—</option>${EVENTS.map(e => `<option value="${e.id}" ${r?.event_id === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Submitted on</label><input type="date" id="f-sub" value="${r?.submitted_on || ''}"></div>
+        <div class="field"><label>Decided on</label><input type="date" id="f-dec" value="${r?.decided_on || ''}"></div>
+      </div>`,
+      async (back) => {
+        const title = back.querySelector('#f-title').value.trim();
+        const requested = +back.querySelector('#f-req').value;
+        if (!title) return 'Give the request a title.';
+        if (!(requested > 0)) return 'Enter the requested amount.';
+        const aw = back.querySelector('#f-aw').value;
+        const payload = {
+          title, requested,
+          purpose: back.querySelector('#f-purpose').value.trim() || null,
+          awarded: aw === '' ? null : +aw,
+          status: back.querySelector('#f-status').value,
+          event_id: +back.querySelector('#f-ev').value || null,
+          submitted_on: back.querySelector('#f-sub').value || null,
+          decided_on: back.querySelector('#f-dec').value || null,
+          term: r?.term || (TERM === 'all' ? CURRENT_TERM : TERM),
+        };
+        const { error } = r
+          ? await supabase.from('finance_requests').update(payload).eq('id', r.id)
+          : await supabase.from('finance_requests').insert({ ...payload, created_by: ctx.user.id });
+        return error?.message;
+      });
+  }
+  function simpleModal(title, fieldsHTML, onSave) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal"><h2>${title}</h2><div class="notice" id="m-err"></div>${fieldsHTML}
+      <div class="row-btns"><button class="btn ghost" id="m-cancel">Cancel</button><button class="btn" id="m-save">Save</button></div></div>`;
+    document.body.appendChild(back);
+    const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const err = await onSave(back);
+      if (err) { say(err); return; }
+      back.remove();
+      load();
+    };
+  }
+
+  await load();
+</script>
+</body>
+</html>
