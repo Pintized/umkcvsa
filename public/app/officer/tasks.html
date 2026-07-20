@@ -16,15 +16,18 @@
 .tb-head p { color:var(--muted); font-size:.85rem; margin-top:2px; }
 .tb-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 
-.task-layout { display:flex; gap:16px; align-items:flex-start; }
-.task-layout .board { flex:1 1 auto; min-width:0; }
+.task-layout { display:block; }
 
-/* ---- infinite canvas board ---- */
+/* ---- infinite canvas board: full-bleed across the content area ---- */
 .board {
-  position:relative; width:100%; aspect-ratio:16/9; max-height:72vh; overflow:hidden;
-  border:1px solid var(--line); border-radius:14px; background:var(--surface-2);
+  position:relative; overflow:hidden;
+  height:calc(100vh - 232px); min-height:440px;
+  margin:0 -28px -28px;
+  border:none; border-radius:0; border-top:1px solid var(--line);
+  background:var(--surface-2);
   cursor:grab; touch-action:none; user-select:none;
 }
+@media (max-width:900px) { .board { margin:0 -18px -18px; } }
 .board.panning { cursor:grabbing; }
 .board-canvas {
   position:absolute; top:0; left:0; width:8000px; height:8000px;
@@ -154,11 +157,16 @@ html:not(.dark-mode) .status-open { color:#2a6099; }
 .edge-menu { position:fixed; transform:translate(-50%,-50%); z-index:400; }
 .edge-menu .edge-menu-del { background:var(--red); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:.8rem; font-weight:600; cursor:pointer; box-shadow:var(--shadow-lg); white-space:nowrap; }
 
-/* ---- right-side task list ---- */
+/* ---- floating task list: drag it anywhere on the board ---- */
 .task-list-panel {
-  flex:0 0 280px; width:280px; border:1px solid var(--line); border-radius:14px;
-  background:var(--surface); padding:14px; max-height:72vh; overflow-y:auto;
+  position:absolute; top:16px; left:16px; z-index:45;
+  width:272px; max-height:calc(100% - 32px); overflow-y:auto;
+  border:1px solid var(--line); border-radius:14px;
+  background:var(--surface); box-shadow:var(--shadow-lg); padding:12px 14px;
 }
+.task-list-panel h3 { cursor:grab; }
+.task-list-panel.dragging { opacity:.88; }
+.task-list-panel.dragging h3 { cursor:grabbing; }
 .task-list-panel h3 { font-family:var(--serif); font-size:1rem; margin:0 0 8px; }
 .task-list-panel .tl-group-title { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:var(--gold); margin:14px 0 6px; font-weight:700; }
 .task-list-panel .tl-group-title:first-of-type { margin-top:4px; }
@@ -172,7 +180,7 @@ html:not(.dark-mode) .status-open { color:#2a6099; }
 .tl-title { font-size:.85rem; font-weight:600; line-height:1.25; transition:color .12s; }
 .tl-meta { font-size:.72rem; color:var(--muted); margin-top:2px; }
 .tl-empty { color:var(--muted); font-size:.8rem; padding:6px 0; }
-@media (max-width:1000px){ .task-layout { flex-direction:column; } .task-list-panel { flex-basis:auto; width:100%; max-height:260px; } }
+@media (max-width:1000px){ .task-list-panel { width:230px; } }
 
 /* ---- details popup ---- */
 .detpop-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:.8rem; color:var(--muted); margin-bottom:12px; }
@@ -393,10 +401,6 @@ body.list-mode .listview { display:block; }
       </div>
     </div>
     <div class="task-layout">
-      <aside class="task-list-panel" id="taskListPanel">
-        <h3>All Tasks</h3>
-        <div id="taskListBody"><div class="tl-empty">Loading…</div></div>
-      </aside>
       <div class="board" id="board">
         <div class="board-canvas" id="boardCanvas"><svg class="edge-layer" id="edgeLayer" width="8000" height="8000"></svg></div>
         <div class="board-empty" id="boardEmpty">No tasks yet. Click "New task" to add one.</div>
@@ -411,6 +415,10 @@ body.list-mode .listview { display:block; }
           <div class="search-results" id="searchResults"></div>
         </div>
         <div class="minimap" id="minimap"><svg id="minimapSvg" width="256" height="144" viewBox="0 0 256 144"></svg></div>
+        <aside class="task-list-panel" id="taskListPanel">
+          <h3 title="Drag to move this panel">All Tasks</h3>
+          <div id="taskListBody"><div class="tl-empty">Loading…</div></div>
+        </aside>
       </div>
       <div class="kanban" id="kanban">
         <section class="kanban-col kanban-main-col" data-col="main">
@@ -1072,7 +1080,8 @@ body.list-mode .listview { display:block; }
     // double-click empty canvas -> new task right there
     board.addEventListener('dblclick', (e) => {
       if (e.target.closest('.tcard') || e.target.closest('.board-search') || e.target.closest('.zoom-controls')
-        || e.target.closest('.minimap') || (e.target.dataset && e.target.dataset.edgeId)) return;
+        || e.target.closest('.minimap') || e.target.closest('.task-list-panel')
+        || (e.target.dataset && e.target.dataset.edgeId)) return;
       const p = clientToCanvas(e.clientX, e.clientY);
       openModal(null, { x: snap(p.x - 120), y: snap(p.y - 40) });
     });
@@ -1091,7 +1100,8 @@ body.list-mode .listview { display:block; }
     };
     board.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.tcard') || e.target.closest('.board-search') || e.target.closest('.zoom-controls')
-        || e.target.closest('.minimap') || (e.target.dataset && e.target.dataset.edgeId)) return;
+        || e.target.closest('.minimap') || e.target.closest('.task-list-panel')
+        || (e.target.dataset && e.target.dataset.edgeId)) return;
       e.preventDefault();
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       try { board.setPointerCapture(e.pointerId); } catch (_) {}
@@ -1129,6 +1139,33 @@ body.list-mode .listview { display:block; }
     };
     board.addEventListener('pointerup', endPan);
     board.addEventListener('pointercancel', endPan);
+
+    // floating All Tasks panel: drag by its header, position remembered
+    const panel = document.getElementById('taskListPanel');
+    try {
+      const p = JSON.parse(localStorage.getItem('vsa-tasklist-pos') || 'null');
+      if (p) { panel.style.left = p.x + 'px'; panel.style.top = p.y + 'px'; }
+    } catch (e) {}
+    panel.querySelector('h3').addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const start = { x: e.clientX, y: e.clientY, left: panel.offsetLeft, top: panel.offsetTop };
+      panel.classList.add('dragging');
+      const move = (ev) => {
+        const nx = Math.min(Math.max(0, start.left + ev.clientX - start.x), Math.max(0, board.clientWidth - panel.offsetWidth));
+        const ny = Math.min(Math.max(0, start.top + ev.clientY - start.y), Math.max(0, board.clientHeight - 44));
+        panel.style.left = nx + 'px';
+        panel.style.top = ny + 'px';
+      };
+      const up = () => {
+        panel.classList.remove('dragging');
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        try { localStorage.setItem('vsa-tasklist-pos', JSON.stringify({ x: panel.offsetLeft, y: panel.offsetTop })); } catch (e) {}
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    });
 
     // hide-done toggle (grid only — Done stays visible in Kanban by design)
     const hd = document.getElementById('hideDoneBtn');
