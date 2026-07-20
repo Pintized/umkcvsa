@@ -481,6 +481,13 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   let PLAN_EVENT = null;
   const PLAN_ACCOUNTS = { safc: 'SAFC (A+EE)', sgr: 'SGR', personal: 'VSA Personal' };
   const rowTotal = (i) => Number(i.quantity) * Number(i.unit_price) + Number(i.tax || 0);
+  // per-item suffix within a receipt group: a, b, … z, aa, ab, …
+  const subLetter = (n) => {
+    let s = '';
+    n++;
+    while (n > 0) { n--; s = String.fromCharCode(97 + n % 26) + s; n = Math.floor(n / 26); }
+    return s;
+  };
 
   function renderPlanner(body) {
     if (!EVENTS.length) {
@@ -506,10 +513,11 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           </div>
         </div>
         <div class="tbl-wrap"><table class="tbl">
-          <thead><tr><th></th><th>Item</th><th>Type</th><th>Qty</th><th>Unit price</th><th>Tax</th><th>Total</th><th>Link</th><th></th></tr></thead>
-          <tbody>${rows.map(i => `
+          <thead><tr><th></th><th>ID</th><th>Item</th><th>Type</th><th>Qty</th><th>Unit price</th><th>Tax</th><th>Total</th><th>Link</th><th></th></tr></thead>
+          <tbody>${rows.map((i, idx) => `
             <tr style="${i.purchased ? 'opacity:.6' : ''}">
               <td><input type="checkbox" data-bought="${i.id}" ${i.purchased ? 'checked' : ''} title="Purchased" style="width:16px; height:16px; cursor:pointer"></td>
+              <td style="color:var(--muted); font-weight:600; white-space:nowrap">${esc(code)}-${subLetter(idx)}</td>
               <td><strong style="${i.purchased ? 'text-decoration:line-through' : ''}">${esc(i.item_name)}</strong></td>
               <td style="text-transform:capitalize">${esc(i.item_type)}</td>
               <td>${+i.quantity}</td>
@@ -549,7 +557,9 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           <span>Purchased ${money(bought)} of <strong>${money(grand)}</strong></span>
         </div>` : ''}
         <p style="color:var(--muted); font-size:.8rem; margin-top:10px">
-          One transaction ID per store receipt — upload receipts on their group so paper matches the sheet.
+          One transaction number per store receipt (001, 002, …); items inside it get letters (001-a, 001-b).
+          Adding items to a store that's already on the sheet reuses its number automatically.
+          Upload receipts on their group so paper matches the sheet.
           Tax only applies to VSA Personal purchases (school accounts are tax-exempt).</p>
       </div>`;
 
@@ -674,13 +684,21 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       const match = evItems.find(x => x.tx_code === e.target.value.trim());
       if (match) back.querySelector('#f-store').value = match.store_name || '';
     });
+    // …and a store already on the sheet reuses its transaction number
+    const syncTxFromStore = () => {
+      const st = back.querySelector('#f-store').value.trim().toLowerCase();
+      if (!st) return;
+      const match = evItems.find(x => (x.store_name || '').toLowerCase() === st);
+      if (match) back.querySelector('#f-tx').value = match.tx_code;
+    };
+    back.querySelector('#f-store').addEventListener('input', syncTxFromStore);
     // pasting a product URL fills the store when it's still blank
     back.addEventListener('input', (e) => {
       if (!e.target.classList.contains('r-url')) return;
       const st = back.querySelector('#f-store');
       if (st.value.trim()) return;
       const s = storeFromUrl(e.target.value.trim());
-      if (s) st.value = s;
+      if (s) { st.value = s; syncTxFromStore(); }
     });
     back.querySelector('#mi-add')?.addEventListener('click', () => {
       back.querySelector('#mi-rows').insertAdjacentHTML('beforeend', rowHTML());
