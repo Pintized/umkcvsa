@@ -1166,3 +1166,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   border-left: 1px solid var(--line);
 }
 .f-notes-pad .tree-empty { color: var(--muted); font-size: .78rem; padding: 6px 2px; }
+
+/* ---- notes custom icons + drag-to-move ---- */
+.n-ic { width: 17px; height: 17px; vertical-align: -3.5px; color: var(--gold); }
+.icon-grid button .n-ic { width: 20px; height: 20px; vertical-align: middle; }
+.icon-btn .n-ic { width: 22px; height: 22px; vertical-align: middle; }
+.note-item .trow .ic .n-ic { flex-shrink: 0; }
+.note-item.dragging { opacity: .45; }
+.pane .item.drop-hover {
+  outline: 2px dashed var(--gold); outline-offset: -2px;
+  background: rgba(201, 155, 63, .14);
+}
