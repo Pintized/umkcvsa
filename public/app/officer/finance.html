@@ -568,7 +568,10 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
             <select id="plan-ev" class="rt-btn" style="height:36px">${EVENTS.map(e =>
               `<option value="${e.id}" ${e.id === PLAN_EVENT ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
           </div>
-          <button class="btn sm" id="new-item">+ Item</button>
+          <div style="display:flex; gap:8px">
+            <button class="btn secondary sm" id="pcard-copy" title="Copy every store's items for the P-Card form">P-Card Form</button>
+            <button class="btn sm" id="new-item">+ Item</button>
+          </div>
         </div>
         ${groups || '<p style="color:var(--muted)">Nothing planned for this event yet — add the first item.</p>'}
         ${items.length ? `<div class="plan-totals">
@@ -584,6 +587,26 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 
     body.querySelector('#plan-ev').onchange = (e) => { PLAN_EVENT = +e.target.value; renderPlanner(body); };
     body.querySelector('#new-item').onclick = () => itemModal();
+    body.querySelector('#pcard-copy').onclick = async () => {
+      const evItems = PLAN_ITEMS.filter(i => i.event_id === PLAN_EVENT);
+      if (!evItems.length) { toast('Nothing planned to copy yet.'); return; }
+      const text = [...new Set(evItems.map(i => i.tx_code))].sort().map(code => {
+        const rows = evItems.filter(i => i.tx_code === code);
+        const store = rows.find(r => r.store_name)?.store_name || '';
+        const sub = rows.reduce((s, i) => s + rowTotal(i), 0);
+        return [
+          `${store} ${code}`.trim(),
+          ...rows.map(i => `${i.item_name}, ${+i.quantity}, ${money(i.unit_price)}, ${money(rowTotal(i))}`),
+          `Subtotal, ${money(sub)}`,
+        ].join('\n');
+      }).join('\n\n');
+      try {
+        await navigator.clipboard.writeText(text);
+        toast('P-Card form copied to clipboard.');
+      } catch (e) {
+        toast('Could not copy — clipboard blocked by the browser.');
+      }
+    };
     body.querySelectorAll('.rcpt-link').forEach(el => el.onclick = () => openReceipt(el.dataset.rcpt));
     body.querySelectorAll('[data-bought]').forEach(cb => cb.onchange = async () => {
       const { error } = await supabase.from('finance_planner_items')
