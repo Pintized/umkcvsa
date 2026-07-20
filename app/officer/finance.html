@@ -83,6 +83,21 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 }
 .mi-row .field { margin-bottom:10px; }
 .mi-row .r-del { margin-bottom:12px; }
+.p-check { position:relative; display:inline-block; width:19px; height:19px; cursor:pointer; vertical-align:middle; }
+.p-check input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:1; }
+.p-check .box {
+  position:absolute; inset:0; border:1.5px solid var(--muted); border-radius:6px;
+  background:var(--surface); transition:background .15s, border-color .15s, transform .12s;
+}
+.p-check .box::after {
+  content:''; position:absolute; left:5.5px; top:2.5px; width:5px; height:9px;
+  border:solid #fff; border-width:0 2px 2px 0;
+  transform:rotate(45deg) scale(.7); opacity:0; transition:opacity .12s, transform .12s;
+}
+.p-check input:checked + .box { background:var(--gold); border-color:var(--gold); }
+.p-check input:checked + .box::after { opacity:1; transform:rotate(45deg) scale(1); }
+.p-check:hover .box { border-color:var(--gold); }
+.p-check input:active + .box { transform:scale(.9); }
 .tb-toast {
   position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
   background:var(--surface); color:var(--text); border:1px solid rgba(201, 155, 63, .5);
@@ -104,6 +119,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   const ctx = await requireOfficer();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Finance');
+  const IS_ADMIN = ctx.roles.includes('admin');
 
   const CATEGORIES = ['dues', 'fundraising', 'sponsorship', 'school funding', 'merch', 'food', 'decorations', 'venue', 'supplies', 'travel', 'reimbursement', 'misc'];
   const METHODS = ['cash', 'venmo', 'zelle', 'card', 'check', 'other'];
@@ -516,7 +532,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           <thead><tr><th></th><th>ID</th><th>Item</th><th>Type</th><th>Qty</th><th>Unit price</th><th>Tax</th><th>Total</th><th>Link</th><th></th></tr></thead>
           <tbody>${rows.map((i, idx) => `
             <tr style="${i.purchased ? 'opacity:.6' : ''}">
-              <td><input type="checkbox" data-bought="${i.id}" ${i.purchased ? 'checked' : ''} title="Purchased" style="width:16px; height:16px; cursor:pointer"></td>
+              <td><label class="p-check" title="Purchased"><input type="checkbox" data-bought="${i.id}" ${i.purchased ? 'checked' : ''}><span class="box"></span></label></td>
               <td style="color:var(--muted); font-weight:600; white-space:nowrap">${esc(code)}-${subLetter(idx)}</td>
               <td><strong style="${i.purchased ? 'text-decoration:line-through' : ''}">${esc(i.item_name)}</strong></td>
               <td style="text-transform:capitalize">${esc(i.item_type)}</td>
@@ -638,7 +654,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         <div class="field" style="flex:2; min-width:170px"><label>Item</label><input class="r-name" value="${esc(r.item_name)}" placeholder="e.g. spring roll wrappers"></div>
         <div class="field" style="min-width:92px"><label>Type</label>
           <select class="r-type">${['food', 'supply'].map(t => `<option ${(r.item_type || 'supply') === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-        <div class="field" style="min-width:72px; flex:0 1 88px"><label>Qty</label><input type="number" class="r-qty" min="0.01" step="0.01" value="${r.quantity ?? 1}"></div>
+        <div class="field" style="min-width:72px; flex:0 1 88px"><label>Qty</label><input type="number" class="r-qty" min="1" step="1" value="${Math.round(r.quantity ?? 1)}"></div>
         <div class="field" style="min-width:92px; flex:0 1 110px"><label>Unit $</label><input type="number" class="r-price" min="0" step="0.01" value="${r.unit_price ?? ''}"></div>
         <div class="field r-tax-f" style="min-width:84px; flex:0 1 100px"><label>Tax $</label><input type="number" class="r-tax" min="0" step="0.01" value="${r.tax ?? ''}"></div>
         <div class="field" style="flex:2; min-width:170px"><label>URL / link</label><input class="r-url" value="${esc(r.url)}" placeholder="https://…"></div>
@@ -652,8 +668,9 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         <h2>${i ? 'Edit item' : 'Plan items'}</h2>
         <div class="notice" id="m-err"></div>
         <div class="field-row">
-          <div class="field"><label>Transaction ID</label>
-            <input id="f-tx" list="tx-codes" value="${esc(i?.tx_code || nextCode)}" placeholder="001">
+          <div class="field"><label>Transaction ID${IS_ADMIN ? '' : ' <small style="text-transform:none">(auto — admin edit only)</small>'}</label>
+            <input id="f-tx" value="${esc(i?.tx_code || nextCode)}" placeholder="001"
+              ${IS_ADMIN ? 'list="tx-codes"' : 'readonly tabindex="-1" style="opacity:.65; cursor:not-allowed"'}>
             <datalist id="tx-codes">${codes.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
           <div class="field"><label>Store</label>
             <input id="f-store" list="store-names" value="${esc(i?.store_name)}" placeholder="Costco, Amazon…">
@@ -679,11 +696,13 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     back.querySelector('#f-pacct').onchange = syncTax;
     syncTax();
 
-    // picking an existing transaction ID pulls in its store
-    back.querySelector('#f-tx').addEventListener('input', (e) => {
-      const match = evItems.find(x => x.tx_code === e.target.value.trim());
-      if (match) back.querySelector('#f-store').value = match.store_name || '';
-    });
+    // picking an existing transaction ID pulls in its store (admins only — the field is read-only otherwise)
+    if (IS_ADMIN) {
+      back.querySelector('#f-tx').addEventListener('input', (e) => {
+        const match = evItems.find(x => x.tx_code === e.target.value.trim());
+        if (match) back.querySelector('#f-store').value = match.store_name || '';
+      });
+    }
     // …and a store already on the sheet reuses its transaction number
     const syncTxFromStore = () => {
       const st = back.querySelector('#f-store').value.trim().toLowerCase();
@@ -728,13 +747,13 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       const rows = [...back.querySelectorAll('.mi-row')].map(r => ({
         item_name: r.querySelector('.r-name').value.trim(),
         item_type: r.querySelector('.r-type').value,
-        quantity: +r.querySelector('.r-qty').value,
+        quantity: Math.round(+r.querySelector('.r-qty').value),
         unit_price: +r.querySelector('.r-price').value || 0,
         tax: account === 'personal' ? (+r.querySelector('.r-tax').value || 0) : 0,
         url: r.querySelector('.r-url').value.trim() || null,
       })).filter(r => r.item_name);
       if (!rows.length) return say('Add at least one item.');
-      for (const r of rows) if (!(r.quantity > 0)) return say(`Quantity must be above zero ("${r.item_name}").`);
+      for (const r of rows) if (!(r.quantity >= 1)) return say(`Quantity must be a whole number of at least 1 ("${r.item_name}").`);
       const { error } = i
         ? await supabase.from('finance_planner_items').update({ ...rows[0], ...shared }).eq('id', i.id)
         : await supabase.from('finance_planner_items').insert(rows.map(r => ({ ...r, ...shared, created_by: ctx.user.id })));
