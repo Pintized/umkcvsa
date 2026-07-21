@@ -148,6 +148,31 @@ nav.site-nav::after {
 .navlinks a:hover { color: var(--gold-bright); }
 .navlinks a:hover::after, .navlinks a.active::after { width: 100%; }
 .navlinks a.active { color: var(--gold-bright); }
+/* about dropdown */
+.navlinks .has-sub { position: relative; display: inline-block; }
+.navlinks .has-sub .caret { font-size: 9px; margin-left: 4px; opacity: .7; }
+.navlinks .has-sub::before {
+  /* invisible hover bridge between the link and the menu */
+  content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 14px;
+}
+.navlinks .sub {
+  position: absolute; top: calc(100% + 12px); left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  min-width: 220px; padding: 8px 0;
+  background: rgba(8, 18, 30, .98);
+  border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .5);
+  display: flex; flex-direction: column;
+  opacity: 0; visibility: hidden;
+  transition: opacity .18s, transform .18s, visibility .18s;
+  z-index: 70;
+}
+.navlinks .has-sub:hover .sub, .navlinks .has-sub:focus-within .sub {
+  opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+}
+.navlinks .sub a { margin: 0; padding: 10px 18px; font-size: 13px; letter-spacing: .05em; }
+.navlinks .sub a::after { display: none; }
+.navlinks .sub a:hover, .navlinks .sub a.active { background: rgba(201, 155, 63, .1); }
 .login {
   background: linear-gradient(140deg, #d42a3a, var(--red-deep));
   color: #fff !important;
@@ -812,6 +837,14 @@ footer {
   }
   .navlinks.open { display: flex; }
   .navlinks a { margin: 8px 24px; }
+  .navlinks .has-sub { display: block; }
+  .navlinks .has-sub::before { display: none; }
+  .navlinks .sub {
+    position: static; transform: none; opacity: 1; visibility: visible;
+    border: none; box-shadow: none; background: transparent;
+    padding: 0 0 0 16px; min-width: 0;
+  }
+  .navlinks .sub a { margin: 0; padding: 7px 24px; }
   .nav-burger { display: block; }
   .page-hero h1 { font-size: 34px; }
   .page-hero.tall h1 { font-size: 38px; }

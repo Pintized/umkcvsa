@@ -51,7 +51,7 @@ const I18N = {
     Members: 'Thành viên', 'My Profile': 'Hồ sơ của tôi', Events: 'Sự kiện', Tasks: 'Nhiệm vụ',
     Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động',
     Roles: 'Vai trò', 'Home Page': 'Trang chủ', 'E-Board': 'Ban chấp hành', Store: 'Cửa hàng',
-    Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất',
+    Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất', 'Main site': 'Trang chính',
   },
   es: {
     Member: 'Miembro', Officer: 'Oficiales', Admin: 'Administración', Settings: 'Configuración',
@@ -59,7 +59,7 @@ const I18N = {
     Members: 'Miembros', 'My Profile': 'Mi perfil', Events: 'Eventos', Tasks: 'Tareas',
     Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad',
     Roles: 'Roles', 'Home Page': 'Página de inicio', 'E-Board': 'Directiva', Store: 'Tienda',
-    Gallery: 'Galería', 'Log out': 'Cerrar sesión',
+    Gallery: 'Galería', 'Log out': 'Cerrar sesión', 'Main site': 'Sitio principal',
   },
   zh: {
     Member: '成员', Officer: '干部', Admin: '管理', Settings: '设置',
@@ -67,7 +67,7 @@ const I18N = {
     Members: '成员', 'My Profile': '我的资料', Events: '活动', Tasks: '任务',
     Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志',
     Roles: '角色', 'Home Page': '首页', 'E-Board': '执行委员会', Store: '商店',
-    Gallery: '相册', 'Log out': '退出登录',
+    Gallery: '相册', 'Log out': '退出登录', 'Main site': '主网站',
   },
 };
 const tr = (lang, s) => (I18N[lang] && I18N[lang][s]) || s;
@@ -152,6 +152,7 @@ export function renderShell(ctx, pageTitle) {
         <header class="topbar">
           <div class="page-title">${pageTitle}</div>
           <div class="actions">
+            <a class="btn ghost" href="/" style="text-decoration:none">${tr(lang, 'Main site')}</a>
             <div class="userchip">
               <img src="${avatar}" alt="">
               <span class="name">${displayName}</span>

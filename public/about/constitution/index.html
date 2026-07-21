@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Store | UMKC VSA</title>
-<meta name="description" content="Official UMKC VSA merch — apparel and accessories.">
-<link rel="canonical" href="https://umkcvsa.org/store/">
+<title>Constitution | UMKC VSA</title>
+<meta name="description" content="The governing constitution of the UMKC Vietnamese Student Association.">
+<link rel="canonical" href="https://umkcvsa.org/about/constitution/">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,17 +31,17 @@
   <div class="navlinks">
     <a href="/">HOME</a>
     <div class="has-sub">
-      <a href="/about/">ABOUT <span class="caret">▾</span></a>
+      <a href="/about/" class="active">ABOUT <span class="caret">▾</span></a>
       <div class="sub">
         <a href="/about/">About Us</a>
         <a href="/about/partners/">Partners &amp; Sponsors</a>
         <a href="/about/news/">News</a>
         <a href="/about/gallery/">Gallery</a>
-        <a href="/about/constitution/">Constitution</a>
+        <a href="/about/constitution/" class="active">Constitution</a>
       </div>
     </div>
     <a href="/eboard/">E-BOARD</a>
-    <a href="/store/" class="active">STORE</a>
+    <a href="/store/">STORE</a>
     <a href="/contact/">CONTACT</a>
   </div>
   <a class="login" href="/app/login.html">Login</a>
@@ -49,14 +49,27 @@
 </nav>
 
 <header class="page-hero">
-  <h1>VSA Merch Store</h1>
+  <h1>Constitution</h1>
   <hr class="hero-rule">
-  <p style="margin-top:16px">Show your VSA pride with our exclusive apparel and accessories.</p>
+  <p style="margin-top:16px">The governing document of the UMKC Vietnamese Student Association.</p>
 </header>
 
-<section class="section">
-  <div class="product-grid" id="products"></div>
-  <p class="store-note">🛍️ Grab your merch at any VSA event, or DM <a href="https://www.instagram.com/umkc_vsa" target="_blank" style="color:var(--gold-bright)">@umkc_vsa</a> to arrange a pickup. Online checkout coming soon.</p>
+<section class="section" style="max-width:820px">
+  <div class="reveal">
+    <h2>How we govern ourselves</h2>
+    <hr class="divider">
+    <p class="lead">Our constitution defines the association's purpose, membership, executive board structure, elections, and amendment process. It keeps VSA accountable to its members and to the University of Missouri-Kansas City's standards for registered student organizations.</p>
+  </div>
+  <div class="card-grid" style="margin-top:40px">
+    <div class="vcard reveal"><div class="ic">📜</div><h3>Purpose &amp; Membership</h3><p>Who we are, what we exist to do, and how any UMKC student can become a member.</p></div>
+    <div class="vcard reveal"><div class="ic">🗳️</div><h3>E-Board &amp; Elections</h3><p>Officer positions, their duties, and how leadership is elected each year.</p></div>
+    <div class="vcard reveal"><div class="ic">⚖️</div><h3>Operations &amp; Amendments</h3><p>Meetings, finances, and the process for amending this constitution.</p></div>
+  </div>
+  <div class="reveal" style="text-align:center; margin-top:48px; padding:28px; border:1px dashed var(--line); border-radius:14px">
+    <p style="color:var(--muted)">The full constitution document is being prepared for publication here.<br>
+    Members can request a copy in the meantime.</p>
+    <a class="btn ghost" href="/contact/" style="margin-top:16px">Request a Copy</a>
+  </div>
 </section>
 
 <footer>
@@ -73,33 +86,5 @@
 </footer>
 
 <script src="/assets/js/site.js"></script>
-<script type="module">
-// Catalog is managed from the portal's Admin > Store page
-import { supabase } from '/app/shared/supabase.js';
-const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-
-const { data } = await supabase.from('store_products')
-  .select('name, description, price, badge, photo_path')
-  .eq('active', true)
-  .order('sort');
-
-document.getElementById('products').innerHTML = (data && data.length)
-  ? data.map(p => `
-      <div class="product">
-        <div class="pimg">
-          ${p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
-          ${p.photo_path
-            ? `<img src="${IMG + p.photo_path}" alt="${esc(p.name)}" style="width:100%; height:100%; object-fit:cover">`
-            : '<div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div>'}
-        </div>
-        <div class="pbody">
-          <h3>${esc(p.name)}</h3>
-          <p class="desc">${esc(p.description)}</p>
-          <div class="prow"><span class="price">$${Number(p.price).toFixed(2).replace(/\.00$/, '')}</span></div>
-        </div>
-      </div>`).join('')
-  : '<p style="grid-column:1/-1; text-align:center; color:var(--muted)">The store is being restocked — check back soon!</p>';
-</script>
 </body>
 </html>
