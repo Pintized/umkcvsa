@@ -17,7 +17,6 @@
     border: 1px solid rgba(128,128,128,.3); background: transparent; color: inherit;
   }
   .inbox-tabs .tab.on { background: rgba(200,32,47,.12); border-color: var(--gold, #e0b45c); font-weight: 700; }
-  .inbox-tabs .tab .cnt { opacity: .6; font-size: .78rem; margin-left: 4px; }
   .inbox-wrap { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
   .mail-list { max-height: 68vh; overflow-y: auto; padding: 0; }
   .mail-row { padding: 12px 14px; border-bottom: 1px solid rgba(128,128,128,.2); cursor: pointer; display: flex; gap: 8px; align-items: flex-start; }
@@ -37,11 +36,10 @@
   .mv-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
   .mail-body { line-height: 1.55; font-size: .95rem; max-height: 42vh; overflow-y: auto; white-space: pre-wrap; }
   .mail-body iframe { width: 100%; min-height: 340px; border: 0; background: transparent; border-radius: 8px; }
-  .reply-box textarea, .reply-box input {
+  .compose-fields input {
     width: 100%; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
     border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; font: inherit;
   }
-  .reply-box textarea { min-height: 110px; resize: vertical; }
   .inbox-toolbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
   .empty { opacity: .6; text-align: center; padding: 48px 12px; }
   .pill { font-size: .72rem; padding: 2px 8px; border-radius: 99px; background: rgba(63,127,191,.18); }
@@ -49,6 +47,56 @@
   .sched-row.show { display: flex; }
   .hint { font-size: .78rem; opacity: .6; }
   @media (max-width: 900px) { .inbox-wrap { grid-template-columns: 1fr; } }
+
+  /* ---------- rich text editor ---------- */
+  .rt-wrap { border: 1px solid rgba(128,128,128,.35); border-radius: 10px; margin-bottom: 8px; }
+  .rt-bar {
+    display: flex; flex-wrap: wrap; gap: 2px; padding: 6px; align-items: center;
+    border-bottom: 1px solid rgba(128,128,128,.25); position: relative;
+  }
+  .rt-bar select {
+    background: transparent; color: inherit; border: 1px solid rgba(128,128,128,.3);
+    border-radius: 7px; font-size: .8rem; padding: 3px 4px; max-width: 110px;
+  }
+  .rt-bar select option { color: #1c2430; }
+  .rt-btn {
+    background: none; border: none; color: inherit; cursor: pointer; border-radius: 7px;
+    min-width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: .9rem; opacity: .85; padding: 0 4px;
+  }
+  .rt-btn:hover { background: rgba(128,128,128,.15); }
+  .rt-btn.on { background: rgba(200,32,47,.16); opacity: 1; }
+  .rt-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .rt-sep { width: 1px; height: 20px; background: rgba(128,128,128,.3); margin: 0 4px; }
+  .rt-color { position: relative; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 28px; height: 28px; cursor: pointer; border-radius: 7px; font-weight: 700; font-size: .9rem; }
+  .rt-color:hover { background: rgba(128,128,128,.15); }
+  .rt-color input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .rt-color .swatch { position: absolute; bottom: 3px; left: 7px; right: 7px; height: 3px; border-radius: 2px; background: #c8202f; }
+  .rt-area {
+    min-height: 160px; max-height: 40vh; overflow-y: auto; padding: 12px 14px; outline: none;
+    font-size: .95rem; line-height: 1.55;
+  }
+  .rt-area:empty::before { content: attr(data-placeholder); opacity: .45; }
+  .rt-area blockquote { border-left: 3px solid rgba(128,128,128,.45); margin: 6px 0; padding-left: 10px; opacity: .85; }
+  .rt-area img { max-width: 100%; height: auto; border-radius: 6px; }
+  .rt-area a { color: #3f7fbf; }
+  .emoji-pop {
+    position: absolute; top: 40px; left: 0; z-index: 30; background: var(--card-bg, #16324f);
+    border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px;
+    display: none; grid-template-columns: repeat(8, 30px); gap: 2px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); background: Canvas; color: CanvasText;
+  }
+  .emoji-pop.show { display: grid; }
+  .emoji-pop button { background: none; border: none; font-size: 1.15rem; cursor: pointer; border-radius: 6px; padding: 2px; }
+  .emoji-pop button:hover { background: rgba(128,128,128,.2); }
+  .att-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .att-chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: .8rem;
+    border: 1px solid rgba(128,128,128,.35); border-radius: 99px; padding: 4px 10px;
+  }
+  .att-chip button { background: none; border: none; color: inherit; cursor: pointer; opacity: .6; font-size: .9rem; }
+  .att-chip button:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -86,6 +134,7 @@
   };
 
   let tab = 'inbox', emails = [], sel = null, composing = false, draft = null;
+  let attFiles = []; // File objects staged for the current compose
 
   async function load() {
     let q = supabase.from('inbox_emails').select('*').limit(200);
@@ -125,6 +174,224 @@
     return esc(e.from_name || e.from_addr);
   }
 
+  // ================= rich text editor =================
+  const I = (d) => `<svg viewBox="0 0 24 24">${d}</svg>`;
+  const ICONS = {
+    alignL: I('<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>'),
+    alignC: I('<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>'),
+    alignR: I('<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>'),
+    ol: I('<path d="M10 6h10M10 12h10M10 18h10M4 5h1.5v3M4 8h3M4.2 12.6c1.6-1.8 3-.4 1.6 1L4 15.4h3.4M4 17.6h2.2a1.1 1.1 0 0 1 0 2.2H5.2a1.1 1.1 0 0 0 0 2.2H7.6" transform="scale(.92) translate(.5 -1.2)"/>'),
+    ul: I('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="5" cy="18" r="1.4" fill="currentColor" stroke="none"/>'),
+    outdent: I('<path d="M4 6h16M11 10h9M11 14h9M4 18h16M8 9.5 5 12l3 2.5"/>'),
+    indent: I('<path d="M4 6h16M11 10h9M11 14h9M4 18h16M5 9.5 8 12l-3 2.5"/>'),
+    quote: I('<path d="M6 15a3.5 3.5 0 0 1 0-7v2.2A1.8 1.8 0 0 0 6 13v2ZM14 15a3.5 3.5 0 0 1 0-7v2.2a1.8 1.8 0 0 0 0 2.8v2Z" fill="currentColor" stroke="none"/>'),
+    clear: I('<path d="M6 6 18 18M13 5h6M9.5 5 7 19"/>'),
+    link: I('<path d="M10 14a4 4 0 0 0 5.6.4l2.6-2.6a4 4 0 0 0-5.6-5.6L11 7.7"/><path d="M14 10a4 4 0 0 0-5.6-.4L5.8 12.2a4 4 0 0 0 5.6 5.6L13 16.3"/>'),
+    image: I('<rect x="3.6" y="5" width="16.8" height="14" rx="2"/><circle cx="8.6" cy="9.6" r="1.6"/><path d="m5 17 4.6-4.6 3.2 3.2 2.6-2.6L20.4 17"/>'),
+    attach: I('<path d="m20 11-7.6 7.6a5 5 0 0 1-7-7L13 4a3.4 3.4 0 0 1 4.8 4.8L10.6 16a1.8 1.8 0 0 1-2.6-2.6l6.6-6.6"/>'),
+  };
+  const FONTS = ['Arial', 'Georgia', 'Times New Roman', 'Verdana', 'Trebuchet MS', 'Courier New', 'Comic Sans MS'];
+  const EMOJI = ['🌸','🎉','😀','😄','😊','😉','😍','🥰','😎','🤩','😅','😂','🥲','🙏','👏','👍','🙌','💪','🔥','✨','⭐','💛','❤️','💙','🍜','🥟','🧋','🍚','🏮','🧧','🎊','📣','📅','✅','❗','❓','🫶','🤝','🎓','🌟'];
+
+  function editorHTML(id, placeholder) {
+    return `
+    <div class="rt-wrap">
+      <div class="rt-bar" id="${id}-bar">
+        <select data-cmd="fontName" title="Font">
+          <option value="">Font</option>
+          ${FONTS.map(f => `<option value="${f}">${f}</option>`).join('')}
+        </select>
+        <select data-cmd="fontSize" title="Font size">
+          <option value="">Size</option>
+          <option value="1">Small</option><option value="3">Normal</option>
+          <option value="5">Large</option><option value="7">Huge</option>
+        </select>
+        <span class="rt-sep"></span>
+        <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button class="rt-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+        <label class="rt-color" title="Text color">A<span class="swatch"></span>
+          <input type="color" value="#c8202f" data-cmd="foreColor"></label>
+        <span class="rt-sep"></span>
+        <button class="rt-btn" data-cmd="justifyLeft" title="Align left">${ICONS.alignL}</button>
+        <button class="rt-btn" data-cmd="justifyCenter" title="Align center">${ICONS.alignC}</button>
+        <button class="rt-btn" data-cmd="justifyRight" title="Align right">${ICONS.alignR}</button>
+        <span class="rt-sep"></span>
+        <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">${ICONS.ol}</button>
+        <button class="rt-btn" data-cmd="insertUnorderedList" title="Bulleted list">${ICONS.ul}</button>
+        <button class="rt-btn" data-cmd="outdent" title="Indent less">${ICONS.outdent}</button>
+        <button class="rt-btn" data-cmd="indent" title="Indent more">${ICONS.indent}</button>
+        <button class="rt-btn" data-act="quote" title="Quote">${ICONS.quote}</button>
+        <span class="rt-sep"></span>
+        <button class="rt-btn" data-act="clear" title="Remove formatting">${ICONS.clear}</button>
+        <button class="rt-btn" data-act="link" title="Insert link">${ICONS.link}</button>
+        <button class="rt-btn" data-act="emoji" title="Insert emoji">😊</button>
+        <button class="rt-btn" data-act="image" title="Insert photo">${ICONS.image}</button>
+        <button class="rt-btn" data-act="attach" title="Attach files">${ICONS.attach}</button>
+        <div class="emoji-pop" id="${id}-emoji">${EMOJI.map(e => `<button type="button">${e}</button>`).join('')}</div>
+        <input type="file" id="${id}-imgfile" accept="image/*" style="display:none">
+        <input type="file" id="${id}-attfile" multiple style="display:none">
+      </div>
+      <div class="rt-area" id="${id}" contenteditable="true" data-placeholder="${esc(placeholder)}"></div>
+    </div>
+    <div class="att-chips" id="${id}-chips"></div>`;
+  }
+
+  function wireEditor(id, { withAttachments = true } = {}) {
+    const area = document.getElementById(id);
+    const bar = document.getElementById(`${id}-bar`);
+    const pop = document.getElementById(`${id}-emoji`);
+    let savedRange = null;
+
+    const saveSel = () => {
+      const s = document.getSelection();
+      if (s.rangeCount && area.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange();
+    };
+    const restoreSel = () => {
+      area.focus();
+      if (savedRange) { const s = document.getSelection(); s.removeAllRanges(); s.addRange(savedRange); }
+    };
+    area.addEventListener('keyup', saveSel);
+    area.addEventListener('mouseup', saveSel);
+    area.addEventListener('blur', saveSel);
+
+    const exec = (cmd, val = null) => { restoreSel(); document.execCommand(cmd, false, val); saveSel(); refresh(); };
+
+    // toolbar buttons with direct commands
+    bar.querySelectorAll('.rt-btn[data-cmd]').forEach(b => {
+      b.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
+      b.addEventListener('click', () => exec(b.dataset.cmd));
+    });
+    // selects
+    bar.querySelectorAll('select[data-cmd]').forEach(s => {
+      s.addEventListener('change', () => { if (s.value) exec(s.dataset.cmd, s.value); s.blur(); });
+    });
+    // color
+    const color = bar.querySelector('input[type="color"]');
+    color.addEventListener('input', () => {
+      bar.querySelector('.swatch').style.background = color.value;
+      exec('foreColor', color.value);
+    });
+
+    // special actions
+    bar.querySelectorAll('.rt-btn[data-act]').forEach(b => {
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      b.addEventListener('click', async () => {
+        const act = b.dataset.act;
+        if (act === 'quote') {
+          restoreSel();
+          const node = document.getSelection().anchorNode;
+          const inQuote = node && (node.nodeType === 1 ? node : node.parentElement)?.closest('blockquote');
+          document.execCommand('formatBlock', false, inQuote ? 'div' : 'blockquote');
+          saveSel();
+        } else if (act === 'clear') {
+          restoreSel();
+          document.execCommand('removeFormat');
+          document.execCommand('unlink');
+          saveSel();
+        } else if (act === 'link') {
+          const url = prompt('Link URL (https://…):', 'https://');
+          if (url && url !== 'https://') exec('createLink', url);
+        } else if (act === 'emoji') {
+          pop.classList.toggle('show');
+        } else if (act === 'image') {
+          document.getElementById(`${id}-imgfile`).click();
+        } else if (act === 'attach') {
+          if (withAttachments) document.getElementById(`${id}-attfile`).click();
+          else alert('Attachments are available in Compose.');
+        }
+        refresh();
+      });
+    });
+
+    // emoji picks
+    pop.querySelectorAll('button').forEach(b => {
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      b.addEventListener('click', () => { exec('insertText', b.textContent); pop.classList.remove('show'); });
+    });
+
+    // inline image upload -> storage -> insert
+    document.getElementById(`${id}-imgfile`).addEventListener('change', async (ev) => {
+      const file = ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('Images up to 5MB please.'); return; }
+      const path = `${new Date().getFullYear()}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, '_')}`;
+      const { error } = await supabase.storage.from('email-assets').upload(path, file);
+      if (error) { alert(`Image upload failed: ${error.message}`); return; }
+      const { data } = supabase.storage.from('email-assets').getPublicUrl(path);
+      exec('insertImage', data.publicUrl);
+      // cap the inserted image's display width
+      area.querySelectorAll(`img[src="${data.publicUrl}"]`).forEach(img => { img.style.maxWidth = '100%'; });
+    });
+
+    // attachments -> chips
+    if (withAttachments) {
+      document.getElementById(`${id}-attfile`).addEventListener('change', (ev) => {
+        for (const f of ev.target.files) {
+          if (f.size > 10 * 1024 * 1024) { alert(`${f.name} is over 10MB — too big to attach.`); continue; }
+          attFiles.push(f);
+        }
+        ev.target.value = '';
+        renderChips(id);
+      });
+    }
+
+    // active-state highlighting
+    const STATE_CMDS = ['bold', 'italic', 'underline', 'strikeThrough', 'insertOrderedList', 'insertUnorderedList', 'justifyLeft', 'justifyCenter', 'justifyRight'];
+    function refresh() {
+      for (const cmd of STATE_CMDS) {
+        const btn = bar.querySelector(`.rt-btn[data-cmd="${cmd}"]`);
+        if (!btn) continue;
+        let on = false;
+        try { on = document.queryCommandState(cmd); } catch (_) {}
+        btn.classList.toggle('on', on);
+      }
+    }
+    document.addEventListener('selectionchange', () => {
+      if (document.activeElement === area || area.contains(document.getSelection().anchorNode)) refresh();
+    });
+  }
+
+  function renderChips(id) {
+    const box = document.getElementById(`${id}-chips`);
+    if (!box) return;
+    const kb = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.ceil(n / 1024) + ' KB';
+    box.innerHTML = attFiles.map((f, i) =>
+      `<span class="att-chip">📎 ${esc(f.name)} <small style="opacity:.6">${kb(f.size)}</small>
+        <button data-rm="${i}" title="Remove">✕</button></span>`).join('');
+    box.querySelectorAll('button[data-rm]').forEach(b =>
+      b.onclick = () => { attFiles.splice(Number(b.dataset.rm), 1); renderChips(id); });
+  }
+
+  const fileToB64 = (f) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(f);
+  });
+
+  async function collectAttachments() {
+    const out = [];
+    for (const f of attFiles) {
+      out.push({ filename: f.name, content: await fileToB64(f), content_type: f.type || 'application/octet-stream' });
+    }
+    return out;
+  }
+
+  const wrapHtml = (inner) =>
+    `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1c2430">${inner}</div>`;
+
+  function editorContent(id) {
+    const area = document.getElementById(id);
+    const text = area.innerText.trim();
+    const html = area.innerHTML.trim();
+    const empty = !text && !area.querySelector('img');
+    return { text, html: empty ? '' : wrapHtml(html), empty };
+  }
+
+  // ================= views =================
   function render() {
     const current = emails.find(e => e.id === sel);
     page.innerHTML = `
@@ -158,9 +425,9 @@
       </div>`;
 
     document.getElementById('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => {
-      tab = b.dataset.tab; sel = null; composing = false; draft = null; load();
+      tab = b.dataset.tab; sel = null; composing = false; draft = null; attFiles = []; load();
     });
-    document.getElementById('tb-compose').onclick = () => { composing = true; sel = null; draft = null; render(); };
+    document.getElementById('tb-compose').onclick = () => { composing = true; sel = null; draft = null; attFiles = []; render(); };
     document.getElementById('tb-refresh').onclick = load;
     updateUnread();
     page.querySelectorAll('.star-btn').forEach(b => b.onclick = async (ev) => {
@@ -183,9 +450,7 @@
 
   function actionsFor(e) {
     const a = [];
-    if (e.folder === 'inbox' || (e.folder === 'spam')) {
-      if (e.direction === 'in' && e.folder === 'inbox') a.push('<button class="btn sm" id="mv-reply">Reply</button>');
-    }
+    if (e.direction === 'in' && e.folder === 'inbox') a.push('<button class="btn sm" id="mv-reply">Reply</button>');
     if (e.folder === 'inbox') a.push('<button class="btn ghost sm" id="mv-spam">Spam</button>');
     if (e.folder === 'spam') a.push('<button class="btn ghost sm" id="mv-notspam">Not spam</button>');
     if (e.folder === 'draft') a.push('<button class="btn sm" id="mv-edit">Edit draft</button>');
@@ -208,18 +473,19 @@
     const who = e.direction === 'out'
       ? `To <b>${esc(e.to_addr || '')}</b>`
       : `From <b>${esc(e.from_name || '')}</b> &lt;${esc(e.from_addr)}&gt;`;
-    const when = e.folder === 'scheduled'
-      ? `sends ${fmt(e.scheduled_at)}`
-      : fmt(e.received_at);
+    const when = e.folder === 'scheduled' ? `sends ${fmt(e.scheduled_at)}` : fmt(e.received_at);
+    const atts = e.raw?.attachments?.length
+      ? `<div class="mv-meta">📎 ${e.raw.attachments.map(esc).join(', ')}</div>` : '';
     return `
       <div class="mv-head">
         <h2 style="margin:0">${esc(e.subject || '(no subject)')}</h2>
         <div class="mv-meta">${who} · ${when}${e.folder === 'trash' && e.trashed_at ? ` · trashed ${fmt(e.trashed_at)}` : ''}</div>
+        ${atts}
         <div class="mv-actions">${actionsFor(e)}</div>
       </div>
       <div class="mail-body" id="mail-body"></div>
-      <div class="reply-box" id="reply-box" style="display:none; margin-top:14px">
-        <textarea id="rp-text" placeholder="Write your reply…"></textarea>
+      <div id="reply-box" style="display:none; margin-top:14px">
+        ${editorHTML('rp-ed', 'Write your reply…')}
         <div style="display:flex; gap:8px; justify-content:flex-end">
           <button class="btn ghost sm" id="rp-cancel">Cancel</button>
           <button class="btn sm" id="rp-send">Send reply</button>
@@ -232,26 +498,24 @@
     return `
       <div class="mv-head"><h2 style="margin:0">${d.id ? 'Edit draft' : 'New email'}</h2>
         <div class="mv-meta">Sends from support@umkcvsa.org</div></div>
-      <div class="reply-box">
+      <div class="compose-fields">
         <input id="cp-to" type="email" placeholder="To (email address)" value="${esc(d.to_addr || '')}">
         <input id="cp-subj" type="text" placeholder="Subject" value="${esc(d.subject || '')}">
-        <textarea id="cp-text" placeholder="Write your message…">${esc(d.text_body || '')}</textarea>
-        <div class="sched-row" id="sched-row">
-          <input id="cp-when" type="datetime-local" style="margin-bottom:0; width:auto">
-          <span class="hint">local time</span>
-        </div>
-        <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">
-          <button class="btn ghost sm" id="cp-cancel">Cancel</button>
-          <button class="btn ghost sm" id="cp-draft">Save draft</button>
-          <button class="btn ghost sm" id="cp-sched-toggle">Schedule…</button>
-          <button class="btn sm" id="cp-send">Send</button>
-        </div>
+      </div>
+      ${editorHTML('cp-ed', 'Write your message…')}
+      <div class="sched-row" id="sched-row">
+        <input id="cp-when" type="datetime-local" style="margin-bottom:0; width:auto; padding:8px 10px; border-radius:8px; border:1px solid rgba(128,128,128,.35); background:transparent; color:inherit">
+        <span class="hint">local time</span>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px">
+        <button class="btn ghost sm" id="cp-cancel">Cancel</button>
+        <button class="btn ghost sm" id="cp-draft">Save draft</button>
+        <button class="btn ghost sm" id="cp-sched-toggle">Schedule…</button>
+        <button class="btn sm" id="cp-send">Send</button>
       </div>`;
   }
 
-  // Themed rendering for HTML email: inherit the portal's font and colors so
-  // messages read like part of the app in both light and dark mode. Emails
-  // that bring their own colors keep them; sandbox blocks scripts entirely.
+  // Themed rendering for HTML email (light "paper" card for color-styled mail in dark mode)
   function renderBody(e) {
     const host = document.getElementById('mail-body');
     if (!host) return;
@@ -259,9 +523,6 @@
       const cs = getComputedStyle(document.body);
       const dark = (document.documentElement.dataset.theme || '').includes('dark')
         || matchMedia('(prefers-color-scheme: dark)').matches;
-      // Emails that bring their own colors were designed for a white canvas —
-      // give those a light "paper" card in dark mode (like real mail clients)
-      // instead of dark-on-dark text. Plain emails blend into the theme.
       const designed = /color\s*:|bgcolor=|background(?:-color)?\s*:/i.test(e.html_body);
       const canvas = designed && dark
         ? `color: #1c2430; background: #f4f5f7; border-radius: 10px;`
@@ -295,7 +556,7 @@
 
   async function open(id) {
     const e = emails.find(x => x.id === id);
-    if (e && e.folder === 'draft') { composing = true; draft = e; sel = null; render(); return; }
+    if (e && e.folder === 'draft') { composing = true; draft = e; sel = null; attFiles = []; render(); return; }
     sel = id; composing = false; draft = null;
     render();
     if (e && !e.read_at && e.direction === 'in') {
@@ -309,20 +570,24 @@
     renderBody(e);
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
     on('mv-reply', () => {
-      document.getElementById('reply-box').style.display = 'block';
-      document.getElementById('rp-text').focus();
+      const box = document.getElementById('reply-box');
+      if (box.style.display !== 'block') {
+        box.style.display = 'block';
+        wireEditor('rp-ed', { withAttachments: false });
+      }
+      document.getElementById('rp-ed').focus();
     });
     on('rp-cancel', () => { document.getElementById('reply-box').style.display = 'none'; });
     on('rp-send', async () => {
       const btn = document.getElementById('rp-send');
-      const text = document.getElementById('rp-text').value.trim();
-      if (!text) return;
+      const { text, html, empty } = editorContent('rp-ed');
+      if (empty) return;
       btn.disabled = true; btn.textContent = 'Sending…';
       try {
         await send({
           to: e.from_addr,
           subject: /^re:/i.test(e.subject || '') ? e.subject : `Re: ${e.subject || ''}`,
-          text, reply_to_id: e.id,
+          text, html, reply_to_id: e.id,
         });
         await load();
       } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = 'Send reply'; }
@@ -339,13 +604,9 @@
       const { error } = await supabase.from('inbox_emails').delete().eq('id', e.id);
       if (error) alert(error.message); else { sel = null; load(); }
     });
-    on('mv-spam', async () => {
-      if (await setFields(e.id, { folder: 'spam' })) { sel = null; load(); }
-    });
-    on('mv-notspam', async () => {
-      if (await setFields(e.id, { folder: 'inbox' })) { sel = null; load(); }
-    });
-    on('mv-edit', () => { composing = true; draft = e; sel = null; render(); });
+    on('mv-spam', async () => { if (await setFields(e.id, { folder: 'spam' })) { sel = null; load(); } });
+    on('mv-notspam', async () => { if (await setFields(e.id, { folder: 'inbox' })) { sel = null; load(); } });
+    on('mv-edit', () => { composing = true; draft = e; sel = null; attFiles = []; render(); });
     on('mv-cancel-sched', async () => {
       if (await setFields(e.id, { folder: 'draft', scheduled_at: null })) { sel = null; load(); }
     });
@@ -355,21 +616,34 @@
   }
 
   function wireCompose() {
+    wireEditor('cp-ed');
+    // prefill from draft
+    const area = document.getElementById('cp-ed');
+    if (draft?.html_body) {
+      // strip the outer wrapper div if present
+      area.innerHTML = draft.html_body.replace(/^<div style="font-family[^>]*>([\s\S]*)<\/div>$/, '$1');
+    } else if (draft?.text_body) {
+      area.innerText = draft.text_body;
+    }
+    renderChips('cp-ed');
+
     const val = (id) => document.getElementById(id).value.trim();
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-    on('cp-cancel', () => { composing = false; draft = null; render(); });
+    on('cp-cancel', () => { composing = false; draft = null; attFiles = []; render(); });
     on('cp-sched-toggle', () => {
       const row = document.getElementById('sched-row');
       row.classList.toggle('show');
-      const send = document.getElementById('cp-send');
-      send.textContent = row.classList.contains('show') ? 'Schedule send' : 'Send';
+      const sendBtn = document.getElementById('cp-send');
+      sendBtn.textContent = row.classList.contains('show') ? 'Schedule send' : 'Send';
     });
     on('cp-draft', async () => {
       const btn = document.getElementById('cp-draft');
       btn.disabled = true; btn.textContent = 'Saving…';
+      if (attFiles.length) alert('Heads up: attachments are not saved with drafts — re-attach before sending.');
+      const { text, html } = editorContent('cp-ed');
       const fields = {
         to_addr: val('cp-to') || null, subject: val('cp-subj') || null,
-        text_body: document.getElementById('cp-text').value || null,
+        text_body: text || null, html_body: html || null,
       };
       let error;
       if (draft?.id) ({ error } = await supabase.from('inbox_emails').update(fields).eq('id', draft.id));
@@ -379,26 +653,30 @@
         read_at: new Date().toISOString(),
       }));
       if (error) { alert(error.message); btn.disabled = false; btn.textContent = 'Save draft'; return; }
-      composing = false; draft = null; tab = 'draft'; load();
+      composing = false; draft = null; attFiles = []; tab = 'draft'; load();
     });
     on('cp-send', async () => {
       const btn = document.getElementById('cp-send');
       const schedOn = document.getElementById('sched-row').classList.contains('show');
-      const payload = {
-        to: val('cp-to'), subject: val('cp-subj'),
-        text: document.getElementById('cp-text').value.trim(),
-      };
+      const { text, html, empty } = editorContent('cp-ed');
+      const payload = { to: val('cp-to'), subject: val('cp-subj'), text, html };
       if (draft?.id) payload.draft_id = draft.id;
       if (schedOn) {
         const when = document.getElementById('cp-when').value;
         if (!when) { alert('Pick a date and time.'); return; }
+        if (attFiles.length) { alert('Attachments aren\'t supported on scheduled sends yet — send now, or remove them.'); return; }
         payload.schedule_at = new Date(when).toISOString();
       }
-      if (!payload.to || !payload.subject || !payload.text) { alert('Fill in all fields.'); return; }
+      if (!payload.to || !payload.subject || empty) { alert('Fill in recipient, subject, and message.'); return; }
       btn.disabled = true; btn.textContent = schedOn ? 'Scheduling…' : 'Sending…';
       try {
+        if (attFiles.length) {
+          btn.textContent = 'Attaching…';
+          payload.attachments = await collectAttachments();
+          btn.textContent = 'Sending…';
+        }
         await send(payload);
-        composing = false; draft = null;
+        composing = false; draft = null; attFiles = [];
         tab = schedOn ? 'scheduled' : 'sent';
         load();
       } catch (err) {
