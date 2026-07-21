@@ -10,6 +10,42 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .month-card { margin-bottom: 18px; }
+  .month-card > h2 { margin-bottom: 6px; }
+  details.week { margin: 10px 0; border: 1px solid rgba(128,128,128,.22); border-radius: 12px; }
+  details.week > summary {
+    cursor: pointer; padding: 10px 14px; font-weight: 700; font-size: .95rem;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+  }
+  details.week > summary::after { content: '▾'; opacity: .5; transition: transform .15s; }
+  details.week:not([open]) > summary::after { transform: rotate(-90deg); }
+  details.week > summary .cnt { font-weight: 400; font-size: .8rem; opacity: .6; }
+  .day-block { padding: 0 14px 10px; }
+  .day-head { font-size: .82rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    opacity: .65; margin: 10px 0 4px; border-bottom: 1px solid rgba(128,128,128,.18); padding-bottom: 3px; }
+  .aud-row { display: flex; gap: 10px; padding: 7px 0; align-items: baseline; border-bottom: 1px dashed rgba(128,128,128,.14); }
+  .aud-row:last-child { border-bottom: none; }
+  .aud-time { font-size: .78rem; opacity: .6; white-space: nowrap; width: 72px; }
+  .aud-main { flex: 1; min-width: 0; font-size: .92rem; }
+  .aud-main b.who { color: var(--gold, #e0b45c); }
+  .act { font-size: .72rem; padding: 1px 8px; border-radius: 99px; margin: 0 4px; font-weight: 700; }
+  .act.create { background: rgba(47,158,99,.18); color: #2f9e63; }
+  .act.update { background: rgba(63,127,191,.18); color: #3f7fbf; }
+  .act.delete { background: rgba(200,32,47,.16); color: #c8202f; }
+  .aud-main details { margin-top: 4px; }
+  .aud-main details > summary { cursor: pointer; font-size: .8rem; opacity: .65; list-style: none; }
+  .aud-main details > summary::before { content: '▸ '; }
+  .aud-main details[open] > summary::before { content: '▾ '; }
+  .kv { font-size: .84rem; margin: 6px 0 2px; padding: 8px 10px; background: rgba(128,128,128,.08);
+    border-radius: 8px; overflow-wrap: anywhere; }
+  .kv div { margin: 2px 0; }
+  .kv .k { opacity: .6; }
+  .kv .msg { white-space: pre-wrap; border-left: 3px solid rgba(128,128,128,.4); padding-left: 8px; margin-top: 3px; }
+  .chg .old { text-decoration: line-through; opacity: .55; }
+  .chg .new { color: #2f9e63; }
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+</style>
 </head>
 <body>
 <div class="loading" id="loading">Loading audit log…</div>
@@ -18,13 +54,35 @@
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
 
-  const PAGE = 50;
+  const PAGE = 300;
   const ctx = await requireOfficer();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Audit Log');
 
-  let rows = [], offset = 0, entity = '', done = false;
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // Friendly entity names
+  const ENTITY = {
+    events: 'Event', tasks: 'Task', inventory: 'Inventory item', notes: 'Note',
+    note_folders: 'Note folder', documents: 'Document', document_folders: 'Document folder',
+    rewards: 'Reward', achievements: 'Achievement', orders: 'Order',
+    announcements: 'Announcement', eboard_members: 'E-Board member',
+    store_products: 'Store product', sponsors: 'Sponsor', inbox_emails: 'Email',
+    user_roles: 'Role', site_settings: 'Site setting', event_attendance: 'Event attendance',
+    achievement_awards: 'Achievement award', task_assignees: 'Task assignee',
+    task_edges: 'Task link', note_attendees: 'Note attendee', inventory_log: 'Inventory log',
+    finance_budgets: 'Budget', finance_dues: 'Dues', finance_fundraisers: 'Fundraiser',
+    finance_planner_items: 'Budget planner item', finance_planner_receipts: 'Planner receipt',
+    finance_reimbursements: 'Reimbursement', finance_requests: 'Finance request',
+    finance_sponsorships: 'Sponsorship', finance_transactions: 'Transaction',
+    profiles: 'Profile',
+  };
+  const VERB = { create: 'created', update: 'updated', delete: 'deleted' };
+  // Fields that are noise in detail views
+  const SKIP_FIELDS = new Set(['id', 'created_at', 'updated_at', 'raw', 'html_body', 'message_id', 'embedding']);
+
+  let rows = [], offset = 0, entity = '', done = false;
+  const nameCache = new Map(); // user_id -> full_name (for rows predating user_name)
 
   async function fetchPage(reset = false) {
     if (reset) { rows = []; offset = 0; done = false; }
@@ -32,44 +90,132 @@
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE - 1);
     if (entity) q = q.eq('entity', entity);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error(error);
     rows = rows.concat(data || []);
     offset += PAGE;
     if (!data || data.length < PAGE) done = true;
+
+    // Resolve names for legacy rows that only stored email
+    const missing = [...new Set(rows.filter(r => !r.user_name && r.user_id && !nameCache.has(r.user_id)).map(r => r.user_id))];
+    if (missing.length) {
+      const { data: profs } = await supabase.from('profiles').select('id, full_name').in('id', missing);
+      (profs || []).forEach(p => nameCache.set(p.id, p.full_name));
+    }
     render();
   }
 
+  const who = (r) => r.user_name || nameCache.get(r.user_id) || r.user_email || 'System';
+
+  // ---- grouping: Month -> Week (Sun-Sat) -> Day ----
+  const dayKey = (d) => d.toLocaleDateString('en-CA'); // YYYY-MM-DD local
+  function weekStart(d) { const s = new Date(d); s.setDate(s.getDate() - s.getDay()); return s; }
+  const md = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  function grouped() {
+    const months = new Map();
+    for (const r of rows) {
+      const d = new Date(r.created_at);
+      const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const ws = weekStart(d), wKey = dayKey(ws), dKey = dayKey(d);
+      if (!months.has(mKey)) months.set(mKey, { label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), weeks: new Map() });
+      const m = months.get(mKey);
+      if (!m.weeks.has(wKey)) {
+        const we = new Date(ws); we.setDate(we.getDate() + 6);
+        m.weeks.set(wKey, { label: `Week of ${md(ws)} – ${md(we)}`, days: new Map(), n: 0 });
+      }
+      const w = m.weeks.get(wKey);
+      if (!w.days.has(dKey)) w.days.set(dKey, { label: d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }), items: [] });
+      w.days.get(dKey).items.push(r);
+      w.n++;
+    }
+    return months;
+  }
+
+  // ---- per-entry detail rendering ----
+  function fmtVal(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return esc(s.length > 300 ? s.slice(0, 300) + '…' : s);
+  }
+
+  function detailHTML(r) {
+    const d = r.data;
+    if (!d) return '';
+    if (r.entity === 'inbox_emails') {
+      const e = d.new || d.old || {};
+      return `<div class="kv">
+        <div><span class="k">From:</span> ${esc(e.from_addr || '—')}</div>
+        <div><span class="k">To:</span> ${esc(e.to_addr || '—')}</div>
+        <div><span class="k">Subject:</span> ${esc(e.subject || '(no subject)')}</div>
+        <div><span class="k">Folder:</span> ${esc(e.folder || '')}${e.scheduled_at ? ` · scheduled ${new Date(e.scheduled_at).toLocaleString()}` : ''}</div>
+        ${e.text_body ? `<div class="k">Message:</div><div class="msg">${esc(e.text_body)}</div>` : ''}
+      </div>`;
+    }
+    if (r.action === 'update' && d.old && d.new) {
+      const changes = Object.keys(d.new)
+        .filter(k => !SKIP_FIELDS.has(k) && JSON.stringify(d.old[k]) !== JSON.stringify(d.new[k]));
+      if (!changes.length) return '';
+      return `<div class="kv chg">${changes.map(k =>
+        `<div><span class="k">${esc(k)}:</span> <span class="old">${fmtVal(d.old[k])}</span> → <span class="new">${fmtVal(d.new[k])}</span></div>`).join('')}</div>`;
+    }
+    const rec = d.new || d.old || {};
+    const fields = Object.keys(rec).filter(k => !SKIP_FIELDS.has(k) && rec[k] !== null && rec[k] !== '');
+    if (!fields.length) return '';
+    return `<div class="kv">${fields.map(k =>
+      `<div><span class="k">${esc(k)}:</span> ${fmtVal(rec[k])}</div>`).join('')}</div>`;
+  }
+
+  function entryHTML(r) {
+    const t = new Date(r.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const detail = detailHTML(r);
+    return `
+      <div class="aud-row">
+        <span class="aud-time">${t}</span>
+        <div class="aud-main">
+          <b class="who">${esc(who(r))}</b>
+          <span class="act ${esc(r.action)}">${VERB[r.action] || esc(r.action)}</span>
+          ${esc(ENTITY[r.entity] || r.entity)}${r.details && r.entity !== 'inbox_emails' ? ` · <i>${esc(r.details)}</i>` : ''}
+          ${detail ? `<details><summary>details</summary>${detail}</details>` : ''}
+        </div>
+      </div>`;
+  }
+
   function render() {
-    const entities = ['events', 'tasks', 'inventory', 'notes', 'note_folders', 'documents', 'document_folders', 'rewards', 'achievements', 'orders', 'profiles'];
-    page.innerHTML = `
-      <div class="card">
-        <h2>Audit log</h2>
-        <p style="color:var(--muted); font-size:.86rem; margin-bottom:14px">
-          Every create/update/delete on club data is recorded automatically by database triggers — entries can't be forged or removed from the app.
+    const months = grouped();
+    let first = true;
+    let html = `
+      <div class="card" style="margin-bottom:16px">
+        <p style="color:var(--muted); font-size:.86rem; margin:0">
+          Every create, update, and delete on club data is recorded automatically by
+          database triggers — entries can't be forged or removed from the app.
         </p>
-        <div class="filter-bar">
+        <div class="filter-bar" style="margin:12px 0 0">
           <select id="f-entity">
             <option value="">All entities</option>
-            ${entities.map(e => `<option value="${e}" ${entity === e ? 'selected' : ''}>${e}</option>`).join('')}
+            ${Object.keys(ENTITY).map(e => `<option value="${e}" ${entity === e ? 'selected' : ''}>${ENTITY[e]}</option>`).join('')}
           </select>
         </div>
-        <div class="tbl-wrap">
-          <table class="tbl">
-            <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
-            <tbody>
-              ${rows.map(r => `
-                <tr>
-                  <td style="white-space:nowrap">${new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                  <td>${esc(r.user_email || '—')}</td>
-                  <td><span class="badge">${esc(r.action)}</span></td>
-                  <td>${esc(r.entity)}</td>
-                  <td>${esc(r.details)}</td>
-                </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No audit entries yet.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-        ${done ? '' : '<div style="text-align:center; margin-top:14px"><button class="btn ghost" id="more">Load more</button></div>'}
       </div>`;
+
+    if (!months.size) html += '<div class="card" style="color:var(--muted)">No audit entries yet.</div>';
+
+    for (const [, m] of months) {
+      html += `<div class="card month-card"><h2>${m.label}</h2>`;
+      for (const [, w] of m.weeks) {
+        html += `<details class="week" ${first ? 'open' : ''}>
+          <summary>${w.label} <span class="cnt">${w.n} ${w.n === 1 ? 'entry' : 'entries'}</span></summary>`;
+        for (const [, day] of w.days) {
+          html += `<div class="day-block"><div class="day-head">${day.label}</div>
+            ${day.items.map(entryHTML).join('')}</div>`;
+        }
+        html += '</details>';
+        first = false;
+      }
+      html += '</div>';
+    }
+    if (!done) html += '<div style="text-align:center; margin:6px 0 18px"><button class="btn ghost" id="more">Load older entries</button></div>';
+    page.innerHTML = html;
 
     document.getElementById('f-entity').onchange = (e) => { entity = e.target.value; fetchPage(true); };
     document.getElementById('more')?.addEventListener('click', () => fetchPage());
