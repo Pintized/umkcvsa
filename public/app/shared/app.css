@@ -678,17 +678,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .modal .row-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 
 /* ---------- task board ---------- */
-.board-scroll { overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
-.board {
-  position: relative;
-  width: 1600px; height: 900px;
-  background:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-color: var(--surface-2);
-}
-.board svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* (the board itself is styled in tasks.html; only shared bits live here) */
 .task-card {
   position: absolute;
   width: 220px;
