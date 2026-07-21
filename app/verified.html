@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email verified | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .party { font-size: 3.2rem; margin: 6px 0 2px; animation: pop .55s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes pop { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .petal { position: fixed; top: -24px; font-size: 1.15rem; pointer-events: none; animation: fall linear forwards; z-index: 0; }
+  @keyframes fall {
+    to { transform: translateY(105vh) rotate(340deg); opacity: .1; }
+  }
+  .auth-card { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card" style="text-align:center">
+    <a class="brand" href="/" style="justify-content:center">
+      <img src="/assets/img/logo-128.png" alt="UMKC VSA logo">
+      <span>UMKC VSA</span>
+    </a>
+    <div class="party">🎉</div>
+    <h1>You're verified!</h1>
+    <p class="sub">
+      Your email is confirmed and your UMKC VSA account is officially active.
+      Chào mừng đến với gia đình! 🌸
+    </p>
+    <a class="btn" href="/app/login.html" style="display:inline-block; text-decoration:none; margin-top:10px">
+      Log in to the portal
+    </a>
+    <p class="auth-alt" style="margin-top:16px">
+      <a href="/">Back to the main site</a>
+    </p>
+  </div>
+</div>
+<script>
+  // gentle cherry-blossom confetti, courtesy of the welcome committee
+  const EMOJI = ['🌸', '✿', '❀', '🌸', '✦'];
+  for (let i = 0; i < 26; i++) {
+    const p = document.createElement('span');
+    p.className = 'petal';
+    p.textContent = EMOJI[i % EMOJI.length];
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.animationDuration = 5 + Math.random() * 6 + 's';
+    p.style.animationDelay = Math.random() * 4 + 's';
+    p.style.fontSize = .8 + Math.random() * .9 + 'rem';
+    document.body.appendChild(p);
+  }
+</script>
+</body>
+</html>
