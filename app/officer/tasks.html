@@ -194,7 +194,7 @@ html:not(.dark-mode) .status-open { color:#2a6099; }
 /* ---- fancy assignee checkboxes in the modal ---- */
 .modal-assignee-box {
   display:flex; flex-direction:column; gap:2px; max-height:210px; overflow-y:auto; padding:6px;
-  border:1px solid var(--line); border-radius:10px; background:var(--surface); scrollbar-width:thin;
+  border:1px solid var(--line); border-radius:10px; background:var(--surface);
 }
 label.modal-assignee-option {
   position:relative; display:grid; grid-template-columns:18px minmax(0,1fr); align-items:center;
@@ -250,7 +250,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
 .kanban-col-copy strong { display:block; font-size:.93rem; line-height:1.1; }
 .kanban-col-copy small { display:block; color:var(--muted); margin-top:3px; font-size:.7rem; }
 .kanban-col-count { min-width:28px; height:25px; padding:0 9px; display:inline-grid; place-items:center; border-radius:999px; color:var(--col-ink); background:var(--col-soft); font-size:.74rem; font-weight:800; }
-.kanban-col-body { flex:1; min-height:90px; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; scrollbar-width:thin; }
+.kanban-col-body { flex:1; min-height:90px; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
 .kanban-col-body:empty::after {
   content:'Drop a task here'; min-height:84px; border:1.5px dashed var(--line); border-radius:12px;
   display:grid; place-items:center; color:var(--muted); font-size:.78rem; font-weight:600;
