@@ -409,6 +409,11 @@ verify_jwt = false
 enabled = true
 verify_jwt = true
 
+# Invoked by pg_cron with the anon key.
+[functions.inbox-scheduled]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

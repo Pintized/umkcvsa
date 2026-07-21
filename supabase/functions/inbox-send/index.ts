@@ -42,12 +42,44 @@ Deno.serve(async (req) => {
   const isOfficer = (roles ?? []).some((r) => r.role === "officer" || r.role === "admin");
   if (!isOfficer) return json(403, { error: "Officers only" });
 
-  const { to, subject, text, reply_to_id } = await req.json().catch(() => ({}));
+  const { to, subject, text, reply_to_id, draft_id, schedule_at } =
+    await req.json().catch(() => ({}));
   if (typeof to !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
     return json(400, { error: "Invalid recipient address" });
   }
   if (!subject?.trim() || !text?.trim()) {
     return json(400, { error: "Subject and message are required" });
+  }
+
+  const now = new Date().toISOString();
+  const base = {
+    direction: "out",
+    from_addr: INBOX_FROM,
+    to_addr: to,
+    subject,
+    text_body: text,
+    replied_to: reply_to_id ?? null,
+    sent_by: userData.user.id,
+    read_at: now,
+  };
+
+  // Schedule for later instead of sending now
+  if (schedule_at) {
+    const when = new Date(schedule_at);
+    if (!Number.isFinite(when.getTime()) || when.getTime() <= Date.now()) {
+      return json(400, { error: "Schedule time must be in the future" });
+    }
+    const fields = { ...base, folder: "scheduled", scheduled_at: when.toISOString() };
+    const q = draft_id
+      ? supabase.from("inbox_emails").update(fields)
+          .eq("id", draft_id).in("folder", ["draft", "scheduled"])
+      : supabase.from("inbox_emails").insert(fields);
+    const { error: dbErr } = await q;
+    if (dbErr) {
+      console.error("Failed to schedule:", dbErr);
+      return json(500, { error: "Couldn't save the scheduled email" });
+    }
+    return json(200, { scheduled: true, at: when.toISOString() });
   }
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -64,17 +96,17 @@ Deno.serve(async (req) => {
   }
   const sent = await res.json();
 
-  const { error: dbErr } = await supabase.from("inbox_emails").insert({
+  const fields = {
+    ...base,
+    folder: "sent",
+    scheduled_at: null,
     message_id: sent.id ?? null,
-    direction: "out",
-    from_addr: INBOX_FROM,
-    to_addr: to,
-    subject,
-    text_body: text,
-    replied_to: reply_to_id ?? null,
-    sent_by: userData.user.id,
-    read_at: new Date().toISOString(), // outgoing mail is inherently "read"
-  });
+    received_at: now,
+  };
+  const q = draft_id
+    ? supabase.from("inbox_emails").update(fields).eq("id", draft_id)
+    : supabase.from("inbox_emails").insert(fields);
+  const { error: dbErr } = await q;
   if (dbErr) console.error("Sent but failed to record:", dbErr);
 
   return json(200, { sent: true, id: sent.id ?? null });
