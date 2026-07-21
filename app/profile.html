@@ -17,6 +17,7 @@
   import { requireLogin } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
+  import { compressImage, outExt } from '/app/shared/img.js';
 
   const AVATAR_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/';
 
@@ -58,7 +59,7 @@
           <input type="text" id="alias" value="${p.alias || ''}" maxlength="24" placeholder="what people call you">
         </div>
         <div class="field">
-          <label for="pic">Profile picture (JPG/PNG, max 2 MB)</label>
+          <label for="pic">Profile picture (JPG/PNG — large photos are shrunk automatically)</label>
           <input type="file" id="pic" accept="image/png,image/jpeg,image/webp">
         </div>
         <button class="btn" id="save" type="submit">Save changes</button>
@@ -81,10 +82,11 @@
 
       const file = document.getElementById('pic').files[0];
       if (file) {
-        if (file.size > 2 * 1024 * 1024) throw new Error('Image is larger than 2 MB.');
-        const ext = file.name.split('.').pop().toLowerCase();
-        const path = `${ctx.user.id}/avatar-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+        // avatars render small everywhere, so 512px is plenty
+        const up = await compressImage(file, 512, 0.85);
+        if (up.size > 2 * 1024 * 1024) throw new Error('Image is too large even after compression — try a different photo.');
+        const path = `${ctx.user.id}/avatar-${Date.now()}.${outExt(up, file)}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, up, { upsert: true, contentType: up.type || file.type });
         if (upErr) throw upErr;
         if (ctx.profile?.avatar_path) {
           await supabase.storage.from('avatars').remove([ctx.profile.avatar_path]);
