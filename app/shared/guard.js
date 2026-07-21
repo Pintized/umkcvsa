@@ -35,7 +35,6 @@ function recordLogin(session) {
     const seenKey = 'vsa-login-seen';
     const last = session.user.last_sign_in_at || '';
     if (localStorage.getItem(seenKey) === last) return;
-    localStorage.setItem(seenKey, last);
     let dev = localStorage.getItem('vsa-device-id');
     if (!dev) { dev = crypto.randomUUID(); localStorage.setItem('vsa-device-id', dev); }
     (async () => {
@@ -44,10 +43,14 @@ function recordLogin(session) {
         const g = await (await fetch('https://ipwho.is/')).json();
         if (g && g.success !== false) geo = g;
       } catch (_) {}
-      await supabase.from('login_activity').insert({
+      const { error } = await supabase.from('login_activity').insert({
         user_id: session.user.id, device_id: dev, user_agent: navigator.userAgent,
         ip: geo.ip || null, city: geo.city || null, region: geo.region || null, country: geo.country_code || geo.country || null,
       });
+      // mark seen only once the row is in — an interrupted or failed
+      // attempt retries on the next page load (worst case: a duplicate
+      // row if two tabs race, which is harmless)
+      if (!error) localStorage.setItem(seenKey, last);
       await supabase.from('trusted_devices').upsert({
         user_id: session.user.id, device_id: dev, label: deviceLabel(), last_seen: new Date().toISOString(),
       }, { onConflict: 'user_id,device_id' });
