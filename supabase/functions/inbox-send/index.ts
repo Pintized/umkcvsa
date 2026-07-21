@@ -5,7 +5,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const INBOX_FROM = Deno.env.get("INBOX_FROM") ?? "UMKC VSA <contact@umkcvsa.org>";
+const INBOX_FROM = Deno.env.get("INBOX_FROM") ?? "UMKC VSA <support@umkcvsa.org>";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
