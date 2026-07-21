@@ -33,6 +33,10 @@ const MEMBER_LINKS = [
   { href: '/app/achievements.html', label: 'Achievements', icon: 'trophy' },
   { href: '/app/rewards.html',      label: 'Rewards',      icon: 'gift' },
   { href: '/app/members.html',      label: 'Members',      icon: 'users' },
+];
+
+// personal configuration pages, separate from day-to-day functions
+const SETTINGS_LINKS = [
   { href: '/app/profile.html',      label: 'My Profile',   icon: 'user' },
 ];
 
@@ -103,6 +107,8 @@ export function renderShell(ctx, pageTitle) {
           ${MEMBER_LINKS.map(l => navLink(l)).join('')}
           ${officer ? `<div class="nav-label">Officer</div>${OFFICER_LINKS.map(l => navLink(l, true)).join('')}` : ''}
           ${ctx.roles.includes('admin') ? `<div class="nav-label">Admin</div>${ADMIN_LINKS.map(l => navLink(l, true)).join('')}` : ''}
+          <div class="nav-label">Settings</div>
+          ${SETTINGS_LINKS.map(l => navLink(l)).join('')}
         </nav>
         <div class="foot">Vietnamese Student Association<br>at UMKC</div>
       </aside>
