@@ -259,12 +259,19 @@
       const cs = getComputedStyle(document.body);
       const dark = (document.documentElement.dataset.theme || '').includes('dark')
         || matchMedia('(prefers-color-scheme: dark)').matches;
+      // Emails that bring their own colors were designed for a white canvas —
+      // give those a light "paper" card in dark mode (like real mail clients)
+      // instead of dark-on-dark text. Plain emails blend into the theme.
+      const designed = /color\s*:|bgcolor=|background(?:-color)?\s*:/i.test(e.html_body);
+      const canvas = designed && dark
+        ? `color: #1c2430; background: #f4f5f7; border-radius: 10px;`
+        : `color: ${cs.color}; background: transparent;`;
       const themed = `<style>
-        :root { color-scheme: ${dark ? 'dark' : 'light'}; }
-        body { margin: 0; padding: 2px;
+        :root { color-scheme: ${designed ? 'light' : dark ? 'dark' : 'light'}; }
+        body { margin: 0; padding: ${designed && dark ? '12px' : '2px'};
           font-family: ${cs.fontFamily};
           font-size: .95rem; line-height: 1.55;
-          color: ${cs.color}; background: transparent; }
+          ${canvas} }
         a { color: #3f7fbf; }
         blockquote { border-left: 3px solid rgba(128,128,128,.45);
           margin: 6px 0; padding-left: 10px; opacity: .8; }
