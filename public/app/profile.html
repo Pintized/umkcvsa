@@ -10,6 +10,33 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
+<style>
+.ac-pick { position:relative; }
+.ac-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+.ac-chips:empty { display:none; }
+.ac-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(201, 155, 63, .14); border:1px solid rgba(201, 155, 63, .4);
+  border-radius:999px; padding:3px 6px 3px 12px; font-size:.82rem;
+}
+.ac-chip button {
+  background:none; border:none; cursor:pointer; color:var(--muted);
+  font-size:.95rem; line-height:1; padding:2px 5px; border-radius:50%;
+}
+.ac-chip button:hover { color:var(--red); }
+.ac-menu {
+  position:absolute; left:0; right:0; top:100%; z-index:40;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  box-shadow:var(--shadow-lg); max-height:220px; overflow-y:auto; display:none;
+}
+.ac-menu.open { display:block; }
+.ac-menu button {
+  display:block; width:100%; text-align:left; background:none; border:none;
+  padding:9px 14px; cursor:pointer; color:var(--text); font-size:.88rem;
+}
+.ac-menu button:hover, .ac-menu button.hl { background:rgba(201, 155, 63, .12); }
+.ac-menu .none { padding:9px 14px; color:var(--muted); font-size:.85rem; }
+</style>
 </head>
 <body>
 <div class="loading" id="loading">Loading profile…</div>
@@ -60,12 +87,20 @@
           <input type="text" id="alias" value="${p.alias || ''}" maxlength="24" placeholder="what people call you">
         </div>
         <div class="field">
-          <label for="majors">Major(s)</label>
-          <input type="text" id="majors" value="${p.majors || ''}" maxlength="120" placeholder="e.g. Computer Science, Biology">
+          <label for="majors-in">Major(s)</label>
+          <div class="ac-pick" id="majors-pick">
+            <div class="ac-chips"></div>
+            <input type="text" id="majors-in" placeholder="search UMKC majors…" autocomplete="off">
+            <div class="ac-menu"></div>
+          </div>
         </div>
         <div class="field">
-          <label for="minors">Minor(s)</label>
-          <input type="text" id="minors" value="${p.minors || ''}" maxlength="120" placeholder="e.g. Mathematics">
+          <label for="minors-in">Minor(s)</label>
+          <div class="ac-pick" id="minors-pick">
+            <div class="ac-chips"></div>
+            <input type="text" id="minors-in" placeholder="search UMKC minors…" autocomplete="off">
+            <div class="ac-menu"></div>
+          </div>
         </div>
         <div class="field-row">
           <div class="field">
@@ -95,8 +130,8 @@
   const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
 
   const acadLine = (q) => [
-    q.majors,
-    q.minors ? `minor: ${q.minors}` : '',
+    (q.majors || '').split('; ').filter(Boolean).join(', '),
+    q.minors ? `minor: ${q.minors.split('; ').join(', ')}` : '',
     q.grad_term && q.grad_year ? `Class of ${q.grad_term} ${q.grad_year}` : '',
   ].filter(Boolean).join(' · ');
   const renderAcad = (q) => {
@@ -106,6 +141,53 @@
     el.style.display = s ? '' : 'none';
   };
   renderAcad(p);
+
+  // searchable chip pickers backed by the curated academic_programs
+  // table — free text never reaches the profile (a DB trigger rejects
+  // anything off-list as a backstop)
+  const { data: programs } = await supabase.from('academic_programs')
+    .select('name, is_major, is_minor').order('name');
+  function chipPicker(rootId, options, initial) {
+    const root = document.getElementById(rootId);
+    const chips = root.querySelector('.ac-chips');
+    const input = root.querySelector('input');
+    const menu = root.querySelector('.ac-menu');
+    const selected = initial.filter(v => options.includes(v));
+    const draw = () => {
+      chips.innerHTML = selected.map(v =>
+        `<span class="ac-chip">${v}<button type="button" data-x="${v}" aria-label="Remove ${v}">×</button></span>`).join('');
+      chips.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
+        selected.splice(selected.indexOf(b.dataset.x), 1); draw();
+      });
+    };
+    const openMenu = () => {
+      const q = input.value.trim().toLowerCase();
+      const hits = options.filter(o => !selected.includes(o) && o.toLowerCase().includes(q)).slice(0, 30);
+      menu.innerHTML = hits.length
+        ? hits.map(o => `<button type="button">${o}</button>`).join('')
+        : '<div class="none">No matching program.</div>';
+      menu.querySelectorAll('button').forEach(b => b.onclick = () => {
+        selected.push(b.textContent); input.value = ''; draw(); input.focus(); openMenu();
+      });
+      menu.classList.add('open');
+    };
+    input.addEventListener('focus', openMenu);
+    input.addEventListener('input', openMenu);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); menu.querySelector('button')?.click(); }
+      if (e.key === 'Escape') menu.classList.remove('open');
+      if (e.key === 'Backspace' && !input.value && selected.length) { selected.pop(); draw(); openMenu(); }
+    });
+    document.addEventListener('click', (e) => { if (!root.contains(e.target)) menu.classList.remove('open'); });
+    draw();
+    return { value: () => selected.join('; ') || null };
+  }
+  const majorsPick = chipPicker('majors-pick',
+    (programs || []).filter(x => x.is_major).map(x => x.name),
+    (p.majors || '').split('; ').filter(Boolean));
+  const minorsPick = chipPicker('minors-pick',
+    (programs || []).filter(x => x.is_minor).map(x => x.name),
+    (p.minors || '').split('; ').filter(Boolean));
 
   document.getElementById('profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -123,8 +205,8 @@
       }
       const updates = {
         alias: alias || null,
-        majors: document.getElementById('majors').value.trim() || null,
-        minors: document.getElementById('minors').value.trim() || null,
+        majors: majorsPick.value(),
+        minors: minorsPick.value(),
         grad_term: gradTerm,
         grad_year: gradYear,
       };
