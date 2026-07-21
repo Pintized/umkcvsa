@@ -42,13 +42,30 @@ Deno.serve(async (req) => {
   const isOfficer = (roles ?? []).some((r) => r.role === "officer" || r.role === "admin");
   if (!isOfficer) return json(403, { error: "Officers only" });
 
-  const { to, subject, text, reply_to_id, draft_id, schedule_at } =
+  const { to, subject, text, html, attachments, reply_to_id, draft_id, schedule_at } =
     await req.json().catch(() => ({}));
   if (typeof to !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
     return json(400, { error: "Invalid recipient address" });
   }
-  if (!subject?.trim() || !text?.trim()) {
+  if (!subject?.trim() || (!text?.trim() && !html?.trim())) {
     return json(400, { error: "Subject and message are required" });
+  }
+
+  // Attachments: [{filename, content(base64), content_type}], 15MB combined cap
+  let files: { filename: string; content: string }[] = [];
+  if (Array.isArray(attachments)) {
+    let total = 0;
+    for (const a of attachments) {
+      if (!a?.filename || typeof a.content !== "string") continue;
+      total += a.content.length * 0.75; // base64 → bytes
+      files.push({ filename: String(a.filename).slice(0, 200), content: a.content });
+    }
+    if (total > 15 * 1024 * 1024) {
+      return json(400, { error: "Attachments are too large (15MB max combined)" });
+    }
+  }
+  if (files.length && schedule_at) {
+    return json(400, { error: "Attachments aren't supported on scheduled sends yet" });
   }
 
   const now = new Date().toISOString();
@@ -57,7 +74,9 @@ Deno.serve(async (req) => {
     from_addr: INBOX_FROM,
     to_addr: to,
     subject,
-    text_body: text,
+    text_body: text || null,
+    html_body: html || null,
+    raw: files.length ? { attachments: files.map((f) => f.filename) } : null,
     replied_to: reply_to_id ?? null,
     sent_by: userData.user.id,
     read_at: now,
@@ -88,7 +107,14 @@ Deno.serve(async (req) => {
       "Authorization": `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from: INBOX_FROM, to: [to], subject, text }),
+    body: JSON.stringify({
+      from: INBOX_FROM,
+      to: [to],
+      subject,
+      ...(html?.trim() ? { html } : {}),
+      text: text?.trim() || "(no text version)",
+      ...(files.length ? { attachments: files } : {}),
+    }),
   });
   if (!res.ok) {
     console.error(`Resend send failed (${res.status}):`, await res.text());

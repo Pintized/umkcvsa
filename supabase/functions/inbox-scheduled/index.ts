@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
 
   const { data: due, error } = await supabase
     .from("inbox_emails")
-    .select("id, to_addr, subject, text_body")
+    .select("id, to_addr, subject, text_body, html_body")
     .eq("folder", "scheduled")
     .lte("scheduled_at", new Date().toISOString())
     .limit(20);
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
   let sent = 0, failed = 0;
   for (const row of due ?? []) {
-    if (!row.to_addr || !row.subject || !row.text_body) {
+    if (!row.to_addr || !row.subject || (!row.text_body && !row.html_body)) {
       // Incomplete row can never send — park it back in drafts for the officer
       await supabase.from("inbox_emails")
         .update({ folder: "draft", scheduled_at: null }).eq("id", row.id);
@@ -45,7 +45,8 @@ Deno.serve(async (req) => {
         from: INBOX_FROM,
         to: [row.to_addr],
         subject: row.subject,
-        text: row.text_body,
+        ...(row.html_body ? { html: row.html_body } : {}),
+        text: row.text_body || "(no text version)",
       }),
     });
     if (res.ok) {
