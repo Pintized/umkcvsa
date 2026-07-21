@@ -112,7 +112,11 @@ async function bumpWarnings(userId) {
 
 client.once(Events.ClientReady, async (c) => {
   console.log(`Logged in as ${c.user.tag}`);
-  c.user.setActivity("UMKC VSA 🌸", { type: ActivityType.Watching });
+  c.user.setPresence({
+    activities: [
+      { name: "custom", type: ActivityType.Custom, state: "✨🍜 𝓱𝓪𝓶 𝓬𝓱𝓸𝓲 🌸✨" },
+    ],
+  });
   for (const guild of c.guilds.cache.values()) {
     await ensureAutoModRule(guild);
   }
