@@ -9,12 +9,50 @@ export async function requireLogin() {
     location.replace('/app/login.html');
     return new Promise(() => {}); // halt caller while redirecting
   }
+  recordLogin(session);
   const [profileRes, rolesRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', session.user.id).single(),
     supabase.from('user_roles').select('role').eq('user_id', session.user.id),
   ]);
   const roles = (rolesRes.data || []).map(r => r.role);
   return { session, user: session.user, profile: profileRes.data, roles };
+}
+
+function deviceLabel() {
+  const ua = navigator.userAgent;
+  const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox'
+    : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  const os = /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS'
+    : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Linux/.test(ua) ? 'Linux' : '';
+  return os ? `${browser} on ${os}` : browser;
+}
+
+// Powers Settings → Security. Runs once per actual sign-in (keyed on
+// last_sign_in_at), never blocks page load, and failures stay silent —
+// login history is a nicety, not a gate.
+function recordLogin(session) {
+  try {
+    const seenKey = 'vsa-login-seen';
+    const last = session.user.last_sign_in_at || '';
+    if (localStorage.getItem(seenKey) === last) return;
+    localStorage.setItem(seenKey, last);
+    let dev = localStorage.getItem('vsa-device-id');
+    if (!dev) { dev = crypto.randomUUID(); localStorage.setItem('vsa-device-id', dev); }
+    (async () => {
+      let geo = {};
+      try {
+        const g = await (await fetch('https://ipwho.is/')).json();
+        if (g && g.success !== false) geo = g;
+      } catch (_) {}
+      await supabase.from('login_activity').insert({
+        user_id: session.user.id, device_id: dev, user_agent: navigator.userAgent,
+        ip: geo.ip || null, city: geo.city || null, region: geo.region || null, country: geo.country_code || geo.country || null,
+      });
+      await supabase.from('trusted_devices').upsert({
+        user_id: session.user.id, device_id: dev, label: deviceLabel(), last_seen: new Date().toISOString(),
+      }, { onConflict: 'user_id,device_id' });
+    })();
+  } catch (_) {}
 }
 
 export function isOfficer(roles) {

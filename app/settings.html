@@ -86,16 +86,8 @@
     <div class="set-page">
 
       <section class="set-sec">
-        <h3>Account &amp; security</h3>
+        <h3>Account</h3>
         <div class="set-row"><div class="txt"><strong>Signed in as</strong><small>${ctx.user.email}</small></div></div>
-        <div class="set-row">
-          <div class="txt"><strong>Change password</strong><small>Requires your current password.</small></div>
-          <button class="btn sm secondary" id="pw-btn">Change</button>
-        </div>
-        <div class="set-row">
-          <div class="txt"><strong>Sign out everywhere else</strong><small>Ends your session on every other device — this one stays signed in.</small></div>
-          <button class="btn sm ghost" id="signout-others">Sign out others</button>
-        </div>
         <div class="set-row">
           <div class="txt"><strong>School email</strong>
             <small id="school-status">${
@@ -104,6 +96,16 @@
                 : 'Add your UMKC address (@umkc.edu, @mail.umkc.edu, @umsystem.edu).'}</small>
           </div>
           <button class="btn sm secondary" id="school-btn">${P.school_email ? 'Update' : 'Add'}</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>LinkedIn</strong>
+            <small id="li-status">${P.linkedin_url ? P.linkedin_url : 'Link your LinkedIn profile.'}</small>
+          </div>
+          <button class="btn sm secondary" id="li-btn">${P.linkedin_url ? 'Update' : 'Add'}</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Show LinkedIn on my profile</strong><small>Adds a LinkedIn link to your card in the member directory.</small></div>
+          <label class="sw"><input type="checkbox" id="li-show" ${P.show_linkedin ? 'checked' : ''}><span class="tr"></span></label>
         </div>
       </section>
 
@@ -147,6 +149,30 @@
         <div class="set-row">
           <div class="txt"><strong>Hide my points</strong><small>Your point total stays private in the directory.</small></div>
           <label class="sw"><input type="checkbox" id="pv-pts" ${P.hide_points ? 'checked' : ''}><span class="tr"></span></label>
+        </div>
+      </section>
+
+      <section class="set-sec">
+        <h3>Security</h3>
+        <div class="set-row">
+          <div class="txt"><strong>Change password</strong><small>Requires your current password.</small></div>
+          <button class="btn sm secondary" id="pw-btn">Change</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Sign out everywhere else</strong><small>Ends your session on every other device — this one stays signed in.</small></div>
+          <button class="btn sm ghost" id="signout-others">Sign out others</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Login alerts</strong><small>An email when your account signs in from a new device. Delivery activates once email goes live.</small></div>
+          <label class="sw"><input type="checkbox" id="sec-alerts" ${notif.login_alerts ? 'checked' : ''}><span class="tr"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Trusted devices</strong><small>Devices that have signed in to your account.</small></div>
+          <button class="btn sm secondary" id="dev-btn">Manage</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Recent login activity</strong><small>When and where your account signed in.</small></div>
+          <button class="btn sm secondary" id="act-btn">View</button>
         </div>
       </section>
 
@@ -231,6 +257,141 @@
   document.getElementById('signout-others').onclick = async () => {
     const { error } = await supabase.auth.signOut({ scope: 'others' });
     toast(error ? error.message : 'Signed out on all other devices.');
+  };
+
+  // ---------- LinkedIn ----------
+  // Accepts a pasted profile link in any shape (with/without protocol or
+  // www) but only if the host is actually linkedin.com — anything else
+  // is rejected. Normalizes to https://www.linkedin.com/...
+  function normalizeLinkedIn(raw) {
+    let v = raw.trim();
+    if (!v) return { url: null };
+    if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+    let u;
+    try { u = new URL(v); } catch (_) { return { err: 'That does not look like a valid URL.' }; }
+    const host = u.hostname.toLowerCase();
+    if (host !== 'linkedin.com' && !host.endsWith('.linkedin.com')) {
+      return { err: 'That is not a LinkedIn link — it points to ' + host + '.' };
+    }
+    if (!/^\/(in|pub|company|school)\/[^/]+/i.test(u.pathname)) {
+      return { err: 'Use your profile link — e.g. linkedin.com/in/your-name.' };
+    }
+    return { url: 'https://www.linkedin.com' + u.pathname.replace(/\/+$/, '') };
+  }
+  document.getElementById('li-btn').onclick = () => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal" style="max-width:460px">
+        <h2>LinkedIn profile</h2>
+        <p style="color:var(--muted); font-size:.85rem; margin-bottom:12px">
+          Paste your profile link — only LinkedIn URLs are accepted. Leave empty to remove.</p>
+        <div class="notice" id="m-err"></div>
+        <div class="field"><label>Profile URL</label><input id="li-url" value="${P.linkedin_url || ''}" placeholder="linkedin.com/in/your-name"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const res = normalizeLinkedIn(back.querySelector('#li-url').value);
+      if (res.err) return say(res.err);
+      if (!await saveProfile({ linkedin_url: res.url })) return;
+      back.remove();
+      document.getElementById('li-status').textContent = res.url || 'Link your LinkedIn profile.';
+      document.getElementById('li-btn').textContent = res.url ? 'Update' : 'Add';
+      toast(res.url ? 'LinkedIn profile saved.' : 'LinkedIn profile removed.');
+    };
+  };
+  document.getElementById('li-show').onchange = async (e) => {
+    if (await saveProfile({ show_linkedin: e.target.checked })) toast('LinkedIn visibility updated.');
+  };
+
+  // ---------- login alerts ----------
+  document.getElementById('sec-alerts').onchange = async (e) => {
+    const prefs = { ...(P.notif_prefs || {}), login_alerts: e.target.checked };
+    if (await saveProfile({ notif_prefs: prefs })) toast('Login alert preference saved.');
+  };
+
+  // ---------- trusted devices ----------
+  const thisDevice = (() => { try { return localStorage.getItem('vsa-device-id'); } catch (_) { return null; } })();
+  const when = (ts) => new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  document.getElementById('dev-btn').onclick = async () => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" style="max-width:520px"><h2>Trusted devices</h2><div id="dev-list" style="margin-top:10px">Loading…</div>
+      <div class="row-btns"><button class="btn ghost" id="m-cancel">Close</button></div></div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    const draw = async () => {
+      const { data: devs, error } = await supabase.from('trusted_devices')
+        .select('*').eq('user_id', ctx.user.id).order('last_seen', { ascending: false });
+      const list = back.querySelector('#dev-list');
+      if (error) { list.textContent = error.message; return; }
+      if (!devs.length) { list.innerHTML = '<p style="color:var(--muted)">No devices recorded yet — they appear as you sign in.</p>'; return; }
+      list.innerHTML = devs.map(d => `
+        <div class="set-row">
+          <div class="txt">
+            <strong>${d.label || 'Unknown device'}${d.device_id === thisDevice ? ' <span class="badge-ok">this device</span>' : ''}${d.trusted ? ' <span class="badge-ok" style="background:rgba(201,155,63,.16); color:var(--gold)">trusted</span>' : ''}</strong>
+            <small>Last seen ${when(d.last_seen)} · first seen ${when(d.first_seen)}</small>
+          </div>
+          <div style="display:flex; gap:8px; flex-shrink:0">
+            <button class="btn sm secondary" data-trust="${d.device_id}">${d.trusted ? 'Untrust' : 'Trust'}</button>
+            <button class="btn sm ghost" data-forget="${d.device_id}">Remove</button>
+          </div>
+        </div>`).join('');
+      list.querySelectorAll('[data-trust]').forEach(b => b.onclick = async () => {
+        const d = devs.find(x => x.device_id === b.dataset.trust);
+        await supabase.from('trusted_devices').update({ trusted: !d.trusted })
+          .eq('user_id', ctx.user.id).eq('device_id', d.device_id);
+        draw();
+      });
+      list.querySelectorAll('[data-forget]').forEach(b => b.onclick = async () => {
+        await supabase.from('trusted_devices').delete()
+          .eq('user_id', ctx.user.id).eq('device_id', b.dataset.forget);
+        draw();
+      });
+    };
+    draw();
+  };
+
+  // ---------- recent login activity ----------
+  document.getElementById('act-btn').onclick = async () => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" style="max-width:560px">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+        <h2 style="margin:0">Recent login activity</h2>
+        <label class="sw" title="Show IP addresses"><input type="checkbox" id="show-ip"><span class="tr"></span></label>
+      </div>
+      <p style="color:var(--muted); font-size:.78rem; margin:4px 0 10px">Toggle to show IP addresses.</p>
+      <div id="act-list">Loading…</div>
+      <div class="row-btns"><button class="btn ghost" id="m-cancel">Close</button></div></div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    const { data: acts, error } = await supabase.from('login_activity')
+      .select('*').eq('user_id', ctx.user.id).order('created_at', { ascending: false }).limit(25);
+    const list = back.querySelector('#act-list');
+    if (error) { list.textContent = error.message; return; }
+    const draw = () => {
+      const showIp = back.querySelector('#show-ip').checked;
+      if (!acts.length) { list.innerHTML = '<p style="color:var(--muted)">Nothing recorded yet — logins are tracked from today onward.</p>'; return; }
+      list.innerHTML = acts.map(a => {
+        const loc = [a.city, a.region, a.country].filter(Boolean).join(', ') || 'Location unknown';
+        return `<div class="set-row"><div class="txt">
+          <strong>${when(a.created_at)}</strong>
+          <small>${loc} · ${a.device_id === thisDevice ? 'this device' : 'other device'}${a.ip ? ` · <span style="font-family:monospace">${showIp ? a.ip : '•••.•••.•••.•••'}</span>` : ''}</small>
+        </div></div>`;
+      }).join('');
+    };
+    back.querySelector('#show-ip').onchange = draw;
+    draw();
   };
 
   // ---------- school email ----------

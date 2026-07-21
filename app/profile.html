@@ -37,7 +37,7 @@
         <img class="avatar-lg" id="avatar" src="${avatarUrl}" alt="Your avatar">
         <div>
           <h2 style="margin-bottom:4px" id="head-name">${p.full_name || 'Member'}${p.alias ? ` <span style="color:var(--gold); font-size:1.05rem">“${p.alias}”</span>` : ''}</h2>
-          <p style="color:var(--muted); font-size:.9rem">${ctx.user.email} · member since ${joined}</p>
+          <p style="color:var(--muted); font-size:.9rem">${ctx.user.email} · member since ${joined}${p.linkedin_url ? ` · <a href="${p.linkedin_url}" target="_blank" rel="noopener" style="color:#0a66c2">LinkedIn</a>${p.show_linkedin ? '' : ' <span style="font-size:.75rem">(hidden from directory)</span>'}` : ''}</p>
           <p style="margin-top:8px">${ctx.roles.map(r => `<span class="badge ${r}">${r}</span>`).join('')}</p>
         </div>
       </div>
