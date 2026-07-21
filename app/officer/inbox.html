@@ -90,7 +90,7 @@
       </div>
       <div class="inbox-wrap">
         <div class="card mail-list">
-          ${emails.length === 0 ? `<div class="empty">${showArchived ? 'No archived mail.' : 'No mail yet — messages sent to @umkcvsa.org will appear here.'}</div>` : ''}
+          ${emails.length === 0 ? `<div class="empty">${showArchived ? 'No archived mail.' : 'No mail yet — messages sent to support@umkcvsa.org (or any @umkcvsa.org address) will appear here.'}</div>` : ''}
           ${emails.map(e => `
             <div class="mail-row ${e.read_at ? 'is-read' : ''} ${e.id === sel ? 'sel' : ''}" data-id="${e.id}">
               <div class="m-from">
@@ -140,7 +140,7 @@
   function composeHTML() {
     return `
       <div class="mv-head"><h2 style="margin:0">New email</h2>
-        <div class="mv-meta">Sends from contact@umkcvsa.org</div></div>
+        <div class="mv-meta">Sends from support@umkcvsa.org</div></div>
       <div class="reply-box">
         <input id="cp-to" type="email" placeholder="To (email address)">
         <input id="cp-subj" type="text" placeholder="Subject">
