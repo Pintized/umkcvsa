@@ -150,7 +150,6 @@ nav.site-nav::after {
 .navlinks a.active { color: var(--gold-bright); }
 /* about dropdown */
 .navlinks .has-sub { position: relative; display: inline-block; }
-.navlinks .has-sub .caret { font-size: 9px; margin-left: 4px; opacity: .7; }
 .navlinks .has-sub::before {
   /* invisible hover bridge between the link and the menu */
   content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 14px;
