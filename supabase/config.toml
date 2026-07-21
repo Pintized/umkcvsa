@@ -399,6 +399,16 @@ verify_jwt = false
 enabled = true
 verify_jwt = true
 
+# Resend signs webhooks itself (Svix HMAC); it cannot send a Supabase JWT.
+[functions.resend-inbound]
+enabled = true
+verify_jwt = false
+
+# Called from the portal with the signed-in user's JWT.
+[functions.inbox-send]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
