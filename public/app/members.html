@@ -10,6 +10,32 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
+<style>
+.lb-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.lb-nav { display:flex; align-items:center; gap:8px; }
+.lb-nav span { color:var(--muted); font-size:.82rem; min-width:74px; text-align:center; }
+.lb-nav button {
+  width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
+  background:var(--surface-2); color:var(--text); font-size:1rem; cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.lb-nav button:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); }
+.lb-nav button:disabled { opacity:.35; cursor:default; }
+.lb-list { margin-top:14px; display:flex; flex-direction:column; }
+.lb-row {
+  display:flex; align-items:center; gap:12px; padding:9px 10px;
+  border-bottom:1px solid var(--line); border-radius:8px;
+}
+.lb-row:last-child { border-bottom:none; }
+.lb-row.top1 { background:rgba(201, 155, 63, .12); }
+.lb-row.top2 { background:rgba(170, 180, 195, .10); }
+.lb-row.top3 { background:rgba(190, 120, 60, .10); }
+.lb-rank { width:34px; text-align:center; font-weight:700; color:var(--muted); flex-shrink:0; }
+.lb-row.top1 .lb-rank, .lb-row.top2 .lb-rank, .lb-row.top3 .lb-rank { font-size:1.15rem; }
+.lb-row img { width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+.lb-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; font-size:.92rem; }
+.lb-dong { font-weight:700; color:var(--gold); font-size:.9rem; white-space:nowrap; }
+</style>
 </head>
 <body>
 <div class="loading" id="loading">Loading members…</div>
@@ -41,12 +67,42 @@
       <img src="${m.avatar_path ? AVATAR_BASE + m.avatar_path : '/assets/img/logo-128.png'}" alt="">
       <div>
         <div class="mname">${m.full_name || 'Member'}${m.alias ? ` <span style="color:var(--gold); font-size:.85rem">“${m.alias}”</span>` : ''}${m.show_linkedin && m.linkedin_url ? ` <a href="${m.linkedin_url}" target="_blank" rel="noopener" title="LinkedIn" style="color:#0a66c2; vertical-align:-2px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.55C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.72C24 .77 23.2 0 22.22 0z"/></svg></a>` : ''}</div>
-        <div class="msub">${showPts ? m.points + ' pts' : 'points hidden'} · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+        <div class="msub">${showPts ? m.points + ' Đồng' : 'Đồng hidden'} · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
       </div>
     </div>`;
   };
 
+  // leaderboard: visible members ranked by Đồng; anyone hiding their
+  // Đồng sits out of the rankings entirely
+  const board = members.filter(m => !m.hide_points);
+  const PAGE = 10;
+  const pages = Math.max(1, Math.ceil(board.length / PAGE));
+  let lbPage = 0;
+
+  const medal = (rank) => rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+  const lbRows = () => board.slice(lbPage * PAGE, lbPage * PAGE + PAGE).map((m, i) => {
+    const rank = lbPage * PAGE + i + 1;
+    return `
+      <div class="lb-row ${rank <= 3 ? 'top' + rank : ''}">
+        <div class="lb-rank">${medal(rank)}</div>
+        <img src="${m.avatar_path ? AVATAR_BASE + m.avatar_path : '/assets/img/logo-128.png'}" alt="">
+        <div class="lb-name">${m.full_name || 'Member'}${m.alias ? ` <span style="color:var(--gold); font-size:.82rem">“${m.alias}”</span>` : ''}</div>
+        <div class="lb-dong">${m.points} Đồng</div>
+      </div>`;
+  }).join('') || '<p style="color:var(--muted)">No one on the board yet.</p>';
+
   page.innerHTML = `
+    <div class="card">
+      <div class="lb-head">
+        <h2 style="margin:0">Leaderboard</h2>
+        <div class="lb-nav">
+          <button id="lb-prev" aria-label="Previous page">‹</button>
+          <span id="lb-where"></span>
+          <button id="lb-next" aria-label="Next page">›</button>
+        </div>
+      </div>
+      <div class="lb-list" id="lb-list"></div>
+    </div>
     <div class="card">
       <h2>Member directory</h2>
       <input class="searchbar" id="search" type="search" placeholder="Search members…">
@@ -55,6 +111,16 @@
         <p style="color:var(--muted); font-size:.85rem; margin-top:14px">${(members || []).length} member${members?.length === 1 ? '' : 's'}</p>
       `}
     </div>`;
+
+  const drawBoard = () => {
+    document.getElementById('lb-list').innerHTML = lbRows();
+    document.getElementById('lb-where').textContent = `${lbPage * PAGE + 1}–${Math.min((lbPage + 1) * PAGE, board.length)} of ${board.length}`;
+    document.getElementById('lb-prev').disabled = lbPage === 0;
+    document.getElementById('lb-next').disabled = lbPage >= pages - 1;
+  };
+  document.getElementById('lb-prev').onclick = () => { if (lbPage > 0) { lbPage--; drawBoard(); } };
+  document.getElementById('lb-next').onclick = () => { if (lbPage < pages - 1) { lbPage++; drawBoard(); } };
+  drawBoard();
 
   document.getElementById('search')?.addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase();
