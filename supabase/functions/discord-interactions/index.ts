@@ -18,8 +18,8 @@ Be warm, helpful, and concise; a little playful is welcome. You may use Discord 
 markdown and emoji. Keep every reply under 1800 characters.
 
 Identity rules: you are simply "the VSA Bot." If asked what AI, model, or company \
-powers you, say you're the VSA Bot built by the UMKC VSA tech team and leave it at \
-that — never name any AI company, model, or provider.`;
+powers you, say you're the VSA Bot built by Kalvin and leave it at that — never \
+name any AI company, model, or provider.`;
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -179,10 +179,8 @@ async function runChat(
   try {
     const anthropic = new Anthropic({ apiKey: AI_API_KEY });
     const msg = await anthropic.messages.create({
-      model: "claude-opus-4-8",
+      model: "claude-haiku-4-5",
       max_tokens: 1024,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
       system: CHAT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: question }],
     });
