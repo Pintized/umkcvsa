@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+.set-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px; align-items:start; }
+.set-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
+.set-row:last-child { border-bottom:none; }
+.set-row .txt { min-width:0; }
+.set-row .txt strong { display:block; font-size:.92rem; }
+.set-row .txt small { color:var(--muted); font-size:.8rem; line-height:1.4; display:block; margin-top:2px; }
+.sw { position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0; }
+.sw input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:1; }
+.sw .tr {
+  position:absolute; inset:0; border-radius:999px; background:var(--surface-2);
+  border:1px solid var(--line); transition:background .18s, border-color .18s;
+}
+.sw .tr::after {
+  content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%;
+  background:var(--muted); transition:transform .18s, background .18s;
+}
+.sw input:checked + .tr { background:rgba(201, 155, 63, .25); border-color:var(--gold); }
+.sw input:checked + .tr::after { transform:translateX(18px); background:var(--gold); }
+.badge-ok { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; background:rgba(47, 158, 99, .16); color:var(--ok); }
+.badge-wait { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; background:rgba(232, 163, 61, .16); color:#b97b18; }
+.danger-card { border:1px solid rgba(200, 32, 47, .4); }
+.danger-card h3 { color:var(--red); }
+.soon-note { background:rgba(201, 155, 63, .1); border:1px solid rgba(201, 155, 63, .35); border-radius:10px; padding:9px 12px; font-size:.8rem; color:var(--muted); margin-bottom:10px; }
+.tb-toast {
+  position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
+  background:var(--surface); color:var(--text); border:1px solid rgba(201, 155, 63, .5);
+  border-radius:10px; padding:10px 18px; font-size:.86rem; font-weight:600;
+  box-shadow:var(--shadow-lg); opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+}
+.tb-toast.show { opacity:1; transform:translate(-50%, 0); }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading settings…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Settings');
+  const P = ctx.profile || {};
+  const SCHOOL_RE = /@(umkc\.edu|mail\.umkc\.edu|umsystem\.edu)$/i;
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'tb-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2600);
+  }
+  const saveProfile = async (patch) => {
+    const { error } = await supabase.from('profiles').update(patch).eq('id', ctx.user.id);
+    if (error) { toast(error.message); return false; }
+    Object.assign(P, patch);
+    return true;
+  };
+
+  const themePref = (() => { try { return localStorage.getItem('vsa-theme') || 'light'; } catch (e) { return 'light'; } })();
+  const notif = P.notif_prefs || {};
+  const schoolVerified = !!P.school_email_verified_at;
+
+  page.innerHTML = `
+    <div class="set-grid">
+
+      <div class="card">
+        <h3 style="margin-bottom:10px">Account &amp; security</h3>
+        <div class="set-row"><div class="txt"><strong>Signed in as</strong><small>${ctx.user.email}</small></div></div>
+        <div class="set-row">
+          <div class="txt"><strong>Change password</strong><small>Requires your current password.</small></div>
+          <button class="btn sm secondary" id="pw-btn">Change</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Sign out everywhere else</strong><small>Ends your session on every other device — this one stays signed in.</small></div>
+          <button class="btn sm ghost" id="signout-others">Sign out others</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>School email</strong>
+            <small id="school-status">${
+              P.school_email
+                ? `${P.school_email} ${schoolVerified ? '<span class="badge-ok">verified</span>' : '<span class="badge-wait">pending</span>'}`
+                : 'Add your UMKC address (@umkc.edu, @mail.umkc.edu, @umsystem.edu).'}</small>
+          </div>
+          <button class="btn sm secondary" id="school-btn">${P.school_email ? 'Update' : 'Add'}</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px">Preferences</h3>
+        <div class="set-row">
+          <div class="txt"><strong>Theme</strong><small>"System" follows your device's light/dark setting.</small></div>
+          <select id="theme-sel" class="rt-btn" style="height:36px">
+            ${['light', 'dark', 'system'].map(t => `<option value="${t}" ${themePref === t ? 'selected' : ''}>${t[0].toUpperCase() + t.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Language</strong><small>Switches the portal menus now; page content is being translated over time.</small></div>
+          <select id="lang-sel" class="rt-btn" style="height:36px">
+            ${[['en', 'English'], ['vi', 'Tiếng Việt'], ['es', 'Español'], ['zh', '中文']].map(([v, l]) =>
+              `<option value="${v}" ${(P.language || 'en') === v ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px">Notifications</h3>
+        <div class="soon-note">Email delivery isn't switched on yet — your choices are saved and take effect the moment it goes live.</div>
+        ${[
+          ['event_reminders', 'Event reminders', 'An email the day before an event you RSVP’d to.'],
+          ['task_assigned', 'Task assignments', 'When an officer assigns a task to you.'],
+          ['announcements', 'Announcements', 'When a new announcement is posted.'],
+        ].map(([k, t, d]) => `
+          <div class="set-row">
+            <div class="txt"><strong>${t}</strong><small>${d}</small></div>
+            <label class="sw"><input type="checkbox" data-notif="${k}" ${notif[k] !== false ? 'checked' : ''}><span class="tr"></span></label>
+          </div>`).join('')}
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px">Privacy</h3>
+        <div class="set-row">
+          <div class="txt"><strong>Hide me from the member directory</strong><small>Officers can still see the full roster.</small></div>
+          <label class="sw"><input type="checkbox" id="pv-dir" ${P.hide_directory ? 'checked' : ''}><span class="tr"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Hide my points</strong><small>Your point total stays private in the directory.</small></div>
+          <label class="sw"><input type="checkbox" id="pv-pts" ${P.hide_points ? 'checked' : ''}><span class="tr"></span></label>
+        </div>
+      </div>
+
+      <div class="card danger-card" style="grid-column:1 / -1">
+        <h3 style="margin-bottom:10px">Data &amp; account</h3>
+        <div class="set-row">
+          <div class="txt"><strong>Download my data</strong><small>Your profile, RSVPs, achievements, and orders as a JSON file.</small></div>
+          <button class="btn sm secondary" id="dl-btn">Download</button>
+        </div>
+        <div class="set-row">
+          <div class="txt"><strong>Delete my account</strong><small>Permanently removes your account, profile, RSVPs, and check-ins. This cannot be undone.</small></div>
+          <button class="btn sm ghost" id="del-btn" style="color:var(--red); border-color:rgba(200,32,47,.5)">Delete…</button>
+        </div>
+      </div>
+
+    </div>`;
+
+  // ---------- theme ----------
+  document.getElementById('theme-sel').onchange = (e) => {
+    const v = e.target.value;
+    try { localStorage.setItem('vsa-theme', v); } catch (_) {}
+    const dark = v === 'dark' || (v === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark-mode', dark);
+    toast('Theme updated.');
+  };
+
+  // ---------- language ----------
+  document.getElementById('lang-sel').onchange = async (e) => {
+    if (await saveProfile({ language: e.target.value })) location.reload();
+  };
+
+  // ---------- notifications ----------
+  page.querySelectorAll('[data-notif]').forEach(cb => cb.onchange = async () => {
+    const prefs = { ...(P.notif_prefs || {}) };
+    prefs[cb.dataset.notif] = cb.checked;
+    if (await saveProfile({ notif_prefs: prefs })) toast('Notification preferences saved.');
+  });
+
+  // ---------- privacy ----------
+  document.getElementById('pv-dir').onchange = async (e) => {
+    if (await saveProfile({ hide_directory: e.target.checked })) toast('Directory visibility updated.');
+  };
+  document.getElementById('pv-pts').onchange = async (e) => {
+    if (await saveProfile({ hide_points: e.target.checked })) toast('Points visibility updated.');
+  };
+
+  // ---------- change password ----------
+  document.getElementById('pw-btn').onclick = () => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal" style="max-width:420px">
+        <h2>Change password</h2>
+        <div class="notice" id="m-err"></div>
+        <div class="field"><label>Current password</label><input type="password" id="pw-cur" autocomplete="current-password"></div>
+        <div class="field"><label>New password</label><input type="password" id="pw-new" autocomplete="new-password" minlength="8"></div>
+        <div class="field"><label>Repeat new password</label><input type="password" id="pw-rep" autocomplete="new-password"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">Change password</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const cur = back.querySelector('#pw-cur').value;
+      const nw = back.querySelector('#pw-new').value;
+      if (nw.length < 8) return say('New password must be at least 8 characters.');
+      if (nw !== back.querySelector('#pw-rep').value) return say('New passwords do not match.');
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email: ctx.user.email, password: cur });
+      if (authErr) return say('Current password is incorrect.');
+      const { error } = await supabase.auth.updateUser({ password: nw });
+      if (error) return say(error.message);
+      back.remove();
+      toast('Password changed.');
+    };
+  };
+
+  // ---------- sign out everywhere else ----------
+  document.getElementById('signout-others').onclick = async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'others' });
+    toast(error ? error.message : 'Signed out on all other devices.');
+  };
+
+  // ---------- school email ----------
+  document.getElementById('school-btn').onclick = () => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal" style="max-width:440px">
+        <h2>School email</h2>
+        <p style="color:var(--muted); font-size:.85rem; margin-bottom:12px">
+          Must be a UMKC address: @umkc.edu, @mail.umkc.edu, or @umsystem.edu.</p>
+        <div class="notice" id="m-err"></div>
+        <div class="field"><label>School email</label><input type="email" id="se-email" value="${P.school_email || ''}" placeholder="you@umsystem.edu"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Cancel</button>
+          <button class="btn" id="m-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      const email = back.querySelector('#se-email').value.trim().toLowerCase();
+      if (!SCHOOL_RE.test(email)) return say('That is not a UMKC address.');
+      // if it IS the (already confirmed) login email, it verifies instantly
+      const auto = email === (ctx.user.email || '').toLowerCase();
+      const ok = await saveProfile({
+        school_email: email,
+        school_email_verified_at: auto ? new Date().toISOString() : null,
+      });
+      if (!ok) return;
+      back.remove();
+      document.getElementById('school-status').innerHTML =
+        `${email} ${auto ? '<span class="badge-ok">verified</span>' : '<span class="badge-wait">pending</span>'}`;
+      toast(auto ? 'School email verified — it matches your sign-in email.' : 'Saved. A verification email will arrive once email delivery goes live.');
+    };
+  };
+
+  // ---------- download my data ----------
+  document.getElementById('dl-btn').onclick = async () => {
+    const [rsvps, awards, orders] = await Promise.all([
+      supabase.from('rsvps').select('status, created_at, events(name, event_date)').eq('user_id', ctx.user.id),
+      supabase.from('achievement_awards').select('points_awarded, created_at, achievements(name)').eq('user_id', ctx.user.id),
+      supabase.from('orders').select('total, payment_status, created_at').eq('user_id', ctx.user.id),
+    ]);
+    const data = {
+      exported_at: new Date().toISOString(),
+      account: { email: ctx.user.email, school_email: P.school_email, created_at: ctx.user.created_at },
+      profile: {
+        full_name: P.full_name, points: P.points, language: P.language,
+        hide_directory: P.hide_directory, hide_points: P.hide_points,
+      },
+      rsvps: rsvps.data || [],
+      achievements: awards.data || [],
+      orders: orders.data || [],
+    };
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    a.download = 'umkcvsa-my-data.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Your data export has downloaded.');
+  };
+
+  // ---------- delete account ----------
+  document.getElementById('del-btn').onclick = () => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal" style="max-width:440px">
+        <h2 style="color:var(--red)">Delete account</h2>
+        <p style="color:var(--muted); font-size:.9rem; margin-bottom:12px">
+          This permanently removes your account and everything tied to it —
+          profile, RSVPs, check-ins, achievements. There is no undo.</p>
+        <div class="notice" id="m-err"></div>
+        <div class="field"><label>Type DELETE to confirm</label><input id="del-confirm" autocomplete="off" placeholder="DELETE"></div>
+        <div class="row-btns">
+          <button class="btn ghost" id="m-cancel">Keep my account</button>
+          <button class="btn" id="m-save">Delete forever</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-save').onclick = async () => {
+      const say = (m) => { const n = back.querySelector('#m-err'); n.textContent = m; n.className = 'notice error'; };
+      if (back.querySelector('#del-confirm').value.trim() !== 'DELETE') return say('Type DELETE (all caps) to confirm.');
+      const { error } = await supabase.rpc('delete_my_account');
+      if (error) return say(error.message);
+      await supabase.auth.signOut();
+      location.replace('/');
+    };
+  };
+</script>
+</body>
+</html>

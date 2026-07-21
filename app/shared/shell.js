@@ -25,6 +25,7 @@ const ICONS = {
   megaphone: SVG('<path d="M3.6 10v4a1.4 1.4 0 0 0 1.4 1.4h2L18.4 20V4L7 8.6H5A1.4 1.4 0 0 0 3.6 10Z"/><path d="M8.4 15.8l.8 4.2h2.6l-.8-4.4"/>'),
   tag: SVG('<path d="M3.6 11.4V4.6a1 1 0 0 1 1-1h6.8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8l-5.8 5.8a2 2 0 0 1-2.8 0l-7.2-7.2a2 2 0 0 1-.6-1.4Z"/><circle cx="8.4" cy="8.4" r="1.5" fill="currentColor" stroke="none"/>'),
   shield: SVG('<path d="M12 3.6 18.8 6v5.2c0 4.4-2.9 7.3-6.8 9.2-3.9-1.9-6.8-4.8-6.8-9.2V6L12 3.6Z"/><path d="m9.2 11.6 2 2 3.6-3.8"/>'),
+  gear: SVG('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5"/>'),
 };
 
 const MEMBER_LINKS = [
@@ -37,8 +38,39 @@ const MEMBER_LINKS = [
 
 // personal configuration pages, separate from day-to-day functions
 const SETTINGS_LINKS = [
+  { href: '/app/settings.html',     label: 'Settings',     icon: 'gear' },
   { href: '/app/profile.html',      label: 'My Profile',   icon: 'user' },
 ];
+
+// portal chrome translations (sidebar, sections, log out).
+// Page content is translated progressively; chrome switches now.
+const I18N = {
+  vi: {
+    Member: 'Thành viên', Officer: 'Ban cán sự', Admin: 'Quản trị', Settings: 'Cài đặt',
+    Dashboard: 'Trang chính', Calendar: 'Lịch', Achievements: 'Thành tích', Rewards: 'Phần thưởng',
+    Members: 'Thành viên', 'My Profile': 'Hồ sơ của tôi', Events: 'Sự kiện', Tasks: 'Nhiệm vụ',
+    Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động',
+    Roles: 'Vai trò', 'Home Page': 'Trang chủ', 'E-Board': 'Ban chấp hành', Store: 'Cửa hàng',
+    Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất',
+  },
+  es: {
+    Member: 'Miembro', Officer: 'Oficiales', Admin: 'Administración', Settings: 'Configuración',
+    Dashboard: 'Panel', Calendar: 'Calendario', Achievements: 'Logros', Rewards: 'Recompensas',
+    Members: 'Miembros', 'My Profile': 'Mi perfil', Events: 'Eventos', Tasks: 'Tareas',
+    Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad',
+    Roles: 'Roles', 'Home Page': 'Página de inicio', 'E-Board': 'Directiva', Store: 'Tienda',
+    Gallery: 'Galería', 'Log out': 'Cerrar sesión',
+  },
+  zh: {
+    Member: '成员', Officer: '干部', Admin: '管理', Settings: '设置',
+    Dashboard: '主页', Calendar: '日历', Achievements: '成就', Rewards: '奖励',
+    Members: '成员', 'My Profile': '我的资料', Events: '活动', Tasks: '任务',
+    Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志',
+    Roles: '角色', 'Home Page': '首页', 'E-Board': '执行委员会', Store: '商店',
+    Gallery: '相册', 'Log out': '退出登录',
+  },
+};
+const tr = (lang, s) => (I18N[lang] && I18N[lang][s]) || s;
 
 const OFFICER_LINKS = [
   { href: '/app/officer/events.html',    label: 'Events',    icon: 'pin' },
@@ -90,6 +122,7 @@ function animateStats(root) {
 
 export function renderShell(ctx, pageTitle) {
   const officer = isOfficer(ctx.roles);
+  const lang = ctx.profile?.language || 'en';
   const displayName = ctx.profile?.full_name || ctx.user.email;
   const avatar = ctx.profile?.avatar_path
     ? `https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/${ctx.profile.avatar_path}`
@@ -103,12 +136,12 @@ export function renderShell(ctx, pageTitle) {
           <span class="brand-name">UMKC VSA</span>
         </a>
         <nav>
-          <div class="nav-label">Member</div>
-          ${MEMBER_LINKS.map(l => navLink(l)).join('')}
-          ${officer ? `<div class="nav-label">Officer</div>${OFFICER_LINKS.map(l => navLink(l, true)).join('')}` : ''}
-          ${ctx.roles.includes('admin') ? `<div class="nav-label">Admin</div>${ADMIN_LINKS.map(l => navLink(l, true)).join('')}` : ''}
-          <div class="nav-label">Settings</div>
-          ${SETTINGS_LINKS.map(l => navLink(l)).join('')}
+          <div class="nav-label">${tr(lang, 'Member')}</div>
+          ${MEMBER_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) })).join('')}
+          ${officer ? `<div class="nav-label">${tr(lang, 'Officer')}</div>${OFFICER_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) }, true)).join('')}` : ''}
+          ${ctx.roles.includes('admin') ? `<div class="nav-label">${tr(lang, 'Admin')}</div>${ADMIN_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) }, true)).join('')}` : ''}
+          <div class="nav-label">${tr(lang, 'Settings')}</div>
+          ${SETTINGS_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) })).join('')}
         </nav>
         <div class="foot">Vietnamese Student Association<br>at UMKC</div>
       </aside>
@@ -124,7 +157,7 @@ export function renderShell(ctx, pageTitle) {
               <img src="${avatar}" alt="">
               <span class="name">${displayName}</span>
             </div>
-            <button class="btn ghost" id="logout-btn">Log out</button>
+            <button class="btn ghost" id="logout-btn">${tr(lang, 'Log out')}</button>
           </div>
         </header>
         <main class="content" id="page-content"></main>

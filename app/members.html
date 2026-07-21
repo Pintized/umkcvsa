@@ -14,7 +14,7 @@
 <body>
 <div class="loading" id="loading">Loading members…</div>
 <script type="module">
-  import { requireLogin } from '/app/shared/guard.js';
+  import { requireLogin, isOfficer } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
 
@@ -23,20 +23,28 @@
   const ctx = await requireLogin();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Members');
+  const officer = isOfficer(ctx.roles);
 
-  const { data: members, error } = await supabase
+  const { data: all, error } = await supabase
     .from('profiles')
-    .select('id, full_name, first_name, avatar_path, points, created_at')
+    .select('id, full_name, first_name, avatar_path, points, created_at, hide_directory, hide_points')
     .order('points', { ascending: false });
 
-  const card = (m) => `
+  // privacy: hidden members drop out for regular members (officers see all;
+  // you always see yourself); hidden points show as "points hidden"
+  const members = (all || []).filter(m => officer || m.id === ctx.user.id || !m.hide_directory);
+
+  const card = (m) => {
+    const showPts = officer || m.id === ctx.user.id || !m.hide_points;
+    return `
     <div class="member-card" data-name="${(m.full_name || '').toLowerCase()}">
       <img src="${m.avatar_path ? AVATAR_BASE + m.avatar_path : '/assets/img/logo-128.png'}" alt="">
       <div>
         <div class="mname">${m.full_name || 'Member'}</div>
-        <div class="msub">${m.points} pts · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+        <div class="msub">${showPts ? m.points + ' pts' : 'points hidden'} · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
       </div>
     </div>`;
+  };
 
   page.innerHTML = `
     <div class="card">
