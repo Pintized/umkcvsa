@@ -11,3 +11,4 @@ Desktop.ini
 # Node / tooling (future phases)
 node_modules/
 supabase/.temp/
+!.env.example

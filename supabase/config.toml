@@ -389,6 +389,16 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Discord signs requests itself (Ed25519); it cannot send a Supabase JWT.
+[functions.discord-interactions]
+enabled = true
+verify_jwt = false
+
+# Invoked by pg_cron with the anon key, so JWT verification stays on.
+[functions.discord-announce]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

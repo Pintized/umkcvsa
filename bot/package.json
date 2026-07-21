@@ -1,0 +1,15 @@
+{
+  "name": "umkcvsa-discord-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gateway half of the UMKC VSA Discord bot: welcomes, live events. Slash commands are served by the Supabase edge function.",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "register": "node --env-file=.env scripts/register-commands.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
+    "discord.js": "^14.16.3"
+  }
+}
