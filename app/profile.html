@@ -38,6 +38,7 @@
         <div>
           <h2 style="margin-bottom:4px" id="head-name">${p.full_name || 'Member'}${p.alias ? ` <span style="color:var(--gold); font-size:1.05rem">“${p.alias}”</span>` : ''}</h2>
           <p style="color:var(--muted); font-size:.9rem">${ctx.user.email} · member since ${joined}${p.linkedin_url ? ` · <a href="${p.linkedin_url}" target="_blank" rel="noopener" style="color:#0a66c2">LinkedIn</a>${p.show_linkedin ? '' : ' <span style="font-size:.75rem">(hidden from directory)</span>'}` : ''}</p>
+          <p style="color:var(--muted); font-size:.85rem; margin-top:2px" id="acad-line"></p>
           <p style="margin-top:8px">${ctx.roles.map(r => `<span class="badge ${r}">${r}</span>`).join('')}</p>
         </div>
       </div>
@@ -59,6 +60,30 @@
           <input type="text" id="alias" value="${p.alias || ''}" maxlength="24" placeholder="what people call you">
         </div>
         <div class="field">
+          <label for="majors">Major(s)</label>
+          <input type="text" id="majors" value="${p.majors || ''}" maxlength="120" placeholder="e.g. Computer Science, Biology">
+        </div>
+        <div class="field">
+          <label for="minors">Minor(s)</label>
+          <input type="text" id="minors" value="${p.minors || ''}" maxlength="120" placeholder="e.g. Mathematics">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="grad-term">Expected graduation</label>
+            <select id="grad-term">
+              <option value="">— semester —</option>
+              ${['Spring', 'Summer', 'Fall'].map(t => `<option ${p.grad_term === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label for="grad-year">&nbsp;</label>
+            <select id="grad-year">
+              <option value="">— year —</option>
+              ${Array.from({ length: 9 }, (_, i) => 2025 + i).map(y => `<option ${p.grad_year === y ? 'selected' : ''}>${y}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="field">
           <label for="pic">Profile picture (JPG/PNG — large photos are shrunk automatically)</label>
           <input type="file" id="pic" accept="image/png,image/jpeg,image/webp">
         </div>
@@ -69,6 +94,19 @@
   const notice = document.getElementById('notice');
   const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
 
+  const acadLine = (q) => [
+    q.majors,
+    q.minors ? `minor: ${q.minors}` : '',
+    q.grad_term && q.grad_year ? `Class of ${q.grad_term} ${q.grad_year}` : '',
+  ].filter(Boolean).join(' · ');
+  const renderAcad = (q) => {
+    const el = document.getElementById('acad-line');
+    const s = acadLine(q);
+    el.textContent = s ? `🎓 ${s}` : '';
+    el.style.display = s ? '' : 'none';
+  };
+  renderAcad(p);
+
   document.getElementById('profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('save');
@@ -78,7 +116,18 @@
       if (alias && !/^[\p{L}\p{N} .'-]{2,24}$/u.test(alias)) {
         throw new Error('Alias must be 2–24 characters (letters, numbers, spaces).');
       }
-      const updates = { alias: alias || null };
+      const gradTerm = document.getElementById('grad-term').value || null;
+      const gradYear = parseInt(document.getElementById('grad-year').value, 10) || null;
+      if (!!gradTerm !== !!gradYear) {
+        throw new Error('Pick both a graduation semester and year (or leave both blank).');
+      }
+      const updates = {
+        alias: alias || null,
+        majors: document.getElementById('majors').value.trim() || null,
+        minors: document.getElementById('minors').value.trim() || null,
+        grad_term: gradTerm,
+        grad_year: gradYear,
+      };
 
       const file = document.getElementById('pic').files[0];
       if (file) {
@@ -101,6 +150,8 @@
       }
 
       say('Profile saved!', 'ok');
+      Object.assign(ctx.profile, updates);
+      renderAcad(ctx.profile);
       ctx.profile.alias = updates.alias;
       document.getElementById('head-name').innerHTML =
         `${ctx.profile.full_name || 'Member'}${updates.alias ? ` <span style="color:var(--gold); font-size:1.05rem">“${updates.alias}”</span>` : ''}`;
