@@ -26,6 +26,7 @@ const ICONS = {
   tag: SVG('<path d="M3.6 11.4V4.6a1 1 0 0 1 1-1h6.8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8l-5.8 5.8a2 2 0 0 1-2.8 0l-7.2-7.2a2 2 0 0 1-.6-1.4Z"/><circle cx="8.4" cy="8.4" r="1.5" fill="currentColor" stroke="none"/>'),
   shield: SVG('<path d="M12 3.6 18.8 6v5.2c0 4.4-2.9 7.3-6.8 9.2-3.9-1.9-6.8-4.8-6.8-9.2V6L12 3.6Z"/><path d="m9.2 11.6 2 2 3.6-3.8"/>'),
   gear: SVG('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5"/>'),
+  mail: SVG('<rect x="3.2" y="5.4" width="17.6" height="13.2" rx="1.8"/><path d="m4.4 7 7.6 5.6L19.6 7"/>'),
 };
 
 const MEMBER_LINKS = [
@@ -49,7 +50,7 @@ const I18N = {
     Member: 'Thành viên', Officer: 'Ban cán sự', Admin: 'Quản trị', Settings: 'Cài đặt',
     Dashboard: 'Trang chính', Calendar: 'Lịch', Achievements: 'Thành tích', Rewards: 'Phần thưởng',
     Members: 'Thành viên', 'My Profile': 'Hồ sơ của tôi', Events: 'Sự kiện', Tasks: 'Nhiệm vụ',
-    Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động',
+    Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động', Inbox: 'Hộp thư',
     Roles: 'Vai trò', 'Home Page': 'Trang chủ', 'E-Board': 'Ban chấp hành', Store: 'Cửa hàng',
     Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất', 'Main site': 'Trang chính',
   },
@@ -57,7 +58,7 @@ const I18N = {
     Member: 'Miembro', Officer: 'Oficiales', Admin: 'Administración', Settings: 'Configuración',
     Dashboard: 'Panel', Calendar: 'Calendario', Achievements: 'Logros', Rewards: 'Recompensas',
     Members: 'Miembros', 'My Profile': 'Mi perfil', Events: 'Eventos', Tasks: 'Tareas',
-    Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad',
+    Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad', Inbox: 'Buzón',
     Roles: 'Roles', 'Home Page': 'Página de inicio', 'E-Board': 'Directiva', Store: 'Tienda',
     Gallery: 'Galería', 'Log out': 'Cerrar sesión', 'Main site': 'Sitio principal',
   },
@@ -65,7 +66,7 @@ const I18N = {
     Member: '成员', Officer: '干部', Admin: '管理', Settings: '设置',
     Dashboard: '主页', Calendar: '日历', Achievements: '成就', Rewards: '奖励',
     Members: '成员', 'My Profile': '我的资料', Events: '活动', Tasks: '任务',
-    Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志',
+    Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志', Inbox: '收件箱',
     Roles: '角色', 'Home Page': '首页', 'E-Board': '执行委员会', Store: '商店',
     Gallery: '相册', 'Log out': '退出登录', 'Main site': '主网站',
   },
@@ -78,6 +79,7 @@ const OFFICER_LINKS = [
   { href: '/app/officer/inventory.html', label: 'Inventory', icon: 'box' },
   { href: '/app/officer/finance.html',   label: 'Finance',   icon: 'coin' },
   { href: '/app/officer/notes.html',     label: 'Notes',     icon: 'note' },
+  { href: '/app/officer/inbox.html',     label: 'Inbox',     icon: 'mail' },
   { href: '/app/officer/audit.html',     label: 'Audit Log', icon: 'scope' },
   { href: '/app/officer/roles.html',     label: 'Roles',     icon: 'shield' },
 ];
