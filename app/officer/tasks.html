@@ -27,20 +27,22 @@
 .board {
   position:absolute; inset:0; overflow:hidden;
   border:none; border-radius:0;
-  background:var(--surface-2);
-  cursor:grab; touch-action:none; user-select:none;
-}
-.board.panning { cursor:grabbing; }
-.board-canvas {
-  position:absolute; top:0; left:0; width:8000px; height:8000px;
-  transform-origin:0 0; will-change:transform;
+  background-color:var(--surface-2);
+  /* the grid lives on the board so it never runs out — applyCam()
+     shifts/scales background-position/size with the camera */
   --grid-line: rgba(22, 49, 77, .10);
   background-image:
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size:40px 40px;
+  cursor:grab; touch-action:none; user-select:none;
 }
-html.dark-mode .board-canvas { --grid-line: rgba(201, 155, 63, .10); }
+html.dark-mode .board { --grid-line: rgba(201, 155, 63, .10); }
+.board.panning { cursor:grabbing; }
+.board-canvas {
+  position:absolute; top:0; left:0; width:8000px; height:8000px;
+  transform-origin:0 0; will-change:transform;
+}
 .board-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.95rem; pointer-events:none; }
 
 .zoom-controls {
@@ -522,6 +524,11 @@ body.list-mode .listview { display:block; }
     const c = document.getElementById('boardCanvas');
     if (!c) return;
     c.style.transform = `translate(${CAM.x}px,${CAM.y}px) scale(${CAM.scale})`;
+    // keep the board-wide grid glued to the canvas
+    const b = document.getElementById('board');
+    const cell = 40 * CAM.scale;
+    b.style.backgroundSize = `${cell}px ${cell}px`;
+    b.style.backgroundPosition = `${CAM.x}px ${CAM.y}px`;
     document.getElementById('zoomLevel').textContent = Math.round(CAM.scale * 100) + '%';
     renderMinimap();
   }
