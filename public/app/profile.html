@@ -146,13 +146,23 @@
   // table — free text never reaches the profile (a DB trigger rejects
   // anything off-list as a backstop)
   const { data: programs } = await supabase.from('academic_programs')
-    .select('name, is_major, is_minor').order('name');
+    .select('name, is_major, is_minor, degree_types').order('name');
+  const DEGREES = {
+    BA: 'Bachelor of Arts', BS: 'Bachelor of Science', BBA: 'Bachelor of Business Administration',
+    BFA: 'Bachelor of Fine Arts', BM: 'Bachelor of Music', BME: 'Bachelor of Music Education',
+    BSN: 'Bachelor of Science in Nursing', BArch: 'Bachelor of Architecture',
+    BIT: 'Bachelor of Information Technology', BHS: 'Bachelor of Health Sciences',
+    BLA: 'Bachelor of Liberal Arts',
+  };
+  // options: [{name, types}] — a program with several degree types asks
+  // which one after you pick it; a single type is appended automatically
   function chipPicker(rootId, options, initial) {
     const root = document.getElementById(rootId);
     const chips = root.querySelector('.ac-chips');
     const input = root.querySelector('input');
     const menu = root.querySelector('.ac-menu');
-    const selected = initial.filter(v => options.includes(v));
+    const baseOf = (v) => v.replace(/ \([A-Za-z]+\)$/, '');
+    const selected = initial.filter(v => options.some(o => o.name === baseOf(v)));
     const draw = () => {
       chips.innerHTML = selected.map(v =>
         `<span class="ac-chip">${v}<button type="button" data-x="${v}" aria-label="Remove ${v}">×</button></span>`).join('');
@@ -160,14 +170,24 @@
         selected.splice(selected.indexOf(b.dataset.x), 1); draw();
       });
     };
+    const add = (entry) => { selected.push(entry); input.value = ''; draw(); input.focus(); openMenu(); };
+    const askType = (opt) => {
+      menu.innerHTML = `<div class="none">${opt.name} — which degree?</div>`
+        + opt.types.map(t => `<button type="button" data-t="${t}">${t} — ${DEGREES[t] || t}</button>`).join('');
+      menu.querySelectorAll('[data-t]').forEach(b => b.onclick = () => add(`${opt.name} (${b.dataset.t})`));
+      menu.classList.add('open');
+    };
     const openMenu = () => {
       const q = input.value.trim().toLowerCase();
-      const hits = options.filter(o => !selected.includes(o) && o.toLowerCase().includes(q)).slice(0, 30);
+      const hits = options.filter(o => !selected.some(v => baseOf(v) === o.name)
+        && o.name.toLowerCase().includes(q)).slice(0, 30);
       menu.innerHTML = hits.length
-        ? hits.map(o => `<button type="button">${o}</button>`).join('')
+        ? hits.map((o, i) => `<button type="button" data-i="${i}">${o.name}</button>`).join('')
         : '<div class="none">No matching program.</div>';
-      menu.querySelectorAll('button').forEach(b => b.onclick = () => {
-        selected.push(b.textContent); input.value = ''; draw(); input.focus(); openMenu();
+      menu.querySelectorAll('[data-i]').forEach(b => b.onclick = () => {
+        const opt = hits[+b.dataset.i];
+        if (opt.types.length > 1) askType(opt);
+        else add(opt.types.length ? `${opt.name} (${opt.types[0]})` : opt.name);
       });
       menu.classList.add('open');
     };
@@ -183,10 +203,10 @@
     return { value: () => selected.join('; ') || null };
   }
   const majorsPick = chipPicker('majors-pick',
-    (programs || []).filter(x => x.is_major).map(x => x.name),
+    (programs || []).filter(x => x.is_major).map(x => ({ name: x.name, types: x.degree_types || [] })),
     (p.majors || '').split('; ').filter(Boolean));
   const minorsPick = chipPicker('minors-pick',
-    (programs || []).filter(x => x.is_minor).map(x => x.name),
+    (programs || []).filter(x => x.is_minor).map(x => ({ name: x.name, types: [] })),
     (p.minors || '').split('; ').filter(Boolean));
 
   document.getElementById('profile-form').addEventListener('submit', async (e) => {
