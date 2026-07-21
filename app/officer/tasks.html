@@ -12,22 +12,24 @@
 <link rel="stylesheet" href="/app/shared/app.css">
 <style>
 /* ===== Task board (ported from the legacy canvas board, Lacquer & Gold skin) ===== */
-.tb-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.content { position:relative; }
+.tb-head {
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px;
+  position:relative; z-index:46;
+  pointer-events:none; /* the board underneath stays pannable; controls re-enable below */
+}
 .tb-head p { color:var(--muted); font-size:.85rem; margin-top:2px; }
-.tb-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.tb-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; pointer-events:auto; }
 
 .task-layout { display:block; }
 
-/* ---- infinite canvas board: full-bleed across the content area ---- */
+/* ---- infinite canvas board: fills the entire content area ---- */
 .board {
-  position:relative; overflow:hidden;
-  height:calc(100vh - 232px); min-height:440px;
-  margin:0 -28px -28px;
-  border:none; border-radius:0; border-top:1px solid var(--line);
+  position:absolute; inset:0; overflow:hidden;
+  border:none; border-radius:0;
   background:var(--surface-2);
   cursor:grab; touch-action:none; user-select:none;
 }
-@media (max-width:900px) { .board { margin:0 -18px -18px; } }
 .board.panning { cursor:grabbing; }
 .board-canvas {
   position:absolute; top:0; left:0; width:8000px; height:8000px;
@@ -54,7 +56,7 @@ html.dark-mode .board-canvas { --grid-line: rgba(201, 155, 63, .10); }
 .zoom-controls button:hover { background:var(--surface-2); color:var(--gold); }
 .zoom-controls #zoomLevel { min-width:42px; text-align:center; color:var(--muted); }
 
-.board-search { position:absolute; right:12px; top:12px; z-index:40; width:220px; }
+.board-search { position:absolute; right:12px; top:78px; z-index:40; width:220px; }
 .board-search input {
   width:100%; box-sizing:border-box; padding:7px 11px; border:1px solid var(--line);
   border-radius:10px; background:var(--surface); color:var(--text); font-size:.82rem; box-shadow:var(--shadow-sm);
@@ -159,7 +161,7 @@ html:not(.dark-mode) .status-open { color:#2a6099; }
 
 /* ---- floating task list: drag it anywhere on the board ---- */
 .task-list-panel {
-  position:absolute; top:16px; left:16px; z-index:45;
+  position:absolute; top:78px; left:16px; z-index:45;
   width:272px; max-height:calc(100% - 32px); overflow-y:auto;
   border:1px solid var(--line); border-radius:14px;
   background:var(--surface); box-shadow:var(--shadow-lg); padding:12px 14px;
