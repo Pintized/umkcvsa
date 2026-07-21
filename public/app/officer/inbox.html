@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inbox | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .inbox-wrap { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
+  .mail-list { max-height: 72vh; overflow-y: auto; padding: 0; }
+  .mail-row { padding: 12px 14px; border-bottom: 1px solid var(--line, rgba(128,128,128,.2)); cursor: pointer; }
+  .mail-row:hover { background: rgba(128,128,128,.08); }
+  .mail-row.sel { background: rgba(200,32,47,.08); border-left: 3px solid var(--gold, #e0b45c); }
+  .mail-row .m-from { font-weight: 700; font-size: .92rem; display: flex; justify-content: space-between; gap: 8px; }
+  .mail-row.is-read .m-from { font-weight: 400; opacity: .8; }
+  .mail-row .m-subj { font-size: .88rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-row.is-read .m-subj { opacity: .7; }
+  .mail-row .m-date { font-size: .75rem; opacity: .6; white-space: nowrap; }
+  .m-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c8202f; margin-right: 6px; }
+  .mail-view .mv-head { border-bottom: 1px solid rgba(128,128,128,.25); padding-bottom: 12px; margin-bottom: 14px; }
+  .mail-view .mv-meta { font-size: .85rem; opacity: .75; margin-top: 4px; }
+  .mail-body { white-space: pre-wrap; line-height: 1.55; font-size: .95rem; max-height: 46vh; overflow-y: auto; }
+  .mail-body iframe { width: 100%; min-height: 380px; border: 0; background: #fff; border-radius: 8px; }
+  .reply-box textarea, .reply-box input {
+    width: 100%; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
+    border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; font: inherit;
+  }
+  .reply-box textarea { min-height: 110px; resize: vertical; }
+  .inbox-toolbar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .empty { opacity: .6; text-align: center; padding: 48px 12px; }
+  .pill { font-size: .72rem; padding: 2px 8px; border-radius: 99px; background: rgba(63,127,191,.18); }
+  @media (max-width: 900px) { .inbox-wrap { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading inbox…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+  import { SUPABASE_URL } from '/app/shared/config.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Inbox');
+
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const fmt = (d) => new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  let emails = [], sel = null, showArchived = false, composing = false;
+
+  async function load() {
+    const { data, error } = await supabase
+      .from('inbox_emails')
+      .select('*')
+      .eq('archived', showArchived ? true : false)
+      .order('received_at', { ascending: false })
+      .limit(200);
+    emails = error ? [] : (data || []);
+    if (error) console.error(error);
+    render();
+  }
+
+  async function send(payload) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/inbox-send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify(payload),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Send failed (${res.status})`);
+  }
+
+  function render() {
+    const current = emails.find(e => e.id === sel);
+    page.innerHTML = `
+      <div class="inbox-toolbar">
+        <button class="btn" id="tb-compose">✉ Compose</button>
+        <button class="btn ghost" id="tb-refresh">Refresh</button>
+        <button class="btn ghost" id="tb-arch">${showArchived ? 'Show inbox' : 'Show archived'}</button>
+        <span style="margin-left:auto; opacity:.65; font-size:.85rem">
+          ${emails.filter(e => !e.read_at && e.direction === 'in').length} unread
+        </span>
+      </div>
+      <div class="inbox-wrap">
+        <div class="card mail-list">
+          ${emails.length === 0 ? `<div class="empty">${showArchived ? 'No archived mail.' : 'No mail yet — messages sent to @umkcvsa.org will appear here.'}</div>` : ''}
+          ${emails.map(e => `
+            <div class="mail-row ${e.read_at ? 'is-read' : ''} ${e.id === sel ? 'sel' : ''}" data-id="${e.id}">
+              <div class="m-from">
+                <span>${e.read_at || e.direction === 'out' ? '' : '<span class="m-dot"></span>'}${e.direction === 'out' ? `To: ${esc(e.to_addr)}` : esc(e.from_name || e.from_addr)}${e.direction === 'out' ? ' <span class="pill">sent</span>' : ''}</span>
+                <span class="m-date">${fmt(e.received_at)}</span>
+              </div>
+              <div class="m-subj">${esc(e.subject || '(no subject)')}</div>
+            </div>`).join('')}
+        </div>
+        <div class="card mail-view">
+          ${composing ? composeHTML() : current ? viewHTML(current) : '<div class="empty">Select a message to read it.</div>'}
+        </div>
+      </div>`;
+
+    document.getElementById('tb-compose').onclick = () => { composing = true; sel = null; render(); };
+    document.getElementById('tb-refresh').onclick = load;
+    document.getElementById('tb-arch').onclick = () => { showArchived = !showArchived; sel = null; composing = false; load(); };
+    page.querySelectorAll('.mail-row').forEach(row => row.onclick = () => open(Number(row.dataset.id)));
+    if (composing) wireCompose();
+    else if (current) wireView(current);
+  }
+
+  function viewHTML(e) {
+    return `
+      <div class="mv-head">
+        <h2 style="margin:0">${esc(e.subject || '(no subject)')}</h2>
+        <div class="mv-meta">
+          ${e.direction === 'out' ? `Sent to <b>${esc(e.to_addr)}</b>` : `From <b>${esc(e.from_name || '')}</b> &lt;${esc(e.from_addr)}&gt;`}
+          · ${fmt(e.received_at)}
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px">
+          ${e.direction === 'in' ? '<button class="btn sm" id="mv-reply">Reply</button>' : ''}
+          <button class="btn ghost sm" id="mv-archive">${e.archived ? 'Unarchive' : 'Archive'}</button>
+          ${e.read_at || e.direction === 'out' ? '' : '<button class="btn ghost sm" id="mv-unread">Keep unread</button>'}
+        </div>
+      </div>
+      <div class="mail-body" id="mail-body"></div>
+      <div class="reply-box" id="reply-box" style="display:none; margin-top:14px">
+        <textarea id="rp-text" placeholder="Write your reply…"></textarea>
+        <div style="display:flex; gap:8px; justify-content:flex-end">
+          <button class="btn ghost sm" id="rp-cancel">Cancel</button>
+          <button class="btn sm" id="rp-send">Send reply</button>
+        </div>
+      </div>`;
+  }
+
+  function composeHTML() {
+    return `
+      <div class="mv-head"><h2 style="margin:0">New email</h2>
+        <div class="mv-meta">Sends from contact@umkcvsa.org</div></div>
+      <div class="reply-box">
+        <input id="cp-to" type="email" placeholder="To (email address)">
+        <input id="cp-subj" type="text" placeholder="Subject">
+        <textarea id="cp-text" placeholder="Write your message…"></textarea>
+        <div style="display:flex; gap:8px; justify-content:flex-end">
+          <button class="btn ghost sm" id="cp-cancel">Cancel</button>
+          <button class="btn sm" id="cp-send">Send</button>
+        </div>
+      </div>`;
+  }
+
+  function renderBody(e) {
+    const host = document.getElementById('mail-body');
+    if (e.html_body) {
+      // sandboxed iframe: no scripts, no same-origin access
+      const f = document.createElement('iframe');
+      f.setAttribute('sandbox', '');
+      f.srcdoc = e.html_body;
+      host.replaceChildren(f);
+    } else {
+      host.textContent = e.text_body || '(empty message)';
+    }
+  }
+
+  async function open(id) {
+    sel = id; composing = false;
+    const e = emails.find(x => x.id === id);
+    render();
+    if (e && !e.read_at && e.direction === 'in') {
+      e.read_at = new Date().toISOString();
+      await supabase.from('inbox_emails').update({ read_at: e.read_at }).eq('id', id);
+      render();
+    }
+  }
+
+  function wireView(e) {
+    renderBody(e);
+    const reply = document.getElementById('mv-reply');
+    if (reply) reply.onclick = () => {
+      document.getElementById('reply-box').style.display = 'block';
+      document.getElementById('rp-text').focus();
+    };
+    const cancel = document.getElementById('rp-cancel');
+    if (cancel) cancel.onclick = () => { document.getElementById('reply-box').style.display = 'none'; };
+    const sendBtn = document.getElementById('rp-send');
+    if (sendBtn) sendBtn.onclick = async () => {
+      const text = document.getElementById('rp-text').value.trim();
+      if (!text) return;
+      sendBtn.disabled = true; sendBtn.textContent = 'Sending…';
+      try {
+        await send({
+          to: e.from_addr,
+          subject: /^re:/i.test(e.subject || '') ? e.subject : `Re: ${e.subject || ''}`,
+          text,
+          reply_to_id: e.id,
+        });
+        await load();
+      } catch (err) {
+        alert(err.message);
+        sendBtn.disabled = false; sendBtn.textContent = 'Send reply';
+      }
+    };
+    document.getElementById('mv-archive').onclick = async () => {
+      await supabase.from('inbox_emails').update({ archived: !e.archived }).eq('id', e.id);
+      sel = null; load();
+    };
+    const unread = document.getElementById('mv-unread');
+    if (unread) unread.onclick = async () => {
+      await supabase.from('inbox_emails').update({ read_at: null }).eq('id', e.id);
+      e.read_at = null; sel = null; render();
+    };
+  }
+
+  function wireCompose() {
+    document.getElementById('cp-cancel').onclick = () => { composing = false; render(); };
+    const btn = document.getElementById('cp-send');
+    btn.onclick = async () => {
+      const to = document.getElementById('cp-to').value.trim();
+      const subject = document.getElementById('cp-subj').value.trim();
+      const text = document.getElementById('cp-text').value.trim();
+      if (!to || !subject || !text) { alert('Fill in all fields.'); return; }
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        await send({ to, subject, text });
+        composing = false;
+        await load();
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false; btn.textContent = 'Send';
+      }
+    };
+  }
+
+  load();
+  // light auto-refresh so new mail appears without a manual reload
+  setInterval(() => { if (!composing) load(); }, 60_000);
+</script>
+</body>
+</html>
