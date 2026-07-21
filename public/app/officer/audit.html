@@ -30,7 +30,7 @@
   .aud-main { flex: 1; min-width: 0; font-size: .92rem; }
   .aud-main b.who { color: var(--gold, #e0b45c); }
   .act { font-size: .72rem; padding: 1px 8px; border-radius: 99px; margin: 0 4px; font-weight: 700; }
-  .act.create { background: rgba(47,158,99,.18); color: #2f9e63; }
+  .act.create, .act.insert { background: rgba(47,158,99,.18); color: #2f9e63; }
   .act.update { background: rgba(63,127,191,.18); color: #3f7fbf; }
   .act.delete { background: rgba(200,32,47,.16); color: #c8202f; }
   .aud-main details { margin-top: 4px; }
@@ -77,7 +77,7 @@
     finance_sponsorships: 'Sponsorship', finance_transactions: 'Transaction',
     profiles: 'Profile',
   };
-  const VERB = { create: 'created', update: 'updated', delete: 'deleted' };
+  const VERB = { insert: 'created', create: 'created', update: 'updated', delete: 'deleted' };
   // Fields that are noise in detail views
   const SKIP_FIELDS = new Set(['id', 'created_at', 'updated_at', 'raw', 'html_body', 'message_id', 'embedding']);
 
