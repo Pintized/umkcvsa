@@ -35,7 +35,7 @@
       <div class="profile-head">
         <img class="avatar-lg" id="avatar" src="${avatarUrl}" alt="Your avatar">
         <div>
-          <h2 style="margin-bottom:4px">${p.full_name || 'Member'}</h2>
+          <h2 style="margin-bottom:4px" id="head-name">${p.full_name || 'Member'}${p.alias ? ` <span style="color:var(--gold); font-size:1.05rem">“${p.alias}”</span>` : ''}</h2>
           <p style="color:var(--muted); font-size:.9rem">${ctx.user.email} · member since ${joined}</p>
           <p style="margin-top:8px">${ctx.roles.map(r => `<span class="badge ${r}">${r}</span>`).join('')}</p>
         </div>
@@ -44,13 +44,18 @@
       <form id="profile-form" style="max-width:460px">
         <div class="field-row">
           <div class="field">
-            <label for="first">First name</label>
-            <input type="text" id="first" value="${p.first_name || ''}" required>
+            <label>First name</label>
+            <input type="text" value="${p.first_name || ''}" readonly tabindex="-1" style="opacity:.65; cursor:not-allowed">
           </div>
           <div class="field">
-            <label for="last">Last name</label>
-            <input type="text" id="last" value="${p.last_name || ''}" required>
+            <label>Last name</label>
+            <input type="text" value="${p.last_name || ''}" readonly tabindex="-1" style="opacity:.65; cursor:not-allowed">
           </div>
+        </div>
+        <p style="color:var(--muted); font-size:.78rem; margin:-6px 0 14px">Name wrong? Ask an officer to correct it.</p>
+        <div class="field">
+          <label for="alias">Alias (optional, must be unique)</label>
+          <input type="text" id="alias" value="${p.alias || ''}" maxlength="24" placeholder="what people call you">
         </div>
         <div class="field">
           <label for="pic">Profile picture (JPG/PNG, max 2 MB)</label>
@@ -68,9 +73,11 @@
     const btn = document.getElementById('save');
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
-      const first = document.getElementById('first').value.trim();
-      const last = document.getElementById('last').value.trim();
-      const updates = { first_name: first, last_name: last, full_name: `${first} ${last}`.trim() };
+      const alias = document.getElementById('alias').value.trim();
+      if (alias && !/^[\p{L}\p{N} .'-]{2,24}$/u.test(alias)) {
+        throw new Error('Alias must be 2–24 characters (letters, numbers, spaces).');
+      }
+      const updates = { alias: alias || null };
 
       const file = document.getElementById('pic').files[0];
       if (file) {
@@ -86,9 +93,15 @@
       }
 
       const { error } = await supabase.from('profiles').update(updates).eq('id', ctx.user.id);
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') throw new Error('That alias is already taken — pick another.');
+        throw error;
+      }
 
       say('Profile saved!', 'ok');
+      ctx.profile.alias = updates.alias;
+      document.getElementById('head-name').innerHTML =
+        `${ctx.profile.full_name || 'Member'}${updates.alias ? ` <span style="color:var(--gold); font-size:1.05rem">“${updates.alias}”</span>` : ''}`;
       if (updates.avatar_path) {
         document.getElementById('avatar').src = AVATAR_BASE + updates.avatar_path;
         ctx.profile.avatar_path = updates.avatar_path;

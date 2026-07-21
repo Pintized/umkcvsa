@@ -27,7 +27,7 @@
 
   const { data: all, error } = await supabase
     .from('profiles')
-    .select('id, full_name, first_name, avatar_path, points, created_at, hide_directory, hide_points')
+    .select('id, full_name, first_name, alias, avatar_path, points, created_at, hide_directory, hide_points')
     .order('points', { ascending: false });
 
   // privacy: hidden members drop out for regular members (officers see all;
@@ -37,10 +37,10 @@
   const card = (m) => {
     const showPts = officer || m.id === ctx.user.id || !m.hide_points;
     return `
-    <div class="member-card" data-name="${(m.full_name || '').toLowerCase()}">
+    <div class="member-card" data-name="${((m.full_name || '') + ' ' + (m.alias || '')).toLowerCase()}">
       <img src="${m.avatar_path ? AVATAR_BASE + m.avatar_path : '/assets/img/logo-128.png'}" alt="">
       <div>
-        <div class="mname">${m.full_name || 'Member'}</div>
+        <div class="mname">${m.full_name || 'Member'}${m.alias ? ` <span style="color:var(--gold); font-size:.85rem">“${m.alias}”</span>` : ''}</div>
         <div class="msub">${showPts ? m.points + ' pts' : 'points hidden'} · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
       </div>
     </div>`;
