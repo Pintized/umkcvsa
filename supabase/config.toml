@@ -164,6 +164,7 @@ additional_redirect_urls = [
   "https://umkcvsa.org/app/login.html?confirmed=1",
   "https://umkcvsa.org/app/reset.html",
   "https://umkcvsa.org/app/",
+  "https://umkcvsa.org/app/verified.html",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -237,15 +238,21 @@ otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Resend SMTP — auth emails send from the club's own domain.
+# SMTP_PASS is the Resend API key (set in the shell when running config push).
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(SMTP_PASS)"
+admin_email = "no-reply@umkcvsa.org"
+sender_name = "UMKC VSA"
+
+# Branded signup verification email (supabase/templates/confirmation.html)
+[auth.email.template.confirmation]
+subject = "Verify your email · UMKC VSA 🌸"
+content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

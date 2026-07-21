@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify your email</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f2f4f8; font-family:Georgia, 'Times New Roman', serif;">
+  <!-- preheader (hidden preview text) -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+    One click and you're officially part of UMKC VSA 🌸
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f4f8; padding:32px 12px;">
+    <tr><td align="center">
+
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; width:100%;">
+
+        <!-- header band -->
+        <tr>
+          <td style="background-color:#14304a; border-radius:14px 14px 0 0; padding:28px 32px; text-align:center;">
+            <img src="https://umkcvsa.org/assets/img/logo-128.png" width="64" height="64" alt="UMKC VSA logo"
+                 style="border-radius:50%; background:#ffffff; display:inline-block;">
+            <div style="color:#ffffff; font-size:22px; font-weight:bold; letter-spacing:2px; margin-top:12px;">
+              UMKC&nbsp;VSA
+            </div>
+            <div style="color:#a9d6f0; font-size:12px; letter-spacing:3px; margin-top:4px;">
+              VIETNAMESE STUDENT ASSOCIATION
+            </div>
+          </td>
+        </tr>
+
+        <!-- body card -->
+        <tr>
+          <td style="background-color:#ffffff; padding:36px 40px; border-radius:0 0 14px 14px;">
+            <h1 style="margin:0 0 14px; font-size:24px; color:#14304a;">
+              Chào mừng! Welcome to the family&nbsp;🌸
+            </h1>
+            <p style="margin:0 0 12px; font-size:15px; line-height:1.6; color:#3c4654;">
+              Thanks for creating your UMKC VSA account. There's just one step left —
+              confirm this email address so we know it's really you.
+            </p>
+
+            <!-- button -->
+            <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:28px auto;">
+              <tr>
+                <td style="border-radius:10px; background-color:#c8202f; text-align:center;">
+                  <a href="{{ .ConfirmationURL }}"
+                     style="display:inline-block; padding:14px 42px; font-family:Arial, Helvetica, sans-serif;
+                            font-size:16px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:10px;">
+                    ✦&nbsp; Verify my email &nbsp;✦
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 6px; font-size:12.5px; line-height:1.6; color:#8a94a3;">
+              Button not working? Copy and paste this link into your browser:
+            </p>
+            <p style="margin:0 0 20px; font-size:12px; line-height:1.5; word-break:break-all;">
+              <a href="{{ .ConfirmationURL }}" style="color:#3f7fbf;">{{ .ConfirmationURL }}</a>
+            </p>
+
+            <hr style="border:none; border-top:1px solid #e6e9ef; margin:22px 0;">
+
+            <p style="margin:0; font-size:12px; line-height:1.6; color:#8a94a3;">
+              Didn't create an account? You can safely ignore this email — no account
+              will be activated without verification.
+            </p>
+          </td>
+        </tr>
+
+        <!-- footer -->
+        <tr>
+          <td style="padding:22px 12px; text-align:center;">
+            <div style="font-size:12px; color:#8a94a3; letter-spacing:1px;">
+              ✦ &nbsp;UMKC Vietnamese Student Association&nbsp; ✦
+            </div>
+            <div style="font-size:11px; color:#aab3c0; margin-top:6px;">
+              est. 2015 &nbsp;·&nbsp; <a href="https://umkcvsa.org" style="color:#c8202f; text-decoration:none;">umkcvsa.org</a>
+            </div>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
