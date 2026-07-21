@@ -11,29 +11,43 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
 <style>
+  .inbox-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+  .inbox-tabs .tab {
+    padding: 7px 14px; border-radius: 99px; cursor: pointer; font-size: .88rem;
+    border: 1px solid rgba(128,128,128,.3); background: transparent; color: inherit;
+  }
+  .inbox-tabs .tab.on { background: rgba(200,32,47,.12); border-color: var(--gold, #e0b45c); font-weight: 700; }
+  .inbox-tabs .tab .cnt { opacity: .6; font-size: .78rem; margin-left: 4px; }
   .inbox-wrap { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
-  .mail-list { max-height: 72vh; overflow-y: auto; padding: 0; }
-  .mail-row { padding: 12px 14px; border-bottom: 1px solid var(--line, rgba(128,128,128,.2)); cursor: pointer; }
+  .mail-list { max-height: 68vh; overflow-y: auto; padding: 0; }
+  .mail-row { padding: 12px 14px; border-bottom: 1px solid rgba(128,128,128,.2); cursor: pointer; display: flex; gap: 8px; align-items: flex-start; }
   .mail-row:hover { background: rgba(128,128,128,.08); }
   .mail-row.sel { background: rgba(200,32,47,.08); border-left: 3px solid var(--gold, #e0b45c); }
+  .mail-row .rw { flex: 1; min-width: 0; }
   .mail-row .m-from { font-weight: 700; font-size: .92rem; display: flex; justify-content: space-between; gap: 8px; }
   .mail-row.is-read .m-from { font-weight: 400; opacity: .8; }
   .mail-row .m-subj { font-size: .88rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mail-row.is-read .m-subj { opacity: .7; }
   .mail-row .m-date { font-size: .75rem; opacity: .6; white-space: nowrap; }
   .m-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c8202f; margin-right: 6px; }
+  .star-btn { background: none; border: none; cursor: pointer; font-size: 1.05rem; padding: 0 2px; opacity: .45; color: inherit; }
+  .star-btn.on { opacity: 1; color: #e0b45c; }
   .mail-view .mv-head { border-bottom: 1px solid rgba(128,128,128,.25); padding-bottom: 12px; margin-bottom: 14px; }
   .mail-view .mv-meta { font-size: .85rem; opacity: .75; margin-top: 4px; }
-  .mail-body { white-space: pre-wrap; line-height: 1.55; font-size: .95rem; max-height: 46vh; overflow-y: auto; }
-  .mail-body iframe { width: 100%; min-height: 380px; border: 0; background: #fff; border-radius: 8px; }
+  .mv-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .mail-body { line-height: 1.55; font-size: .95rem; max-height: 42vh; overflow-y: auto; white-space: pre-wrap; }
+  .mail-body iframe { width: 100%; min-height: 340px; border: 0; background: transparent; border-radius: 8px; }
   .reply-box textarea, .reply-box input {
     width: 100%; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
     border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; font: inherit;
   }
   .reply-box textarea { min-height: 110px; resize: vertical; }
-  .inbox-toolbar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .inbox-toolbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
   .empty { opacity: .6; text-align: center; padding: 48px 12px; }
   .pill { font-size: .72rem; padding: 2px 8px; border-radius: 99px; background: rgba(63,127,191,.18); }
+  .sched-row { display: none; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .sched-row.show { display: flex; }
+  .hint { font-size: .78rem; opacity: .6; }
   @media (max-width: 900px) { .inbox-wrap { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -50,17 +64,37 @@
   const page = renderShell(ctx, 'Inbox');
 
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  const fmt = (d) => new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const fmt = (d) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
 
-  let emails = [], sel = null, showArchived = false, composing = false;
+  const TABS = [
+    { key: 'inbox',     label: 'Inbox' },
+    { key: 'starred',   label: '★ Starred' },
+    { key: 'sent',      label: 'Sent' },
+    { key: 'draft',     label: 'Drafts' },
+    { key: 'scheduled', label: 'Scheduled' },
+    { key: 'spam',      label: 'Spam' },
+    { key: 'trash',     label: 'Trash' },
+  ];
+  const EMPTY_TEXT = {
+    inbox: 'No mail yet — messages sent to support@umkcvsa.org (or any @umkcvsa.org address) will appear here.',
+    starred: 'Nothing starred. Star inbox messages with the ★ to pin them here.',
+    sent: 'Nothing sent yet.',
+    draft: 'No drafts. Compose something and hit "Save draft".',
+    scheduled: 'Nothing scheduled. Compose and pick "Schedule" to send later.',
+    spam: 'No spam. Lucky you.',
+    trash: 'Trash is empty. Items here delete forever after 30 days.',
+  };
+
+  let tab = 'inbox', emails = [], sel = null, composing = false, draft = null;
 
   async function load() {
-    const { data, error } = await supabase
-      .from('inbox_emails')
-      .select('*')
-      .eq('archived', showArchived ? true : false)
-      .order('received_at', { ascending: false })
-      .limit(200);
+    let q = supabase.from('inbox_emails').select('*').limit(200);
+    if (tab === 'starred') q = q.eq('folder', 'inbox').eq('starred', true);
+    else q = q.eq('folder', tab);
+    q = tab === 'scheduled'
+      ? q.order('scheduled_at', { ascending: true })
+      : q.order('received_at', { ascending: false });
+    const { data, error } = await q;
     emails = error ? [] : (data || []);
     if (error) console.error(error);
     render();
@@ -75,57 +109,113 @@
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `Send failed (${res.status})`);
+    return body;
+  }
+
+  async function setFields(id, fields) {
+    const { error } = await supabase.from('inbox_emails').update(fields).eq('id', id);
+    if (error) { alert(error.message); return false; }
+    return true;
+  }
+
+  function rowMeta(e) {
+    if (tab === 'sent' || e.folder === 'sent') return `To: ${esc(e.to_addr || '')}`;
+    if (e.folder === 'draft') return `Draft · To: ${esc(e.to_addr || '(no recipient)')}`;
+    if (e.folder === 'scheduled') return `⏱ ${fmt(e.scheduled_at)} · To: ${esc(e.to_addr || '')}`;
+    return esc(e.from_name || e.from_addr);
   }
 
   function render() {
     const current = emails.find(e => e.id === sel);
     page.innerHTML = `
+      <div class="inbox-tabs" id="tabs">
+        ${TABS.map(t => `<button class="tab ${t.key === tab ? 'on' : ''}" data-tab="${t.key}">${t.label}</button>`).join('')}
+      </div>
       <div class="inbox-toolbar">
         <button class="btn" id="tb-compose">✉ Compose</button>
         <button class="btn ghost" id="tb-refresh">Refresh</button>
-        <button class="btn ghost" id="tb-arch">${showArchived ? 'Show inbox' : 'Show archived'}</button>
-        <span style="margin-left:auto; opacity:.65; font-size:.85rem">
-          ${emails.filter(e => !e.read_at && e.direction === 'in').length} unread
-        </span>
+        ${tab === 'trash' ? '<span class="hint">Items in Trash are deleted forever after 30 days.</span>' : ''}
+        <span style="margin-left:auto; opacity:.65; font-size:.85rem" id="unread-note"></span>
       </div>
       <div class="inbox-wrap">
         <div class="card mail-list">
-          ${emails.length === 0 ? `<div class="empty">${showArchived ? 'No archived mail.' : 'No mail yet — messages sent to support@umkcvsa.org (or any @umkcvsa.org address) will appear here.'}</div>` : ''}
+          ${emails.length === 0 ? `<div class="empty">${EMPTY_TEXT[tab]}</div>` : ''}
           ${emails.map(e => `
-            <div class="mail-row ${e.read_at ? 'is-read' : ''} ${e.id === sel ? 'sel' : ''}" data-id="${e.id}">
-              <div class="m-from">
-                <span>${e.read_at || e.direction === 'out' ? '' : '<span class="m-dot"></span>'}${e.direction === 'out' ? `To: ${esc(e.to_addr)}` : esc(e.from_name || e.from_addr)}${e.direction === 'out' ? ' <span class="pill">sent</span>' : ''}</span>
-                <span class="m-date">${fmt(e.received_at)}</span>
+            <div class="mail-row ${e.read_at || e.direction === 'out' ? 'is-read' : ''} ${e.id === sel ? 'sel' : ''}" data-id="${e.id}">
+              ${(tab === 'inbox' || tab === 'starred') ? `<button class="star-btn ${e.starred ? 'on' : ''}" data-star="${e.id}" title="${e.starred ? 'Unstar' : 'Star'}">${e.starred ? '★' : '☆'}</button>` : ''}
+              <div class="rw">
+                <div class="m-from">
+                  <span>${e.read_at || e.direction === 'out' ? '' : '<span class="m-dot"></span>'}${rowMeta(e)}</span>
+                  <span class="m-date">${fmt(e.folder === 'scheduled' ? e.scheduled_at : e.received_at)}</span>
+                </div>
+                <div class="m-subj">${esc(e.subject || '(no subject)')}</div>
               </div>
-              <div class="m-subj">${esc(e.subject || '(no subject)')}</div>
             </div>`).join('')}
         </div>
         <div class="card mail-view">
-          ${composing ? composeHTML() : current ? viewHTML(current) : '<div class="empty">Select a message to read it.</div>'}
+          ${composing ? composeHTML() : current ? viewHTML(current) : '<div class="empty">Select a message.</div>'}
         </div>
       </div>`;
 
-    document.getElementById('tb-compose').onclick = () => { composing = true; sel = null; render(); };
+    document.getElementById('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => {
+      tab = b.dataset.tab; sel = null; composing = false; draft = null; load();
+    });
+    document.getElementById('tb-compose').onclick = () => { composing = true; sel = null; draft = null; render(); };
     document.getElementById('tb-refresh').onclick = load;
-    document.getElementById('tb-arch').onclick = () => { showArchived = !showArchived; sel = null; composing = false; load(); };
+    updateUnread();
+    page.querySelectorAll('.star-btn').forEach(b => b.onclick = async (ev) => {
+      ev.stopPropagation();
+      const e = emails.find(x => x.id === Number(b.dataset.star));
+      if (e && await setFields(e.id, { starred: !e.starred })) { e.starred = !e.starred; render(); }
+    });
     page.querySelectorAll('.mail-row').forEach(row => row.onclick = () => open(Number(row.dataset.id)));
     if (composing) wireCompose();
     else if (current) wireView(current);
   }
 
+  async function updateUnread() {
+    const { count } = await supabase.from('inbox_emails')
+      .select('id', { count: 'exact', head: true })
+      .eq('folder', 'inbox').is('read_at', null);
+    const el = document.getElementById('unread-note');
+    if (el) el.textContent = `${count ?? 0} unread`;
+  }
+
+  function actionsFor(e) {
+    const a = [];
+    if (e.folder === 'inbox' || (e.folder === 'spam')) {
+      if (e.direction === 'in' && e.folder === 'inbox') a.push('<button class="btn sm" id="mv-reply">Reply</button>');
+    }
+    if (e.folder === 'inbox') a.push('<button class="btn ghost sm" id="mv-spam">Spam</button>');
+    if (e.folder === 'spam') a.push('<button class="btn ghost sm" id="mv-notspam">Not spam</button>');
+    if (e.folder === 'draft') a.push('<button class="btn sm" id="mv-edit">Edit draft</button>');
+    if (e.folder === 'scheduled') a.push('<button class="btn ghost sm" id="mv-cancel-sched">Cancel schedule</button>');
+    if (e.folder === 'trash') {
+      a.push('<button class="btn sm" id="mv-restore">Restore</button>');
+      a.push('<button class="btn ghost sm" id="mv-delete">Delete forever</button>');
+    } else if (e.folder !== 'draft') {
+      a.push('<button class="btn ghost sm" id="mv-trash">Trash</button>');
+    } else {
+      a.push('<button class="btn ghost sm" id="mv-delete">Delete draft</button>');
+    }
+    if (e.folder === 'inbox' && e.read_at && e.direction === 'in') {
+      a.push('<button class="btn ghost sm" id="mv-unread">Keep unread</button>');
+    }
+    return a.join('');
+  }
+
   function viewHTML(e) {
+    const who = e.direction === 'out'
+      ? `To <b>${esc(e.to_addr || '')}</b>`
+      : `From <b>${esc(e.from_name || '')}</b> &lt;${esc(e.from_addr)}&gt;`;
+    const when = e.folder === 'scheduled'
+      ? `sends ${fmt(e.scheduled_at)}`
+      : fmt(e.received_at);
     return `
       <div class="mv-head">
         <h2 style="margin:0">${esc(e.subject || '(no subject)')}</h2>
-        <div class="mv-meta">
-          ${e.direction === 'out' ? `Sent to <b>${esc(e.to_addr)}</b>` : `From <b>${esc(e.from_name || '')}</b> &lt;${esc(e.from_addr)}&gt;`}
-          · ${fmt(e.received_at)}
-        </div>
-        <div style="margin-top:10px; display:flex; gap:8px">
-          ${e.direction === 'in' ? '<button class="btn sm" id="mv-reply">Reply</button>' : ''}
-          <button class="btn ghost sm" id="mv-archive">${e.archived ? 'Unarchive' : 'Archive'}</button>
-          ${e.read_at || e.direction === 'out' ? '' : '<button class="btn ghost sm" id="mv-unread">Keep unread</button>'}
-        </div>
+        <div class="mv-meta">${who} · ${when}${e.folder === 'trash' && e.trashed_at ? ` · trashed ${fmt(e.trashed_at)}` : ''}</div>
+        <div class="mv-actions">${actionsFor(e)}</div>
       </div>
       <div class="mail-body" id="mail-body"></div>
       <div class="reply-box" id="reply-box" style="display:none; margin-top:14px">
@@ -138,36 +228,68 @@
   }
 
   function composeHTML() {
+    const d = draft || {};
     return `
-      <div class="mv-head"><h2 style="margin:0">New email</h2>
+      <div class="mv-head"><h2 style="margin:0">${d.id ? 'Edit draft' : 'New email'}</h2>
         <div class="mv-meta">Sends from support@umkcvsa.org</div></div>
       <div class="reply-box">
-        <input id="cp-to" type="email" placeholder="To (email address)">
-        <input id="cp-subj" type="text" placeholder="Subject">
-        <textarea id="cp-text" placeholder="Write your message…"></textarea>
-        <div style="display:flex; gap:8px; justify-content:flex-end">
+        <input id="cp-to" type="email" placeholder="To (email address)" value="${esc(d.to_addr || '')}">
+        <input id="cp-subj" type="text" placeholder="Subject" value="${esc(d.subject || '')}">
+        <textarea id="cp-text" placeholder="Write your message…">${esc(d.text_body || '')}</textarea>
+        <div class="sched-row" id="sched-row">
+          <input id="cp-when" type="datetime-local" style="margin-bottom:0; width:auto">
+          <span class="hint">local time</span>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">
           <button class="btn ghost sm" id="cp-cancel">Cancel</button>
+          <button class="btn ghost sm" id="cp-draft">Save draft</button>
+          <button class="btn ghost sm" id="cp-sched-toggle">Schedule…</button>
           <button class="btn sm" id="cp-send">Send</button>
         </div>
       </div>`;
   }
 
+  // Themed rendering for HTML email: inherit the portal's font and colors so
+  // messages read like part of the app in both light and dark mode. Emails
+  // that bring their own colors keep them; sandbox blocks scripts entirely.
   function renderBody(e) {
     const host = document.getElementById('mail-body');
+    if (!host) return;
     if (e.html_body) {
-      // sandboxed iframe: no scripts, no same-origin access
+      const cs = getComputedStyle(document.body);
+      const dark = (document.documentElement.dataset.theme || '').includes('dark')
+        || matchMedia('(prefers-color-scheme: dark)').matches;
+      const themed = `<style>
+        :root { color-scheme: ${dark ? 'dark' : 'light'}; }
+        body { margin: 0; padding: 2px;
+          font-family: ${cs.fontFamily};
+          font-size: .95rem; line-height: 1.55;
+          color: ${cs.color}; background: transparent; }
+        a { color: #3f7fbf; }
+        blockquote { border-left: 3px solid rgba(128,128,128,.45);
+          margin: 6px 0; padding-left: 10px; opacity: .8; }
+        img { max-width: 100%; height: auto; }
+        table { max-width: 100%; }
+      </style>`;
       const f = document.createElement('iframe');
       f.setAttribute('sandbox', '');
-      f.srcdoc = e.html_body;
+      f.setAttribute('allowtransparency', 'true');
+      f.srcdoc = themed + e.html_body;
+      f.onload = () => {
+        try { f.style.height = Math.min(f.contentDocument?.body?.scrollHeight + 24 || 340, 560) + 'px'; } catch (_) {}
+      };
+      host.style.whiteSpace = 'normal';
       host.replaceChildren(f);
     } else {
+      host.style.whiteSpace = 'pre-wrap';
       host.textContent = e.text_body || '(empty message)';
     }
   }
 
   async function open(id) {
-    sel = id; composing = false;
     const e = emails.find(x => x.id === id);
+    if (e && e.folder === 'draft') { composing = true; draft = e; sel = null; render(); return; }
+    sel = id; composing = false; draft = null;
     render();
     if (e && !e.read_at && e.direction === 'in') {
       e.read_at = new Date().toISOString();
@@ -178,60 +300,105 @@
 
   function wireView(e) {
     renderBody(e);
-    const reply = document.getElementById('mv-reply');
-    if (reply) reply.onclick = () => {
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+    on('mv-reply', () => {
       document.getElementById('reply-box').style.display = 'block';
       document.getElementById('rp-text').focus();
-    };
-    const cancel = document.getElementById('rp-cancel');
-    if (cancel) cancel.onclick = () => { document.getElementById('reply-box').style.display = 'none'; };
-    const sendBtn = document.getElementById('rp-send');
-    if (sendBtn) sendBtn.onclick = async () => {
+    });
+    on('rp-cancel', () => { document.getElementById('reply-box').style.display = 'none'; });
+    on('rp-send', async () => {
+      const btn = document.getElementById('rp-send');
       const text = document.getElementById('rp-text').value.trim();
       if (!text) return;
-      sendBtn.disabled = true; sendBtn.textContent = 'Sending…';
+      btn.disabled = true; btn.textContent = 'Sending…';
       try {
         await send({
           to: e.from_addr,
           subject: /^re:/i.test(e.subject || '') ? e.subject : `Re: ${e.subject || ''}`,
-          text,
-          reply_to_id: e.id,
+          text, reply_to_id: e.id,
         });
         await load();
-      } catch (err) {
-        alert(err.message);
-        sendBtn.disabled = false; sendBtn.textContent = 'Send reply';
-      }
-    };
-    document.getElementById('mv-archive').onclick = async () => {
-      await supabase.from('inbox_emails').update({ archived: !e.archived }).eq('id', e.id);
-      sel = null; load();
-    };
-    const unread = document.getElementById('mv-unread');
-    if (unread) unread.onclick = async () => {
-      await supabase.from('inbox_emails').update({ read_at: null }).eq('id', e.id);
-      e.read_at = null; sel = null; render();
-    };
+      } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = 'Send reply'; }
+    });
+    on('mv-trash', async () => {
+      if (await setFields(e.id, { folder: 'trash', trashed_at: new Date().toISOString() })) { sel = null; load(); }
+    });
+    on('mv-restore', async () => {
+      const dest = e.direction === 'out' ? 'sent' : 'inbox';
+      if (await setFields(e.id, { folder: dest, trashed_at: null })) { sel = null; load(); }
+    });
+    on('mv-delete', async () => {
+      if (!confirm('Delete forever? This cannot be undone.')) return;
+      const { error } = await supabase.from('inbox_emails').delete().eq('id', e.id);
+      if (error) alert(error.message); else { sel = null; load(); }
+    });
+    on('mv-spam', async () => {
+      if (await setFields(e.id, { folder: 'spam' })) { sel = null; load(); }
+    });
+    on('mv-notspam', async () => {
+      if (await setFields(e.id, { folder: 'inbox' })) { sel = null; load(); }
+    });
+    on('mv-edit', () => { composing = true; draft = e; sel = null; render(); });
+    on('mv-cancel-sched', async () => {
+      if (await setFields(e.id, { folder: 'draft', scheduled_at: null })) { sel = null; load(); }
+    });
+    on('mv-unread', async () => {
+      if (await setFields(e.id, { read_at: null })) { e.read_at = null; sel = null; render(); updateUnread(); }
+    });
   }
 
   function wireCompose() {
-    document.getElementById('cp-cancel').onclick = () => { composing = false; render(); };
-    const btn = document.getElementById('cp-send');
-    btn.onclick = async () => {
-      const to = document.getElementById('cp-to').value.trim();
-      const subject = document.getElementById('cp-subj').value.trim();
-      const text = document.getElementById('cp-text').value.trim();
-      if (!to || !subject || !text) { alert('Fill in all fields.'); return; }
-      btn.disabled = true; btn.textContent = 'Sending…';
+    const val = (id) => document.getElementById(id).value.trim();
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+    on('cp-cancel', () => { composing = false; draft = null; render(); });
+    on('cp-sched-toggle', () => {
+      const row = document.getElementById('sched-row');
+      row.classList.toggle('show');
+      const send = document.getElementById('cp-send');
+      send.textContent = row.classList.contains('show') ? 'Schedule send' : 'Send';
+    });
+    on('cp-draft', async () => {
+      const btn = document.getElementById('cp-draft');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const fields = {
+        to_addr: val('cp-to') || null, subject: val('cp-subj') || null,
+        text_body: document.getElementById('cp-text').value || null,
+      };
+      let error;
+      if (draft?.id) ({ error } = await supabase.from('inbox_emails').update(fields).eq('id', draft.id));
+      else ({ error } = await supabase.from('inbox_emails').insert({
+        ...fields, direction: 'out', folder: 'draft',
+        from_addr: 'support@umkcvsa.org', sent_by: ctx.user.id,
+        read_at: new Date().toISOString(),
+      }));
+      if (error) { alert(error.message); btn.disabled = false; btn.textContent = 'Save draft'; return; }
+      composing = false; draft = null; tab = 'draft'; load();
+    });
+    on('cp-send', async () => {
+      const btn = document.getElementById('cp-send');
+      const schedOn = document.getElementById('sched-row').classList.contains('show');
+      const payload = {
+        to: val('cp-to'), subject: val('cp-subj'),
+        text: document.getElementById('cp-text').value.trim(),
+      };
+      if (draft?.id) payload.draft_id = draft.id;
+      if (schedOn) {
+        const when = document.getElementById('cp-when').value;
+        if (!when) { alert('Pick a date and time.'); return; }
+        payload.schedule_at = new Date(when).toISOString();
+      }
+      if (!payload.to || !payload.subject || !payload.text) { alert('Fill in all fields.'); return; }
+      btn.disabled = true; btn.textContent = schedOn ? 'Scheduling…' : 'Sending…';
       try {
-        await send({ to, subject, text });
-        composing = false;
-        await load();
+        await send(payload);
+        composing = false; draft = null;
+        tab = schedOn ? 'scheduled' : 'sent';
+        load();
       } catch (err) {
         alert(err.message);
-        btn.disabled = false; btn.textContent = 'Send';
+        btn.disabled = false; btn.textContent = schedOn ? 'Schedule send' : 'Send';
       }
-    };
+    });
   }
 
   load();
