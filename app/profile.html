@@ -198,7 +198,12 @@
       if (e.key === 'Escape') menu.classList.remove('open');
       if (e.key === 'Backspace' && !input.value && selected.length) { selected.pop(); draw(); openMenu(); }
     });
-    document.addEventListener('click', (e) => { if (!root.contains(e.target)) menu.classList.remove('open'); });
+    document.addEventListener('click', (e) => {
+      // a click on a menu item re-renders the menu, detaching the
+      // clicked button — a detached target is never "outside"
+      if (!e.target.isConnected) return;
+      if (!root.contains(e.target)) menu.classList.remove('open');
+    });
     draw();
     return { value: () => selected.join('; ') || null };
   }
