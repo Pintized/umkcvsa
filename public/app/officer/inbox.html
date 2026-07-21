@@ -54,11 +54,27 @@
     display: flex; flex-wrap: wrap; gap: 2px; padding: 6px; align-items: center;
     border-bottom: 1px solid rgba(128,128,128,.25); position: relative;
   }
-  .rt-bar select {
+  .rt-dd { position: relative; display: inline-block; }
+  .rt-dd-btn {
     background: transparent; color: inherit; border: 1px solid rgba(128,128,128,.3);
-    border-radius: 7px; font-size: .8rem; padding: 3px 4px; max-width: 110px;
+    border-radius: 7px; font-size: .8rem; padding: 4px 8px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px; max-width: 130px; white-space: nowrap;
   }
-  .rt-bar select option { color: #1c2430; }
+  .rt-dd-btn::after { content: '▾'; opacity: .5; font-size: .7rem; }
+  .rt-dd-btn:hover { background: rgba(128,128,128,.12); }
+  .rt-dd-menu {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; min-width: 160px;
+    background: Canvas; color: CanvasText; border: 1px solid rgba(128,128,128,.35);
+    border-radius: 10px; padding: 5px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    max-height: 260px; overflow-y: auto;
+  }
+  .rt-dd-menu.show { display: block; }
+  .rt-dd-menu button {
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    color: inherit; cursor: pointer; padding: 6px 10px; border-radius: 7px; font-size: .9rem;
+  }
+  .rt-dd-menu button:hover { background: rgba(200,32,47,.14); }
+  .rt-dd-menu button.cur { background: rgba(200,32,47,.1); font-weight: 700; }
   .rt-btn {
     background: none; border: none; color: inherit; cursor: pointer; border-radius: 7px;
     min-width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
@@ -197,15 +213,21 @@
     return `
     <div class="rt-wrap">
       <div class="rt-bar" id="${id}-bar">
-        <select data-cmd="fontName" title="Font">
-          <option value="">Font</option>
-          ${FONTS.map(f => `<option value="${f}">${f}</option>`).join('')}
-        </select>
-        <select data-cmd="fontSize" title="Font size">
-          <option value="">Size</option>
-          <option value="1">Small</option><option value="3">Normal</option>
-          <option value="5">Large</option><option value="7">Huge</option>
-        </select>
+        <div class="rt-dd" data-dd="fontName">
+          <button type="button" class="rt-dd-btn" title="Font"><span class="rt-dd-label">Font</span></button>
+          <div class="rt-dd-menu">
+            ${FONTS.map(f => `<button type="button" data-v="${f}" style="font-family:'${f}'">${f}</button>`).join('')}
+          </div>
+        </div>
+        <div class="rt-dd" data-dd="fontSize">
+          <button type="button" class="rt-dd-btn" title="Font size"><span class="rt-dd-label">Size</span></button>
+          <div class="rt-dd-menu">
+            <button type="button" data-v="1" style="font-size:.78rem">Small</button>
+            <button type="button" data-v="3" style="font-size:.95rem">Normal</button>
+            <button type="button" data-v="5" style="font-size:1.25rem">Large</button>
+            <button type="button" data-v="7" style="font-size:1.6rem">Huge</button>
+          </div>
+        </div>
         <span class="rt-sep"></span>
         <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
         <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
@@ -263,9 +285,35 @@
       b.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
       b.addEventListener('click', () => exec(b.dataset.cmd));
     });
-    // selects
-    bar.querySelectorAll('select[data-cmd]').forEach(s => {
-      s.addEventListener('change', () => { if (s.value) exec(s.dataset.cmd, s.value); s.blur(); });
+    // custom dropdowns (font / size)
+    bar.querySelectorAll('.rt-dd').forEach(dd => {
+      const btn = dd.querySelector('.rt-dd-btn');
+      const menu = dd.querySelector('.rt-dd-menu');
+      const label = dd.querySelector('.rt-dd-label');
+      btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
+      btn.addEventListener('click', () => {
+        const open = menu.classList.contains('show');
+        bar.querySelectorAll('.rt-dd-menu.show').forEach(m => m.classList.remove('show'));
+        pop.classList.remove('show');
+        if (!open) menu.classList.add('show');
+      });
+      menu.querySelectorAll('button[data-v]').forEach(item => {
+        item.addEventListener('mousedown', (e) => e.preventDefault());
+        item.addEventListener('click', () => {
+          exec(dd.dataset.dd, item.dataset.v);
+          label.textContent = item.textContent;
+          if (dd.dataset.dd === 'fontName') label.style.fontFamily = item.dataset.v;
+          menu.querySelectorAll('button').forEach(x => x.classList.toggle('cur', x === item));
+          menu.classList.remove('show');
+        });
+      });
+    });
+    // close dropdowns/emoji when clicking elsewhere
+    document.addEventListener('click', (e) => {
+      if (!bar.contains(e.target)) {
+        bar.querySelectorAll('.rt-dd-menu.show').forEach(m => m.classList.remove('show'));
+        pop.classList.remove('show');
+      }
     });
     // color
     const color = bar.querySelector('input[type="color"]');
