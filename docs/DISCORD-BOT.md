@@ -66,7 +66,11 @@ Nothing else — the Supabase half is unaffected.
 - [ ] `/events` — polish formatting (Discord timestamps, embeds)
 - [ ] Member verification: `/verify` links Discord account ↔ Supabase profile, assigns Member/Officer roles
 - [ ] Role picker: buttons/dropdown for interest roles (handled by edge function)
-- [ ] Auto-start gateway bot on PC boot (pm2 or Task Scheduler)
+- [x] Auto-start gateway bot: pm2 manages it (`bot/ecosystem.config.cjs`).
+      `pm2 status` / `pm2 logs vsa-bot` / `pm2 restart vsa-bot`; auto-restarts
+      on crash and relaunches at Windows login via pm2-windows-startup.
+      New PC setup: `npm i -g pm2 pm2-windows-startup`, `pm2 start
+      ecosystem.config.cjs` (in bot/), `pm2 save`, `pm2-startup install`.
 
 ### Ideas / later
 - [x] `/chat <text>` — AI chat (white-labeled: presents only as "the VSA
