@@ -510,10 +510,16 @@ body.list-mode .listview { display:block; }
     ]);
     return { tasks: t.data || [], edges: e.data || [], assignees: a.data || [], officers: p.data || [] };
   }
+  let didInitialFit = false;
   async function load() {
     const d = await fetchAll();
     TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
     renderBoard(); renderTaskList(); renderKanban(); renderListView();
+    // frame the cards on arrival instead of restoring a stale camera
+    if (!didInitialFit && !document.body.classList.contains('kanban-mode') && !document.body.classList.contains('list-mode')) {
+      didInitialFit = true;
+      fitToView();
+    }
   }
 
   // ---------- camera (pan/zoom) ----------
@@ -1417,7 +1423,10 @@ body.list-mode .listview { display:block; }
       try { localStorage.setItem('vsa-tasks-view', view); } catch (_) {}
       if (view === 'kanban') renderKanban();
       else if (view === 'list') renderListView();
-      else renderBoard();
+      else {
+        renderBoard();
+        if (!didInitialFit) { didInitialFit = true; fitToView(); }
+      }
     }
     vt.addEventListener('click', (e) => {
       const b = e.target.closest('button');
