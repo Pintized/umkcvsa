@@ -194,7 +194,11 @@ async function runChat(
     const msg = await anthropic.messages.create({
       model: "claude-haiku-4-5",
       max_tokens: 1024,
-      system: CHAT_SYSTEM_PROMPT,
+      system:
+        CHAT_SYSTEM_PROMPT +
+        `\n\nToday's date is ${new Date().toLocaleDateString("en-US", { timeZone: "America/Chicago", weekday: "long", year: "numeric", month: "long", day: "numeric" })}. ` +
+        `Your built-in knowledge extends into early 2025; you don't know events after that. ` +
+        `If asked about something after your knowledge ends, say you're not up to date on it rather than guessing.`,
       messages: [{ role: "user", content: question }],
     });
     if (msg.stop_reason === "refusal") {
