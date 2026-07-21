@@ -11,7 +11,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
 <style>
-.set-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px; align-items:start; }
+.set-page { max-width:720px; }
+.set-sec { margin-bottom:34px; }
+.set-sec > h3 {
+  font-family:var(--sans); font-size:.78rem; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--gold);
+  margin-bottom:4px;
+}
+.set-sec.danger > h3 { color:var(--red); }
 .set-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
 .set-row:last-child { border-bottom:none; }
 .set-row .txt { min-width:0; }
@@ -76,10 +83,10 @@
   const schoolVerified = !!P.school_email_verified_at;
 
   page.innerHTML = `
-    <div class="set-grid">
+    <div class="set-page">
 
-      <div class="card">
-        <h3 style="margin-bottom:10px">Account &amp; security</h3>
+      <section class="set-sec">
+        <h3>Account &amp; security</h3>
         <div class="set-row"><div class="txt"><strong>Signed in as</strong><small>${ctx.user.email}</small></div></div>
         <div class="set-row">
           <div class="txt"><strong>Change password</strong><small>Requires your current password.</small></div>
@@ -98,10 +105,10 @@
           </div>
           <button class="btn sm secondary" id="school-btn">${P.school_email ? 'Update' : 'Add'}</button>
         </div>
-      </div>
+      </section>
 
-      <div class="card">
-        <h3 style="margin-bottom:10px">Preferences</h3>
+      <section class="set-sec">
+        <h3>Preferences</h3>
         <div class="set-row">
           <div class="txt"><strong>Theme</strong><small>"System" follows your device's light/dark setting.</small></div>
           <select id="theme-sel" class="rt-btn" style="height:36px">
@@ -115,10 +122,10 @@
               `<option value="${v}" ${(P.language || 'en') === v ? 'selected' : ''}>${l}</option>`).join('')}
           </select>
         </div>
-      </div>
+      </section>
 
-      <div class="card">
-        <h3 style="margin-bottom:10px">Notifications</h3>
+      <section class="set-sec">
+        <h3>Notifications</h3>
         <div class="soon-note">Email delivery isn't switched on yet — your choices are saved and take effect the moment it goes live.</div>
         ${[
           ['event_reminders', 'Event reminders', 'An email the day before an event you RSVP’d to.'],
@@ -129,10 +136,10 @@
             <div class="txt"><strong>${t}</strong><small>${d}</small></div>
             <label class="sw"><input type="checkbox" data-notif="${k}" ${notif[k] !== false ? 'checked' : ''}><span class="tr"></span></label>
           </div>`).join('')}
-      </div>
+      </section>
 
-      <div class="card">
-        <h3 style="margin-bottom:10px">Privacy</h3>
+      <section class="set-sec">
+        <h3>Privacy</h3>
         <div class="set-row">
           <div class="txt"><strong>Hide me from the member directory</strong><small>Officers can still see the full roster.</small></div>
           <label class="sw"><input type="checkbox" id="pv-dir" ${P.hide_directory ? 'checked' : ''}><span class="tr"></span></label>
@@ -141,10 +148,10 @@
           <div class="txt"><strong>Hide my points</strong><small>Your point total stays private in the directory.</small></div>
           <label class="sw"><input type="checkbox" id="pv-pts" ${P.hide_points ? 'checked' : ''}><span class="tr"></span></label>
         </div>
-      </div>
+      </section>
 
-      <div class="card danger-card" style="grid-column:1 / -1">
-        <h3 style="margin-bottom:10px">Data &amp; account</h3>
+      <section class="set-sec danger">
+        <h3>Data &amp; account</h3>
         <div class="set-row">
           <div class="txt"><strong>Download my data</strong><small>Your profile, RSVPs, achievements, and orders as a JSON file.</small></div>
           <button class="btn sm secondary" id="dl-btn">Download</button>
@@ -153,7 +160,7 @@
           <div class="txt"><strong>Delete my account</strong><small>Permanently removes your account, profile, RSVPs, and check-ins. This cannot be undone.</small></div>
           <button class="btn sm ghost" id="del-btn" style="color:var(--red); border-color:rgba(200,32,47,.5)">Delete…</button>
         </div>
-      </div>
+      </section>
 
     </div>`;
 

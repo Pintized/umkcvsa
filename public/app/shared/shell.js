@@ -38,8 +38,8 @@ const MEMBER_LINKS = [
 
 // personal configuration pages, separate from day-to-day functions
 const SETTINGS_LINKS = [
-  { href: '/app/settings.html',     label: 'Settings',     icon: 'gear' },
   { href: '/app/profile.html',      label: 'My Profile',   icon: 'user' },
+  { href: '/app/settings.html',     label: 'Settings',     icon: 'gear' },
 ];
 
 // portal chrome translations (sidebar, sections, log out).
