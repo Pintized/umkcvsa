@@ -152,7 +152,6 @@ export function renderShell(ctx, pageTitle) {
         <header class="topbar">
           <div class="page-title">${pageTitle}</div>
           <div class="actions">
-            <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">🌓</button>
             <div class="userchip">
               <img src="${avatar}" alt="">
               <span class="name">${displayName}</span>
@@ -165,10 +164,6 @@ export function renderShell(ctx, pageTitle) {
     </div>
   `);
 
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const dark = document.documentElement.classList.toggle('dark-mode');
-    try { localStorage.setItem('vsa-theme', dark ? 'dark' : 'light'); } catch (e) {}
-  });
   document.getElementById('logout-btn').addEventListener('click', logout);
 
   // collapsible sidebar (state persists; class applied pre-paint = no flash)
