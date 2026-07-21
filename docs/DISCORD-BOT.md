@@ -69,12 +69,12 @@ Nothing else — the Supabase half is unaffected.
 - [ ] Auto-start gateway bot on PC boot (pm2 or Task Scheduler)
 
 ### Ideas / later
-- [ ] `/chat <text>` — AI chat via the Claude API (Messages API) in the
-      discord-interactions edge function. Blocked on buying Anthropic API
-      credits (platform.claude.com → API Keys). Plan: deferred interaction
-      response (3s limit) → call Claude → edit reply; default model
-      `claude-opus-4-8` (~1¢/chat; `claude-haiku-4-5` ~0.1¢ as cheap option);
-      set ANTHROPIC_API_KEY as a Supabase secret; consider per-user rate limit.
+- [x] `/chat <text>` — AI chat (white-labeled: presents only as "the VSA
+      Bot", never names the provider). Deferred interaction response → AI
+      call → edit reply. NOT ACTIVE until the `ANTHROPIC_API_KEY` Supabase
+      secret is set and API credits are purchased (platform.claude.com);
+      until then it replies "AI chat isn't set up yet."
+- [ ] `/chat` follow-ups: per-user rate limit; conversation memory
 - [ ] `/points` or member engagement tracking
 - [ ] RSVP from Discord (buttons on event announcements → `rsvps` table)
 - [ ] Officer task-board notifications (`tasks` table → officer channel)

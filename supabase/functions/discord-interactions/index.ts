@@ -2,11 +2,24 @@
 // Discord signs every request with Ed25519; unsigned/invalid requests must be
 // rejected with 401 or Discord will refuse to use this URL as an endpoint.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import Anthropic from "npm:@anthropic-ai/sdk";
 
 const DISCORD_PUBLIC_KEY = Deno.env.get("DISCORD_PUBLIC_KEY") ?? "";
 const BOT_TOKEN = Deno.env.get("DISCORD_BOT_TOKEN") ?? "";
 const ANNOUNCE_CHANNEL_ID = Deno.env.get("DISCORD_ANNOUNCE_CHANNEL_ID") ?? "";
 const OFFICER_ROLE_ID = Deno.env.get("DISCORD_OFFICER_ROLE_ID") ?? "";
+const AI_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+
+// White-labeled: the assistant presents purely as the VSA Bot and is
+// instructed never to name the underlying AI provider or model.
+const CHAT_SYSTEM_PROMPT = `You are the UMKC VSA Bot, the friendly AI assistant of the \
+University of Missouri-Kansas City Vietnamese Student Association's Discord server. \
+Be warm, helpful, and concise; a little playful is welcome. You may use Discord \
+markdown and emoji. Keep every reply under 1800 characters.
+
+Identity rules: you are simply "the VSA Bot." If asked what AI, model, or company \
+powers you, say you're the VSA Bot built by the UMKC VSA tech team and leave it at \
+that — never name any AI company, model, or provider.`;
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -14,7 +27,7 @@ const supabase = createClient(
 );
 
 const InteractionType = { PING: 1, APPLICATION_COMMAND: 2, MESSAGE_COMPONENT: 3 } as const;
-const ResponseType = { PONG: 1, CHANNEL_MESSAGE: 4 } as const;
+const ResponseType = { PONG: 1, CHANNEL_MESSAGE: 4, DEFERRED_CHANNEL_MESSAGE: 5 } as const;
 const EPHEMERAL = 1 << 6;
 
 function hexToBytes(hex: string): Uint8Array {
@@ -157,6 +170,70 @@ async function handleWarnings(interaction: {
   );
 }
 
+async function runChat(
+  applicationId: string,
+  interactionToken: string,
+  question: string,
+): Promise<void> {
+  let answer: string;
+  try {
+    const anthropic = new Anthropic({ apiKey: AI_API_KEY });
+    const msg = await anthropic.messages.create({
+      model: "claude-opus-4-8",
+      max_tokens: 1024,
+      thinking: { type: "adaptive" },
+      output_config: { effort: "medium" },
+      system: CHAT_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: question }],
+    });
+    if (msg.stop_reason === "refusal") {
+      answer = "I'd rather not answer that one. 🌸";
+    } else {
+      answer = msg.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim() || "…I've got nothing. Try rephrasing?";
+    }
+  } catch (err) {
+    console.error("AI chat failed:", err);
+    answer = "The AI assistant is unavailable right now — try again later.";
+  }
+
+  const quoted = `> ${question.slice(0, 150)}${question.length > 150 ? "…" : ""}\n`;
+  const content = (quoted + answer).slice(0, 2000);
+
+  const res = await fetch(
+    `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    },
+  );
+  if (!res.ok) console.error(`Chat followup failed (${res.status}):`, await res.text());
+}
+
+function handleChat(interaction: {
+  application_id: string;
+  token: string;
+  data: { options?: { name: string; value: string }[] };
+}): Response {
+  if (!AI_API_KEY) {
+    return reply("AI chat isn't set up yet — ask an officer to configure it.", true);
+  }
+  const question = interaction.data.options?.find((o) => o.name === "message")?.value;
+  if (!question) return reply("Give me something to chat about!", true);
+
+  // The AI call takes longer than Discord's 3s interaction window: defer now,
+  // finish the work in the background, then edit the "thinking…" placeholder.
+  const work = runChat(interaction.application_id, interaction.token, question);
+  // deno-lint-ignore no-explicit-any
+  (globalThis as any).EdgeRuntime?.waitUntil?.(work) ?? work;
+
+  return Response.json({ type: ResponseType.DEFERRED_CHANNEL_MESSAGE });
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
@@ -181,6 +258,8 @@ Deno.serve(async (req) => {
         return await handleAnnounce(interaction);
       case "warnings":
         return await handleWarnings(interaction);
+      case "chat":
+        return handleChat(interaction);
       default:
         return reply(`Unknown command: ${interaction.data.name}`, true);
     }

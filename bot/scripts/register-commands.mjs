@@ -19,6 +19,18 @@ const commands = [
     description: "Show upcoming UMKC VSA events",
   },
   {
+    name: "chat",
+    description: "Chat with the VSA AI assistant",
+    options: [
+      {
+        type: 3, // STRING
+        name: "message",
+        description: "What do you want to ask?",
+        required: true,
+      },
+    ],
+  },
+  {
     name: "warnings",
     description: "Check a member's moderation warning count (Officers only)",
     options: [
