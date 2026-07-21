@@ -64,6 +64,10 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
 .st-draft, .st-submitted { background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
 
 .rcpt-link { cursor:pointer; }
+/* receipt lightbox — image gets nearly the whole viewport */
+.rcpt-box { display:flex; flex-direction:column; align-items:center; gap:12px; max-width:min(92vw, 900px); }
+.rcpt-box img { max-width:100%; max-height:82vh; border-radius:12px; border:1px solid var(--line); box-shadow:var(--shadow-lg); background:#fff; }
+.rcpt-bar { display:flex; gap:16px; align-items:center; }
 
 /* budget planner */
 .plan-group { border:1px solid var(--line); border-radius:12px; margin-bottom:14px; overflow:hidden; }
@@ -216,10 +220,24 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     return path;
   }
   async function openReceipt(path) {
-    const w = window.open('about:blank');
     const { data, error } = await supabase.storage.from('receipts').createSignedUrl(path, 3600);
-    if (error || !data) { w?.close(); toast('Could not open receipt.'); return; }
-    if (w) w.location = data.signedUrl;
+    if (error || !data) { toast('Could not open receipt.'); return; }
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="rcpt-box">
+        <img src="${data.signedUrl}" alt="Receipt">
+        <div class="rcpt-bar">
+          <a class="link-btn" href="${data.signedUrl}" target="_blank" rel="noopener">Open full size</a>
+          <button class="btn ghost" type="button">Close</button>
+        </div>
+      </div>`;
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    back.querySelector('button').onclick = close;
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(back);
   }
 
   // ---------- shared render ----------
