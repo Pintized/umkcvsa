@@ -49,7 +49,7 @@
       supabase.from('achievements').select('id, name, points, active').order('name'),
       supabase.from('achievement_awards').select('id, achievement_id, user_id, points_awarded, created_at').order('created_at'),
       supabase.from('rewards').select('id, name, point_cost, active').order('name'),
-      supabase.from('reward_redemptions').select('id, reward_name, user_id, points_spent, redeemed_by, created_at').order('created_at', { ascending: false }),
+      supabase.from('reward_redemptions').select('id, reward_name, user_id, points_spent, redeemed_by, status, created_at, completed_at').order('created_at', { ascending: false }),
     ]);
     profiles = p.data || [];
     achievements = a.data || [];
@@ -67,6 +67,8 @@
   const awardsOf = (id) => awards.filter(w => w.user_id === id);
   const achById = (id) => achievements.find(x => x.id === id);
   const byId = (id) => profiles.find(p => p.id === id);
+  const pendOf = (id) => redemptions.filter(r => r.user_id === id && r.status === 'pending')
+    .reduce((s, r) => s + r.points_spent, 0);
 
   function render() {
     const needle = q.trim().toLowerCase();
@@ -142,7 +144,8 @@
           </form>
 
           <div class="m-section">
-            <h3>VND — current balance <strong id="m-pts">${vnd(m.points)}</strong></h3>
+            <h3>VND — current balance <strong id="m-pts">${vnd(m.points)}</strong>${pendOf(uid) ? `
+              <span style="color:#e08a3d; font-weight:600; font-size:.82rem"> −${vnd(pendOf(uid))} pending · ${vnd(m.points - pendOf(uid))} spendable</span>` : ''}</h3>
             <div class="field-row">
               <div class="field"><label>Amount</label><input type="number" id="f-amt" min="1" value="5"></div>
               <div class="field"><label>Reason <span style="opacity:.55; font-weight:400">(shown in audit log)</span></label>
@@ -179,13 +182,19 @@
             ${myRedemptions.slice(0, 5).map(r => `
               <div class="award-row">
                 <span>🎁 <strong>${esc(r.reward_name)}</strong></span>
-                <span class="aw-meta">−${vnd(r.points_spent)} VND · ${fmtDate(r.created_at)} · by ${esc(byId(r.redeemed_by)?.full_name || '—')}</span>
+                ${r.status === 'pending'
+                  ? `<span class="aw-meta" style="color:#e08a3d">−${vnd(r.points_spent)} VND · pending since ${fmtDate(r.created_at)}</span>
+                     <span style="margin-left:auto; display:inline-flex; gap:6px">
+                       <button type="button" class="btn small" data-complete="${r.id}">Complete</button>
+                       <button type="button" class="btn ghost small" data-cancelrd="${r.id}">Cancel</button>
+                     </span>`
+                  : `<span class="aw-meta">−${vnd(r.points_spent)} VND · ${fmtDate(r.completed_at || r.created_at)} · by ${esc(byId(r.redeemed_by)?.full_name || '—')}</span>`}
               </div>`).join('') || '<p style="color:var(--muted); font-size:.86rem">No redemptions yet.</p>'}
             ${myRedemptions.length > 5 ? `<p style="color:var(--muted); font-size:.8rem">…and ${myRedemptions.length - 5} more in Engagement Settings → Redemptions.</p>` : ''}
             ${redeemable.length ? `
               <div class="field-row" style="margin-top:12px; align-items:flex-end">
                 <div class="field" style="margin-bottom:0"><label>Redeem a reward</label>
-                  <select id="f-rw">${redeemable.map(r => `<option value="${r.id}" ${r.point_cost > m.points ? 'disabled' : ''}>${esc(r.name)} (${vnd(r.point_cost)} VND)${r.point_cost > m.points ? ' — not enough VND' : ''}</option>`).join('')}</select>
+                  <select id="f-rw">${redeemable.map(r => `<option value="${r.id}" ${r.point_cost > m.points - pendOf(uid) ? 'disabled' : ''}>${esc(r.name)} (${vnd(r.point_cost)} VND)${r.point_cost > m.points - pendOf(uid) ? ' — not enough spendable VND' : ''}</option>`).join('')}</select>
                 </div>
                 <button type="button" class="btn small" id="rw-redeem" style="margin-bottom:2px">Redeem</button>
               </div>` : '<p style="color:var(--muted); font-size:.84rem; margin-top:10px">No active rewards exist yet — create some in Engagement Settings.</p>'}
@@ -241,8 +250,8 @@
         const r = rewards.find(x => x.id === +back.querySelector('#f-rw').value);
         const cur = byId(uid);
         if (!r || !cur) return;
-        if (cur.points < r.point_cost) {
-          say(`${cur.full_name} has ${vnd(cur.points)} VND — "${r.name}" costs ${vnd(r.point_cost)}.`, 'error');
+        if (cur.points - pendOf(uid) < r.point_cost) {
+          say(`${cur.full_name} has ${vnd(cur.points - pendOf(uid))} VND spendable — "${r.name}" costs ${vnd(r.point_cost)}.`, 'error');
           return;
         }
         if (!confirm(`Redeem "${r.name}" (${vnd(r.point_cost)} VND) for ${cur.full_name}? They'll have ${vnd(cur.points - r.point_cost)} VND left.`)) return;
@@ -250,6 +259,21 @@
         if (error) { say(error.message, 'error'); return; }
         await refresh(`Redeemed "${r.name}" — new balance ${vnd(data)} VND.`);
       });
+
+      back.querySelectorAll('[data-complete]').forEach(b => b.addEventListener('click', async () => {
+        const r = redemptions.find(x => x.id === +b.dataset.complete);
+        if (!confirm(`Hand over "${r.reward_name}" and deduct ${vnd(r.points_spent)} VND?`)) return;
+        const { data, error } = await supabase.rpc('complete_redemption', { redemption: r.id });
+        if (error) { say(error.message, 'error'); return; }
+        await refresh(`Completed "${r.reward_name}" — new balance ${vnd(data)} VND.`);
+      }));
+      back.querySelectorAll('[data-cancelrd]').forEach(b => b.addEventListener('click', async () => {
+        const r = redemptions.find(x => x.id === +b.dataset.cancelrd);
+        if (!confirm(`Cancel the pending redemption of "${r.reward_name}"? The ${vnd(r.points_spent)} VND hold is released.`)) return;
+        const { error } = await supabase.rpc('cancel_redemption', { redemption: r.id });
+        if (error) { say(error.message, 'error'); return; }
+        await refresh(`Cancelled "${r.reward_name}".`);
+      }));
 
       back.querySelectorAll('[data-revoke]').forEach(b => b.addEventListener('click', async () => {
         const w = awards.find(x => x.id === +b.dataset.revoke);
