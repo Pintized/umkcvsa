@@ -50,7 +50,7 @@ const I18N = {
     Member: 'Thành viên', Officer: 'Ban cán sự', Admin: 'Quản trị', Settings: 'Cài đặt',
     Dashboard: 'Trang chính', Calendar: 'Lịch', Achievements: 'Thành tích', Rewards: 'Phần thưởng',
     Members: 'Thành viên', 'My Profile': 'Hồ sơ của tôi', Events: 'Sự kiện', Tasks: 'Nhiệm vụ',
-    Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động', Inbox: 'Hộp thư', 'Member Directory': 'Danh bạ thành viên',
+    Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động', Inbox: 'Hộp thư', 'Member Directory': 'Danh bạ thành viên', 'Engagement Settings': 'Cài đặt tương tác',
     Roles: 'Vai trò', 'Home Page': 'Trang chủ', 'E-Board': 'Ban chấp hành', Store: 'Cửa hàng',
     Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất', 'Main site': 'Trang chính',
   },
@@ -58,7 +58,7 @@ const I18N = {
     Member: 'Miembro', Officer: 'Oficiales', Admin: 'Administración', Settings: 'Configuración',
     Dashboard: 'Panel', Calendar: 'Calendario', Achievements: 'Logros', Rewards: 'Recompensas',
     Members: 'Miembros', 'My Profile': 'Mi perfil', Events: 'Eventos', Tasks: 'Tareas',
-    Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad', Inbox: 'Buzón', 'Member Directory': 'Directorio de miembros',
+    Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad', Inbox: 'Buzón', 'Member Directory': 'Directorio de miembros', 'Engagement Settings': 'Ajustes de participación',
     Roles: 'Roles', 'Home Page': 'Página de inicio', 'E-Board': 'Directiva', Store: 'Tienda',
     Gallery: 'Galería', 'Log out': 'Cerrar sesión', 'Main site': 'Sitio principal',
   },
@@ -66,7 +66,7 @@ const I18N = {
     Member: '成员', Officer: '干部', Admin: '管理', Settings: '设置',
     Dashboard: '主页', Calendar: '日历', Achievements: '成就', Rewards: '奖励',
     Members: '成员', 'My Profile': '我的资料', Events: '活动', Tasks: '任务',
-    Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志', Inbox: '收件箱', 'Member Directory': '成员名录',
+    Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志', Inbox: '收件箱', 'Member Directory': '成员名录', 'Engagement Settings': '互动设置',
     Roles: '角色', 'Home Page': '首页', 'E-Board': '执行委员会', Store: '商店',
     Gallery: '相册', 'Log out': '退出登录', 'Main site': '主网站',
   },
@@ -81,6 +81,7 @@ const OFFICER_LINKS = [
   { href: '/app/officer/notes.html',     label: 'Notes',     icon: 'note' },
   { href: '/app/officer/inbox.html',     label: 'Inbox',     icon: 'mail' },
   { href: '/app/officer/directory.html', label: 'Member Directory', icon: 'users' },
+  { href: '/app/officer/engagement.html', label: 'Engagement Settings', icon: 'trophy' },
 ];
 
 // site content managers — admins only
