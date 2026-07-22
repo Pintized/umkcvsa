@@ -41,7 +41,7 @@
         ${when ? `<span class="earned-tag">Earned</span>` : ''}
         <h3>${a.icon ? a.icon + ' ' : '🏆 '}${a.name}</h3>
         <p>${a.description || ''}</p>
-        <span class="pts">+${a.points} Đồng</span>
+        <span class="pts">+${a.points.toLocaleString('vi-VN')} VND</span>
         ${when ? `<p style="margin:8px 0 0; font-size:.78rem">Earned ${new Date(when).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>` : ''}
       </div>`;
   };
@@ -51,8 +51,8 @@
       <h2>Your progress</h2>
       <div class="stat-grid">
         <div class="stat"><div class="num">${earnedIds.size}</div><div class="lbl">Achievements earned</div></div>
-        <div class="stat"><div class="num">${totalEarned}</div><div class="lbl">Đồng from achievements</div></div>
-        <div class="stat"><div class="num">${ctx.profile?.points ?? 0}</div><div class="lbl">Total Đồng</div></div>
+        <div class="stat"><div class="num">${(totalEarned ?? 0).toLocaleString('vi-VN')}</div><div class="lbl">VND from achievements</div></div>
+        <div class="stat"><div class="num">${(ctx.profile?.points ?? 0).toLocaleString('vi-VN')}</div><div class="lbl">Total VND</div></div>
       </div>
     </div>
     <div class="card">
