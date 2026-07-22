@@ -48,8 +48,8 @@
       supabase.from('user_roles').select('user_id, role'),
       supabase.from('achievements').select('id, name, points, active').order('name'),
       supabase.from('achievement_awards').select('id, achievement_id, user_id, points_awarded, created_at').order('created_at'),
-      supabase.from('rewards').select('id, name, point_cost, active').order('name'),
-      supabase.from('reward_redemptions').select('id, reward_name, user_id, points_spent, redeemed_by, status, created_at, completed_at').order('created_at', { ascending: false }),
+      supabase.from('rewards').select('id, name, point_cost, active, category, sizes, stock').order('name'),
+      supabase.from('reward_redemptions').select('id, reward_name, user_id, points_spent, redeemed_by, status, size, created_at, completed_at').order('created_at', { ascending: false }),
     ]);
     profiles = p.data || [];
     achievements = a.data || [];
@@ -69,6 +69,7 @@
   const byId = (id) => profiles.find(p => p.id === id);
   const pendOf = (id) => redemptions.filter(r => r.user_id === id && r.status === 'pending')
     .reduce((s, r) => s + r.points_spent, 0);
+  const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
   function render() {
     const needle = q.trim().toLowerCase();
@@ -181,7 +182,7 @@
             <h3>Rewards</h3>
             ${myRedemptions.slice(0, 5).map(r => `
               <div class="award-row">
-                <span>🎁 <strong>${esc(r.reward_name)}</strong></span>
+                <span>🎁 <strong>${esc(r.reward_name)}</strong>${r.size ? ` <span style="color:var(--muted); font-size:.8rem">(${esc(r.size)})</span>` : ''}</span>
                 ${r.status === 'pending'
                   ? `<span class="aw-meta" style="color:#e08a3d">−${vnd(r.points_spent)} VND · pending since ${fmtDate(r.created_at)}</span>
                      <span style="margin-left:auto; display:inline-flex; gap:6px">
@@ -194,8 +195,14 @@
             ${redeemable.length ? `
               <div class="field-row" style="margin-top:12px; align-items:flex-end">
                 <div class="field" style="margin-bottom:0"><label>Redeem a reward</label>
-                  <select id="f-rw">${redeemable.map(r => `<option value="${r.id}" ${r.point_cost > m.points - pendOf(uid) ? 'disabled' : ''}>${esc(r.name)} (${vnd(r.point_cost)} VND)${r.point_cost > m.points - pendOf(uid) ? ' — not enough spendable VND' : ''}</option>`).join('')}</select>
+                  <select id="f-rw">${redeemable.map(r => {
+                    const cant = r.point_cost > m.points - pendOf(uid);
+                    const out = r.stock === 0;
+                    return `<option value="${r.id}" ${cant || out ? 'disabled' : ''}>${esc(r.name)} (${vnd(r.point_cost)} VND)${r.stock != null ? (out ? ' — sold out' : ` · ${r.stock} left`) : ''}${cant && !out ? ' — not enough spendable VND' : ''}</option>`;
+                  }).join('')}</select>
                 </div>
+                <div class="field" style="margin-bottom:0; flex:0 0 90px" id="f-rw-size-wrap" hidden><label>Size</label>
+                  <select id="f-rw-size"></select></div>
                 <button type="button" class="btn small" id="rw-redeem" style="margin-bottom:2px">Redeem</button>
               </div>` : '<p style="color:var(--muted); font-size:.84rem; margin-top:10px">No active rewards exist yet — create some in Engagement Settings.</p>'}
           </div>
@@ -246,16 +253,32 @@
         await refresh(`Granted "${achById(id)?.name}" — new balance ${vnd(data)} VND.`);
       });
       // ---- rewards ----
+      const rwSel = back.querySelector('#f-rw');
+      const sizeWrap = back.querySelector('#f-rw-size-wrap');
+      const syncSize = () => {
+        if (!rwSel || !sizeWrap) return;
+        const r = rewards.find(x => x.id === +rwSel.value);
+        const clothing = r?.category === 'clothing';
+        sizeWrap.hidden = !clothing;
+        if (clothing) {
+          back.querySelector('#f-rw-size').innerHTML =
+            (r.sizes?.length ? r.sizes : SIZES).map(sz => `<option>${sz}</option>`).join('');
+        }
+      };
+      rwSel?.addEventListener('change', syncSize);
+      syncSize();
       back.querySelector('#rw-redeem')?.addEventListener('click', async () => {
         const r = rewards.find(x => x.id === +back.querySelector('#f-rw').value);
         const cur = byId(uid);
         if (!r || !cur) return;
+        if (r.stock === 0) { say(`"${r.name}" is sold out.`, 'error'); return; }
+        const size = r.category === 'clothing' ? back.querySelector('#f-rw-size').value : null;
         if (cur.points - pendOf(uid) < r.point_cost) {
           say(`${cur.full_name} has ${vnd(cur.points - pendOf(uid))} VND spendable — "${r.name}" costs ${vnd(r.point_cost)}.`, 'error');
           return;
         }
-        if (!confirm(`Redeem "${r.name}" (${vnd(r.point_cost)} VND) for ${cur.full_name}? They'll have ${vnd(cur.points - r.point_cost)} VND left.`)) return;
-        const { data, error } = await supabase.rpc('redeem_reward', { target: uid, reward: r.id });
+        if (!confirm(`Redeem "${r.name}"${size ? ` (${size})` : ''} (${vnd(r.point_cost)} VND) for ${cur.full_name}? They'll have ${vnd(cur.points - r.point_cost)} VND left.`)) return;
+        const { data, error } = await supabase.rpc('redeem_reward', { target: uid, reward: r.id, size });
         if (error) { say(error.message, 'error'); return; }
         await refresh(`Redeemed "${r.name}" — new balance ${vnd(data)} VND.`);
       });

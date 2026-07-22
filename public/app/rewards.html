@@ -22,6 +22,21 @@
   .st-pill.completed { background: rgba(47,158,99,.15); color: #2f9e63; }
   .btn.small { padding: 6px 13px; font-size: .82rem; }
   .tile .redeem-btn { margin-top: 10px; }
+  .left-badge {
+    position: absolute; top: 13px; left: 13px;
+    background: linear-gradient(140deg, #ff5f6d, #c8202f);
+    color: #fff; font-weight: 800; font-size: .74rem; letter-spacing: .3px;
+    border-radius: 999px; padding: 3px 11px;
+    box-shadow: 0 2px 10px rgba(200,32,47,.45);
+    animation: leftPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes leftPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 2px 10px rgba(200,32,47,.45); }
+    50% { transform: scale(1.08); box-shadow: 0 2px 16px rgba(200,32,47,.7); }
+  }
+  .left-badge.out { background: rgba(128,128,128,.35); color: #eee; animation: none; box-shadow: none; }
+  .tile.soldout { opacity: .65; }
+  .tile.soldout h3, .tile.soldout .pts { filter: grayscale(.4); }
 </style>
 </head>
 <body>
@@ -72,14 +87,19 @@
     const completed = mine.filter(x => x.status === 'completed').slice(0, 5);
 
     const tile = (r) => {
-      const canAfford = spend >= r.point_cost;
+      const soldOut = r.stock === 0;
+      const canAfford = spend >= r.point_cost && !soldOut;
       return `
-        <div class="tile ${canAfford ? 'earned' : ''}">
+        <div class="tile ${canAfford ? 'earned' : ''} ${soldOut ? 'soldout' : ''}">
+          ${r.stock != null ? (soldOut
+            ? '<span class="left-badge out">Sold out</span>'
+            : `<span class="left-badge">🔥 ${r.stock} Left!</span>`) : ''}
           ${canAfford ? '<span class="earned-tag">Affordable</span>' : ''}
           <h3>🎁 ${esc(r.name)}</h3>
           <p>${esc(r.description || '')}</p>
           <span class="pts">${vnd(r.point_cost)} VND</span>
-          <div><button class="btn small redeem-btn ${canAfford ? '' : 'ghost'}" data-redeem="${r.id}">Redeem</button></div>
+          ${r.category === 'clothing' ? `<div style="color:var(--muted); font-size:.78rem; margin-top:4px">Sizes: ${(r.sizes?.length ? r.sizes : ['XS','S','M','L','XL','XXL']).join(' · ')}</div>` : ''}
+          <div><button class="btn small redeem-btn ${canAfford ? '' : 'ghost'}" data-redeem="${r.id}" ${soldOut ? 'disabled' : ''}>${soldOut ? 'Sold out' : 'Redeem'}</button></div>
         </div>`;
     };
 
@@ -106,7 +126,7 @@
           const left = timeLeft(x);
           return `
             <div class="rd-row">
-              <span>🎁 <strong>${esc(x.reward_name)}</strong></span>
+              <span>🎁 <strong>${esc(x.reward_name)}</strong>${x.size ? ` <span class="rd-meta">(${esc(x.size)})</span>` : ''}</span>
               <span class="rd-meta">−${vnd(x.points_spent)} VND · requested ${fmtWhen(x.created_at)}</span>
               <span class="st-pill pending">pending pickup</span>
               <span class="spacer"></span>
@@ -117,7 +137,7 @@
         }).join('')}
         ${completed.map(x => `
           <div class="rd-row">
-            <span>🎁 <strong>${esc(x.reward_name)}</strong></span>
+            <span>🎁 <strong>${esc(x.reward_name)}</strong>${x.size ? ` <span class="rd-meta">(${esc(x.size)})</span>` : ''}</span>
             <span class="rd-meta">−${vnd(x.points_spent)} VND · picked up ${fmtWhen(x.completed_at || x.created_at)}</span>
             <span class="st-pill completed">completed</span>
           </div>`).join('')}
@@ -135,19 +155,47 @@
       notice.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     };
 
+    const pickSize = (r) => new Promise((resolve) => {
+      const sizes = r.sizes?.length ? r.sizes : ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `
+        <div class="modal pop">
+          <h2>Pick a size</h2>
+          <p style="color:var(--muted); font-size:.88rem; margin-bottom:12px">🎁 ${esc(r.name)}</p>
+          <div class="field"><label>Size</label>
+            <select id="sz-sel">${sizes.map(sz => `<option>${sz}</option>`).join('')}</select></div>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="sz-cancel">Cancel</button>
+            <button type="button" class="btn" id="sz-ok">Continue</button>
+          </div>
+        </div>`;
+      document.body.appendChild(back);
+      const done = (v) => { back.remove(); resolve(v); };
+      back.querySelector('#sz-cancel').onclick = () => done(null);
+      back.querySelector('#sz-ok').onclick = () => done(back.querySelector('#sz-sel').value);
+      back.addEventListener('click', (e) => { if (e.target === back) done(null); });
+    });
+
     page.querySelectorAll('[data-redeem]').forEach(b => b.addEventListener('click', async () => {
       const r = rewards.find(x => x.id === +b.dataset.redeem);
       if (!r) return;
+      if (r.stock === 0) { say(`"${r.name}" is sold out.`, 'error'); return; }
       if (r.point_cost > spendable()) {
         say(pendingSum() && r.point_cost <= pts
           ? `Insufficient balance: you have ${vnd(spendable())} VND spendable (${vnd(pts)} balance − ${vnd(pendingSum())} pending). Cancel a pending redemption above to free up VND.`
           : `Insufficient balance: "${r.name}" costs ${vnd(r.point_cost)} VND and you have ${vnd(spendable())} VND spendable.`, 'error');
         return;
       }
-      if (!confirm(`Redeem "${r.name}" for ${vnd(r.point_cost)} VND?\n\n`
+      let size = null;
+      if (r.category === 'clothing') {
+        size = await pickSize(r);
+        if (!size) return;
+      }
+      if (!confirm(`Redeem "${r.name}"${size ? ` (size ${size})` : ''} for ${vnd(r.point_cost)} VND?\n\n`
         + `An officer will complete it when they hand you the item — only then is the VND deducted.\n\n`
         + `⚠️ You can cancel this redemption for up to 4 hours. After that, only an officer can cancel it.`)) return;
-      const { error } = await supabase.rpc('request_reward', { reward: r.id });
+      const { error } = await supabase.rpc('request_reward', { reward: r.id, size });
       if (error) { say(error.message, 'error'); return; }
       await load();
       page.querySelector('#notice').textContent = `Redeemed "${r.name}" — show this page to an officer to pick it up!`;
