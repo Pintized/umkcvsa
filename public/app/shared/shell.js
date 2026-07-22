@@ -108,8 +108,12 @@ function animateStats(root) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   root.querySelectorAll('.stat .num').forEach(el => {
     if (el.dataset.counted) return;
-    const target = parseInt(el.textContent.trim(), 10);
-    if (!Number.isFinite(target) || String(target) !== el.textContent.trim() || target === 0) {
+    const raw = el.textContent.trim();
+    const dotted = raw.includes('.'); // vi-style 1.000.000 grouping
+    const plain = raw.replace(/\./g, '');
+    const target = parseInt(plain, 10);
+    if (!Number.isFinite(target) || String(target) !== plain || target === 0
+        || (dotted && target.toLocaleString('vi-VN') !== raw)) {
       el.dataset.counted = '1';
       return;
     }
@@ -117,7 +121,8 @@ function animateStats(root) {
     const t0 = performance.now(), dur = 750;
     const tick = (now) => {
       const p = Math.min(1, (now - t0) / dur);
-      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      const v = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      el.textContent = dotted ? v.toLocaleString('vi-VN') : v;
       if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);

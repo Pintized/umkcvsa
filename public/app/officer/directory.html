@@ -36,6 +36,7 @@
   const page = renderShell(ctx, 'Member Directory');
 
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const vnd = (n) => (n ?? 0).toLocaleString('vi-VN');
   const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
   let profiles = [], roleMap = new Map(), achievements = [], awards = [], rewards = [], redemptions = [];
@@ -82,7 +83,7 @@
         </div>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>Member</th><th>Roles</th><th>Points</th><th>Achievements</th><th>Joined</th><th></th></tr></thead>
+            <thead><tr><th>Member</th><th>Roles</th><th>VND</th><th>Achievements</th><th>Joined</th><th></th></tr></thead>
             <tbody>
               ${rows.map(p => `
                 <tr>
@@ -92,7 +93,7 @@
                     ${p.alias ? `<div class="dir-alias" style="margin-left:39px">“${esc(p.alias)}”</div>` : ''}
                   </td>
                   <td>${extraRoles(p.id).map(r => `<span class="badge role-badge">${esc(r)}</span>`).join('') || '<span style="color:var(--muted)">member</span>'}</td>
-                  <td><strong>${p.points}</strong></td>
+                  <td><strong>${vnd(p.points)}</strong></td>
                   <td>${awardsOf(p.id).length || '—'}</td>
                   <td style="color:var(--muted); font-size:.84rem">${fmtDate(p.created_at)}</td>
                   <td><button class="btn ghost small" data-manage="${p.id}">Manage</button></td>
@@ -141,7 +142,7 @@
           </form>
 
           <div class="m-section">
-            <h3>Points — currently <strong id="m-pts">${m.points}</strong></h3>
+            <h3>VND — current balance <strong id="m-pts">${vnd(m.points)}</strong></h3>
             <div class="field-row">
               <div class="field"><label>Amount</label><input type="number" id="f-amt" min="1" value="5"></div>
               <div class="field"><label>Reason <span style="opacity:.55; font-weight:400">(shown in audit log)</span></label>
@@ -160,14 +161,14 @@
               return `
                 <div class="award-row">
                   <span>🏆 <strong>${esc(a?.name || 'Achievement')}</strong></span>
-                  <span class="aw-meta">+${w.points_awarded} pts · ${fmtDate(w.created_at)}</span>
+                  <span class="aw-meta">+${vnd(w.points_awarded)} VND · ${fmtDate(w.created_at)}</span>
                   <button type="button" class="btn ghost small" data-revoke="${w.id}">Remove</button>
                 </div>`;
             }).join('') || '<p style="color:var(--muted); font-size:.86rem">No achievements yet.</p>'}
             ${grantable.length ? `
               <div class="field-row" style="margin-top:12px; align-items:flex-end">
                 <div class="field" style="margin-bottom:0"><label>Grant an achievement</label>
-                  <select id="f-ach">${grantable.map(a => `<option value="${a.id}">${esc(a.name)} (+${a.points} pts)</option>`).join('')}</select>
+                  <select id="f-ach">${grantable.map(a => `<option value="${a.id}">${esc(a.name)} (+${vnd(a.points)} VND)</option>`).join('')}</select>
                 </div>
                 <button type="button" class="btn small" id="ach-grant" style="margin-bottom:2px">Grant</button>
               </div>` : '<p style="color:var(--muted); font-size:.84rem; margin-top:10px">No active achievements exist yet — create some to grant them here.</p>'}
@@ -178,13 +179,13 @@
             ${myRedemptions.slice(0, 5).map(r => `
               <div class="award-row">
                 <span>🎁 <strong>${esc(r.reward_name)}</strong></span>
-                <span class="aw-meta">−${r.points_spent} pts · ${fmtDate(r.created_at)} · by ${esc(byId(r.redeemed_by)?.full_name || '—')}</span>
+                <span class="aw-meta">−${vnd(r.points_spent)} VND · ${fmtDate(r.created_at)} · by ${esc(byId(r.redeemed_by)?.full_name || '—')}</span>
               </div>`).join('') || '<p style="color:var(--muted); font-size:.86rem">No redemptions yet.</p>'}
             ${myRedemptions.length > 5 ? `<p style="color:var(--muted); font-size:.8rem">…and ${myRedemptions.length - 5} more in Engagement Settings → Redemptions.</p>` : ''}
             ${redeemable.length ? `
               <div class="field-row" style="margin-top:12px; align-items:flex-end">
                 <div class="field" style="margin-bottom:0"><label>Redeem a reward</label>
-                  <select id="f-rw">${redeemable.map(r => `<option value="${r.id}" ${r.point_cost > m.points ? 'disabled' : ''}>${esc(r.name)} (${r.point_cost} pts)${r.point_cost > m.points ? ' — not enough points' : ''}</option>`).join('')}</select>
+                  <select id="f-rw">${redeemable.map(r => `<option value="${r.id}" ${r.point_cost > m.points ? 'disabled' : ''}>${esc(r.name)} (${vnd(r.point_cost)} VND)${r.point_cost > m.points ? ' — not enough VND' : ''}</option>`).join('')}</select>
                 </div>
                 <button type="button" class="btn small" id="rw-redeem" style="margin-bottom:2px">Redeem</button>
               </div>` : '<p style="color:var(--muted); font-size:.84rem; margin-top:10px">No active rewards exist yet — create some in Engagement Settings.</p>'}
@@ -223,7 +224,7 @@
         const reason = back.querySelector('#f-reason').value.trim() || null;
         const { data, error } = await supabase.rpc('grant_points', { target: uid, delta: sign * amt, reason });
         if (error) { say(error.message, 'error'); return; }
-        await refresh(`${sign > 0 ? 'Gave' : 'Took'} ${amt} points — new total ${data}.`);
+        await refresh(`${sign > 0 ? 'Gave' : 'Took'} ${vnd(amt)} VND — new balance ${vnd(data)}.`);
       };
       back.querySelector('#pts-give').onclick = () => adjust(1);
       back.querySelector('#pts-take').onclick = () => adjust(-1);
@@ -233,7 +234,7 @@
         const id = +back.querySelector('#f-ach').value;
         const { data, error } = await supabase.rpc('award_achievement', { target: uid, achievement: id });
         if (error) { say(error.message, 'error'); return; }
-        await refresh(`Granted "${achById(id)?.name}" — new total ${data} points.`);
+        await refresh(`Granted "${achById(id)?.name}" — new balance ${vnd(data)} VND.`);
       });
       // ---- rewards ----
       back.querySelector('#rw-redeem')?.addEventListener('click', async () => {
@@ -241,22 +242,22 @@
         const cur = byId(uid);
         if (!r || !cur) return;
         if (cur.points < r.point_cost) {
-          say(`${cur.full_name} has ${cur.points} points — "${r.name}" costs ${r.point_cost}.`, 'error');
+          say(`${cur.full_name} has ${vnd(cur.points)} VND — "${r.name}" costs ${vnd(r.point_cost)}.`, 'error');
           return;
         }
-        if (!confirm(`Redeem "${r.name}" (${r.point_cost} pts) for ${cur.full_name}? They'll have ${cur.points - r.point_cost} points left.`)) return;
+        if (!confirm(`Redeem "${r.name}" (${vnd(r.point_cost)} VND) for ${cur.full_name}? They'll have ${vnd(cur.points - r.point_cost)} VND left.`)) return;
         const { data, error } = await supabase.rpc('redeem_reward', { target: uid, reward: r.id });
         if (error) { say(error.message, 'error'); return; }
-        await refresh(`Redeemed "${r.name}" — new total ${data} points.`);
+        await refresh(`Redeemed "${r.name}" — new balance ${vnd(data)} VND.`);
       });
 
       back.querySelectorAll('[data-revoke]').forEach(b => b.addEventListener('click', async () => {
         const w = awards.find(x => x.id === +b.dataset.revoke);
         const a = achById(w?.achievement_id);
-        if (!confirm(`Remove "${a?.name}" from ${byId(uid)?.full_name}? They will lose the ${w?.points_awarded} points it granted.`)) return;
+        if (!confirm(`Remove "${a?.name}" from ${byId(uid)?.full_name}? They will lose the ${vnd(w?.points_awarded)} VND it granted.`)) return;
         const { data, error } = await supabase.rpc('revoke_achievement', { award: +b.dataset.revoke });
         if (error) { say(error.message, 'error'); return; }
-        await refresh(`Removed "${a?.name}" — new total ${data} points.`);
+        await refresh(`Removed "${a?.name}" — new balance ${vnd(data)} VND.`);
       }));
     }
 

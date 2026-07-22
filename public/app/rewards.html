@@ -29,6 +29,7 @@
     .order('point_cost');
 
   const pts = ctx.profile?.points ?? 0;
+  const vnd = (n) => (n ?? 0).toLocaleString('vi-VN');
 
   const tile = (r) => {
     const affordable = pts >= r.point_cost;
@@ -37,7 +38,7 @@
         ${affordable ? '<span class="earned-tag">Affordable</span>' : ''}
         <h3>🎁 ${r.name}</h3>
         <p>${r.description || ''}</p>
-        <span class="pts">${r.point_cost} Đồng</span>
+        <span class="pts">${vnd(r.point_cost)} VND</span>
       </div>`;
   };
 
@@ -45,10 +46,10 @@
     <div class="card">
       <h2>Your balance</h2>
       <div class="stat-grid">
-        <div class="stat"><div class="num">${pts}</div><div class="lbl">Đồng available</div></div>
+        <div class="stat"><div style="display:flex; align-items:baseline; gap:8px"><div class="num">${vnd(pts)}</div><div class="lbl" style="margin:0">VND available</div></div></div>
       </div>
       <p style="color:var(--muted); font-size:.88rem; margin-top:12px">
-        To redeem a reward, see an officer at any event — they'll deduct the Đồng and hand it over.
+        To redeem a reward, see an officer at any event — they'll deduct the VND and hand it over.
       </p>
     </div>
     <div class="card">
