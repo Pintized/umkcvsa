@@ -49,12 +49,12 @@
 <body>
 <div class="loading" id="loading">Loading audit log…</div>
 <script type="module">
-  import { requireOfficer } from '/app/shared/guard.js';
+  import { requireAdmin } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
 
   const PAGE = 300;
-  const ctx = await requireOfficer();
+  const ctx = await requireAdmin();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Audit Log');
 
