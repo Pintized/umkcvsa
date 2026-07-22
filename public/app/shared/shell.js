@@ -27,6 +27,7 @@ const ICONS = {
   shield: SVG('<path d="M12 3.6 18.8 6v5.2c0 4.4-2.9 7.3-6.8 9.2-3.9-1.9-6.8-4.8-6.8-9.2V6L12 3.6Z"/><path d="m9.2 11.6 2 2 3.6-3.8"/>'),
   gear: SVG('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5"/>'),
   mail: SVG('<rect x="3.2" y="5.4" width="17.6" height="13.2" rx="1.8"/><path d="m4.4 7 7.6 5.6L19.6 7"/>'),
+  form: SVG('<rect x="4.6" y="3.6" width="14.8" height="16.8" rx="2"/><path d="m7.6 8.2 1.1 1.1 2-2.1M13 8.6h3.6"/><path d="m7.6 13 1.1 1.1 2-2.1M13 13.4h3.6"/><path d="M8 17.6h8.6"/>'),
 };
 
 const MEMBER_LINKS = [
@@ -50,7 +51,7 @@ const I18N = {
     Member: 'Thành viên', Officer: 'Ban cán sự', Admin: 'Quản trị', Settings: 'Cài đặt',
     Dashboard: 'Trang chính', Calendar: 'Lịch', Achievements: 'Thành tích', Rewards: 'Phần thưởng',
     Members: 'Thành viên', 'My Profile': 'Hồ sơ của tôi', Events: 'Sự kiện', Tasks: 'Nhiệm vụ',
-    Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động', Inbox: 'Hộp thư', 'Member Directory': 'Danh bạ thành viên', 'Engagement Settings': 'Cài đặt tương tác',
+    Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động', Inbox: 'Hộp thư', 'Member Directory': 'Danh bạ thành viên', 'Engagement Settings': 'Cài đặt tương tác', Forms: 'Biểu mẫu',
     Roles: 'Vai trò', 'Home Page': 'Trang chủ', 'E-Board': 'Ban chấp hành', Store: 'Cửa hàng',
     Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất', 'Main site': 'Trang chính',
   },
@@ -58,7 +59,7 @@ const I18N = {
     Member: 'Miembro', Officer: 'Oficiales', Admin: 'Administración', Settings: 'Configuración',
     Dashboard: 'Panel', Calendar: 'Calendario', Achievements: 'Logros', Rewards: 'Recompensas',
     Members: 'Miembros', 'My Profile': 'Mi perfil', Events: 'Eventos', Tasks: 'Tareas',
-    Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad', Inbox: 'Buzón', 'Member Directory': 'Directorio de miembros', 'Engagement Settings': 'Ajustes de participación',
+    Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad', Inbox: 'Buzón', 'Member Directory': 'Directorio de miembros', 'Engagement Settings': 'Ajustes de participación', Forms: 'Formularios',
     Roles: 'Roles', 'Home Page': 'Página de inicio', 'E-Board': 'Directiva', Store: 'Tienda',
     Gallery: 'Galería', 'Log out': 'Cerrar sesión', 'Main site': 'Sitio principal',
   },
@@ -66,7 +67,7 @@ const I18N = {
     Member: '成员', Officer: '干部', Admin: '管理', Settings: '设置',
     Dashboard: '主页', Calendar: '日历', Achievements: '成就', Rewards: '奖励',
     Members: '成员', 'My Profile': '我的资料', Events: '活动', Tasks: '任务',
-    Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志', Inbox: '收件箱', 'Member Directory': '成员名录', 'Engagement Settings': '互动设置',
+    Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志', Inbox: '收件箱', 'Member Directory': '成员名录', 'Engagement Settings': '互动设置', Forms: '表单',
     Roles: '角色', 'Home Page': '首页', 'E-Board': '执行委员会', Store: '商店',
     Gallery: '相册', 'Log out': '退出登录', 'Main site': '主网站',
   },
@@ -82,6 +83,7 @@ const OFFICER_LINKS = [
   { href: '/app/officer/inbox.html',     label: 'Inbox',     icon: 'mail' },
   { href: '/app/officer/directory.html', label: 'Member Directory', icon: 'users' },
   { href: '/app/officer/engagement.html', label: 'Engagement Settings', icon: 'trophy' },
+  { href: '/app/officer/forms.html', label: 'Forms', icon: 'form' },
 ];
 
 // site content managers — admins only

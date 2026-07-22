@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UMKC VSA Form</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .auth-card { max-width: 560px; }
+  .form-desc { color: var(--muted); font-size: .92rem; line-height: 1.5; margin-bottom: 18px; white-space: pre-wrap; }
+  .fq { margin-bottom: 18px; }
+  .fq > label.q-label { display: block; font-weight: 600; margin-bottom: 7px; }
+  .fq .req { color: #c8202f; }
+  .opt-row { display: flex; gap: 9px; align-items: center; padding: 4px 0; cursor: pointer; font-size: .94rem; }
+  .opt-row input { width: 16px; height: 16px; cursor: pointer; flex: none; }
+  .thanks { text-align: center; padding: 20px 0; }
+  .thanks .big { font-size: 3rem; animation: pop .5s cubic-bezier(.2, .9, .3, 1.4); }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="brand" href="https://umkcvsa.org">
+      <img src="/assets/img/logo-128.png" alt="UMKC VSA logo">
+      <span>UMKC VSA</span>
+    </a>
+    <div id="form-body"><p style="color:var(--muted)">Loading form…</p></div>
+  </div>
+</div>
+<script type="module">
+  import { supabase } from '/app/shared/supabase.js';
+
+  const body = document.getElementById('form-body');
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const id = new URLSearchParams(location.search).get('id');
+
+  const dead = (title, msg) => {
+    body.innerHTML = `<h1>${title}</h1><p class="sub">${msg}</p>`;
+  };
+
+  if (!id) { dead('Hmm…', 'This form link is missing its ID — double-check the URL you were sent.'); }
+  else {
+    const [{ data: form, error }, { data: sess }] = await Promise.all([
+      supabase.rpc('get_form', { form: id }),
+      supabase.auth.getSession(),
+    ]);
+    const signedIn = !!sess?.session;
+
+    if (error || !form) {
+      dead('Form not found', 'This link doesn\'t match any form — it may have been deleted, or the URL is incomplete.');
+    } else if (!form.accepting) {
+      dead(esc(form.title), 'This form is no longer accepting responses. 🙏');
+    } else {
+      const qs = form.questions || [];
+      const qHtml = (q) => {
+        const req = q.required ? ' <span class="req">*</span>' : '';
+        const label = `<label class="q-label">${esc(q.label)}${req}</label>`;
+        if (q.type === 'short') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><input data-in="${q.id}"></div></div>`;
+        if (q.type === 'para') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><textarea data-in="${q.id}" rows="3"></textarea></div></div>`;
+        if (q.type === 'drop') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><select data-in="${q.id}"><option value="">— pick one —</option>${(q.options || []).map(o => `<option>${esc(o)}</option>`).join('')}</select></div></div>`;
+        const type = q.type === 'check' ? 'checkbox' : 'radio';
+        return `<div class="fq" data-q="${q.id}">${label}${(q.options || []).map(o => `
+          <label class="opt-row"><input type="${type}" name="${q.id}" value="${esc(o)}">${esc(o)}</label>`).join('')}</div>`;
+      };
+
+      body.innerHTML = `
+        <h1>${esc(form.title)}</h1>
+        ${form.description ? `<div class="form-desc">${esc(form.description)}</div>` : '<div style="margin-bottom:14px"></div>'}
+        <div class="notice" id="notice"></div>
+        <form id="the-form">
+          ${signedIn ? '' : `
+            <div class="fq"><label class="q-label">Your name <span style="opacity:.55; font-weight:400">(optional)</span></label>
+              <div class="field" style="margin:0"><input id="f-name" maxlength="80"></div></div>`}
+          ${qs.map(qHtml).join('')}
+          <button class="btn" id="submit" type="submit" style="width:100%">Submit</button>
+        </form>`;
+
+      const notice = document.getElementById('notice');
+      const say = (msg, cls) => {
+        notice.textContent = msg; notice.className = `notice ${cls}`;
+        notice.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      };
+
+      document.getElementById('the-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const answers = {};
+        for (const q of qs) {
+          let v = null;
+          if (q.type === 'check') {
+            v = [...body.querySelectorAll(`input[name="${q.id}"]:checked`)].map(c => c.value);
+            if (!v.length) v = null;
+          } else if (q.type === 'radio') {
+            v = body.querySelector(`input[name="${q.id}"]:checked`)?.value ?? null;
+          } else {
+            v = body.querySelector(`[data-in="${q.id}"]`)?.value.trim() || null;
+          }
+          if (q.required && (v == null || v === '')) {
+            say(`Please answer: "${q.label}"`, 'error');
+            return;
+          }
+          if (v != null) answers[q.id] = v;
+        }
+        const btn = document.getElementById('submit');
+        btn.disabled = true; btn.textContent = 'Submitting…';
+        const { error: subErr } = await supabase.rpc('submit_form', {
+          form: id,
+          answers,
+          submitter: signedIn ? null : (document.getElementById('f-name')?.value.trim() || null),
+        });
+        if (subErr) {
+          say(subErr.message, 'error');
+          btn.disabled = false; btn.textContent = 'Submit';
+          return;
+        }
+        body.innerHTML = `
+          <div class="thanks">
+            <div class="big">🎉</div>
+            <h1>Response recorded!</h1>
+            <p class="sub">Cảm ơn bạn! Thanks for filling this out. 🌸</p>
+          </div>`;
+      });
+    }
+  }
+</script>
+</body>
+</html>
