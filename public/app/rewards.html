@@ -10,6 +10,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .pend-line { color: #e08a3d; font-weight: 600; font-size: .92rem; margin-top: 6px; }
+  .pend-line .spendable { color: var(--muted); font-weight: 400; }
+  .rd-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(128,128,128,.18); font-size: .9rem; flex-wrap: wrap; }
+  .rd-row:last-child { border-bottom: none; }
+  .rd-meta { color: var(--muted); font-size: .8rem; }
+  .rd-row .spacer { margin-left: auto; }
+  .st-pill { font-size: .72rem; padding: 2px 9px; border-radius: 99px; font-weight: 700; }
+  .st-pill.pending { background: rgba(224,138,61,.16); color: #e08a3d; }
+  .st-pill.completed { background: rgba(47,158,99,.15); color: #2f9e63; }
+  .btn.small { padding: 6px 13px; font-size: .82rem; }
+  .tile .redeem-btn { margin-top: 10px; }
+</style>
 </head>
 <body>
 <div class="loading" id="loading">Loading rewards…</div>
@@ -22,42 +35,138 @@
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Rewards');
 
-  const { data: rewards } = await supabase
-    .from('rewards')
-    .select('*')
-    .eq('active', true)
-    .order('point_cost');
-
-  const pts = ctx.profile?.points ?? 0;
   const vnd = (n) => (n ?? 0).toLocaleString('vi-VN');
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const fmtWhen = (d) => new Date(d).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const CANCEL_WINDOW_MS = 4 * 60 * 60 * 1000;
 
-  const tile = (r) => {
-    const affordable = pts >= r.point_cost;
-    return `
-      <div class="tile ${affordable ? 'earned' : ''}">
-        ${affordable ? '<span class="earned-tag">Affordable</span>' : ''}
-        <h3>🎁 ${r.name}</h3>
-        <p>${r.description || ''}</p>
-        <span class="pts">${vnd(r.point_cost)} VND</span>
-      </div>`;
+  let rewards = [], mine = [], pts = 0;
+
+  async function load() {
+    const [r, m, p] = await Promise.all([
+      supabase.from('rewards').select('*').eq('active', true).order('point_cost'),
+      supabase.from('reward_redemptions').select('*').eq('user_id', ctx.user.id).order('created_at', { ascending: false }),
+      supabase.from('profiles').select('points').eq('id', ctx.user.id).single(),
+    ]);
+    rewards = r.data || [];
+    mine = m.data || [];
+    pts = p.data?.points ?? 0;
+    render();
+  }
+
+  const pending = () => mine.filter(x => x.status === 'pending');
+  const pendingSum = () => pending().reduce((s, x) => s + x.points_spent, 0);
+  const spendable = () => pts - pendingSum();
+  const cancelDeadline = (x) => new Date(x.created_at).getTime() + CANCEL_WINDOW_MS;
+  const timeLeft = (x) => {
+    const ms = cancelDeadline(x) - Date.now();
+    if (ms <= 0) return null;
+    const h = Math.floor(ms / 3600000), min = Math.ceil((ms % 3600000) / 60000);
+    return h ? `${h}h ${min}m` : `${min}m`;
   };
 
-  page.innerHTML = `
-    <div class="card">
-      <h2>Your balance</h2>
-      <div class="stat-grid">
-        <div class="stat"><div style="display:flex; align-items:baseline; gap:8px"><div class="num">${vnd(pts)}</div><div class="lbl" style="margin:0">VND available</div></div></div>
+  function render() {
+    const pend = pendingSum();
+    const spend = spendable();
+    const pn = pending().length;
+    const completed = mine.filter(x => x.status === 'completed').slice(0, 5);
+
+    const tile = (r) => {
+      const canAfford = spend >= r.point_cost;
+      return `
+        <div class="tile ${canAfford ? 'earned' : ''}">
+          ${canAfford ? '<span class="earned-tag">Affordable</span>' : ''}
+          <h3>🎁 ${esc(r.name)}</h3>
+          <p>${esc(r.description || '')}</p>
+          <span class="pts">${vnd(r.point_cost)} VND</span>
+          <div><button class="btn small redeem-btn ${canAfford ? '' : 'ghost'}" data-redeem="${r.id}">Redeem</button></div>
+        </div>`;
+    };
+
+    page.innerHTML = `
+      <div class="card">
+        <h2>Your balance</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div style="display:flex; align-items:baseline; gap:8px"><div class="num">${vnd(pts)}</div><div class="lbl" style="margin:0">VND</div></div>
+            ${pend ? `<div class="pend-line">−${vnd(pend)} VND pending (${pn} redemption${pn > 1 ? 's' : ''})
+              <span class="spendable">· ${vnd(spend)} VND spendable</span></div>` : ''}
+          </div>
+        </div>
+        <p style="color:var(--muted); font-size:.88rem; margin-top:12px">
+          Redeem below, then pick your item up from an officer — your VND is only deducted
+          once they hand it over. You can cancel a redemption within <strong>4 hours</strong> of placing it.
+        </p>
+        <div class="notice" id="notice"></div>
       </div>
-      <p style="color:var(--muted); font-size:.88rem; margin-top:12px">
-        To redeem a reward, see an officer at any event — they'll deduct the VND and hand it over.
-      </p>
-    </div>
-    <div class="card">
-      <h2>Reward catalog</h2>
-      ${(rewards && rewards.length)
-        ? `<div class="tile-grid">${rewards.map(tile).join('')}</div>`
-        : '<p style="color:var(--muted)">No rewards available right now.</p>'}
-    </div>`;
+      ${mine.length ? `
+      <div class="card">
+        <h2>Your redemptions</h2>
+        ${pending().map(x => {
+          const left = timeLeft(x);
+          return `
+            <div class="rd-row">
+              <span>🎁 <strong>${esc(x.reward_name)}</strong></span>
+              <span class="rd-meta">−${vnd(x.points_spent)} VND · requested ${fmtWhen(x.created_at)}</span>
+              <span class="st-pill pending">pending pickup</span>
+              <span class="spacer"></span>
+              ${left
+                ? `<span class="rd-meta">cancellable for ${left}</span><button class="btn ghost small" data-cancel="${x.id}">Cancel</button>`
+                : '<span class="rd-meta">cancel window passed — ask an officer</span>'}
+            </div>`;
+        }).join('')}
+        ${completed.map(x => `
+          <div class="rd-row">
+            <span>🎁 <strong>${esc(x.reward_name)}</strong></span>
+            <span class="rd-meta">−${vnd(x.points_spent)} VND · picked up ${fmtWhen(x.completed_at || x.created_at)}</span>
+            <span class="st-pill completed">completed</span>
+          </div>`).join('')}
+      </div>` : ''}
+      <div class="card">
+        <h2>Reward catalog</h2>
+        ${rewards.length
+          ? `<div class="tile-grid">${rewards.map(tile).join('')}</div>`
+          : '<p style="color:var(--muted)">No rewards available right now.</p>'}
+      </div>`;
+
+    const notice = page.querySelector('#notice');
+    const say = (msg, cls) => {
+      notice.textContent = msg; notice.className = `notice ${cls}`;
+      notice.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    };
+
+    page.querySelectorAll('[data-redeem]').forEach(b => b.addEventListener('click', async () => {
+      const r = rewards.find(x => x.id === +b.dataset.redeem);
+      if (!r) return;
+      if (r.point_cost > spendable()) {
+        say(pendingSum() && r.point_cost <= pts
+          ? `Insufficient balance: you have ${vnd(spendable())} VND spendable (${vnd(pts)} balance − ${vnd(pendingSum())} pending). Cancel a pending redemption above to free up VND.`
+          : `Insufficient balance: "${r.name}" costs ${vnd(r.point_cost)} VND and you have ${vnd(spendable())} VND spendable.`, 'error');
+        return;
+      }
+      if (!confirm(`Redeem "${r.name}" for ${vnd(r.point_cost)} VND?\n\n`
+        + `An officer will complete it when they hand you the item — only then is the VND deducted.\n\n`
+        + `⚠️ You can cancel this redemption for up to 4 hours. After that, only an officer can cancel it.`)) return;
+      const { error } = await supabase.rpc('request_reward', { reward: r.id });
+      if (error) { say(error.message, 'error'); return; }
+      await load();
+      page.querySelector('#notice').textContent = `Redeemed "${r.name}" — show this page to an officer to pick it up!`;
+      page.querySelector('#notice').className = 'notice ok';
+    }));
+
+    page.querySelectorAll('[data-cancel]').forEach(b => b.addEventListener('click', async () => {
+      const x = mine.find(y => y.id === +b.dataset.cancel);
+      if (!x) return;
+      if (!confirm(`Cancel your redemption of "${x.reward_name}"? The ${vnd(x.points_spent)} VND hold will be released.`)) return;
+      const { error } = await supabase.rpc('cancel_redemption', { redemption: x.id });
+      if (error) { say(error.message, 'error'); return; }
+      await load();
+      page.querySelector('#notice').textContent = `Cancelled "${x.reward_name}".`;
+      page.querySelector('#notice').className = 'notice ok';
+    }));
+  }
+
+  await load();
 </script>
 </body>
 </html>

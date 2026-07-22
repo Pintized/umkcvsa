@@ -266,11 +266,13 @@
   function renderRedemptions() {
     const body = page.querySelector('#tab-body');
     const active = rewards.filter(r => r.active);
+    const pendOf = (uid) => redemptions.filter(r => r.user_id === uid && r.status === 'pending')
+      .reduce((s, r) => s + r.points_spent, 0);
     body.innerHTML = `
       <div class="redeem-bar">
         <div class="field" style="margin-bottom:0"><label>Member</label>
           <select id="rd-member">${profiles.map(p =>
-            `<option value="${p.id}">${esc(p.full_name)}${p.alias ? ` “${esc(p.alias)}”` : ''} — ${vnd(p.points)} VND</option>`).join('')}</select>
+            `<option value="${p.id}">${esc(p.full_name)}${p.alias ? ` “${esc(p.alias)}”` : ''} — ${vnd(p.points - pendOf(p.id))} VND spendable</option>`).join('')}</select>
         </div>
         <div class="field" style="margin-bottom:0"><label>Reward</label>
           <select id="rd-reward">${active.map(r =>
@@ -280,19 +282,43 @@
       </div>
       <div class="tbl-wrap">
         <table class="tbl">
-          <thead><tr><th>When</th><th>Member</th><th>Reward</th><th>VND</th><th>Marked by</th></tr></thead>
+          <thead><tr><th>Requested</th><th>Member</th><th>Reward</th><th>VND</th><th>Status</th></tr></thead>
           <tbody>
-            ${redemptions.map(r => `
+            ${[...redemptions].sort((a, b) => (a.status === 'pending' ? 0 : 1) - (b.status === 'pending' ? 0 : 1)).map(r => `
               <tr>
                 <td style="color:var(--muted); font-size:.84rem; white-space:nowrap">${fmtWhen(r.created_at)}</td>
                 <td><strong>${esc(nameOf(r.user_id))}</strong></td>
                 <td>🎁 ${esc(r.reward_name)}</td>
                 <td>−${vnd(r.points_spent)}</td>
-                <td>${esc(nameOf(r.redeemed_by))}</td>
+                <td>${r.status === 'pending'
+                  ? `<span class="status-pill off" style="background:rgba(224,138,61,.16); color:#e08a3d">pending</span>
+                     <span class="row-actions" style="display:inline-flex; margin-left:6px">
+                       <button class="btn small" data-complete="${r.id}">Complete</button>
+                       <button class="btn ghost small" data-cancelrd="${r.id}">Cancel</button>
+                     </span>`
+                  : `<span class="status-pill live">✓ ${esc(nameOf(r.redeemed_by))}</span>
+                     <span style="color:var(--muted); font-size:.8rem"> · ${fmtWhen(r.completed_at || r.created_at)}</span>`}</td>
               </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No redemptions yet.</td></tr>'}
           </tbody>
         </table>
       </div>`;
+
+    body.querySelectorAll('[data-complete]').forEach(b => b.onclick = async () => {
+      const r = redemptions.find(x => x.id === +b.dataset.complete);
+      if (!confirm(`Hand over "${r.reward_name}" to ${nameOf(r.user_id)} and deduct ${vnd(r.points_spent)} VND?`)) return;
+      const { data, error } = await supabase.rpc('complete_redemption', { redemption: r.id });
+      if (error) { say(error.message, 'error'); return; }
+      await load();
+      say(`Completed — ${nameOf(r.user_id)} now has ${vnd(data)} VND.`, 'ok');
+    });
+    body.querySelectorAll('[data-cancelrd]').forEach(b => b.onclick = async () => {
+      const r = redemptions.find(x => x.id === +b.dataset.cancelrd);
+      if (!confirm(`Cancel ${nameOf(r.user_id)}'s pending redemption of "${r.reward_name}"? The ${vnd(r.points_spent)} VND hold is released.`)) return;
+      const { error } = await supabase.rpc('cancel_redemption', { redemption: r.id });
+      if (error) { say(error.message, 'error'); return; }
+      await load();
+      say(`Cancelled "${r.reward_name}" for ${nameOf(r.user_id)}.`, 'ok');
+    });
 
     body.querySelector('#rd-go').onclick = async () => {
       const uid = body.querySelector('#rd-member').value;
@@ -300,8 +326,9 @@
       const m = profiles.find(p => p.id === uid);
       const r = rewards.find(x => x.id === rid);
       if (!m || !r) return;
-      if (m.points < r.point_cost) {
-        say(`${m.full_name} has ${vnd(m.points)} VND — "${r.name}" costs ${vnd(r.point_cost)}.`, 'error');
+      const spend = m.points - pendOf(m.id);
+      if (spend < r.point_cost) {
+        say(`${m.full_name} has ${vnd(spend)} VND spendable${pendOf(m.id) ? ` (${vnd(m.points)} balance − ${vnd(pendOf(m.id))} pending)` : ''} — "${r.name}" costs ${vnd(r.point_cost)}.`, 'error');
         return;
       }
       if (!confirm(`Redeem "${r.name}" (${vnd(r.point_cost)} VND) for ${m.full_name}? They'll have ${vnd(m.points - r.point_cost)} VND left.`)) return;
