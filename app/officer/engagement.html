@@ -22,7 +22,7 @@
   .status-pill { font-size: .74rem; padding: 2px 9px; border-radius: 99px; }
   .status-pill.live { background: rgba(47,158,99,.15); color: #2f9e63; }
   .status-pill.off { background: rgba(128,128,128,.18); color: var(--muted); }
-  .redeem-bar { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 18px; }
+  .redeem-bar { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 12px; align-items: end; margin-bottom: 18px; }
   @media (max-width: 700px) { .redeem-bar { grid-template-columns: 1fr; } }
   .desc-cell { color: var(--muted); font-size: .84rem; max-width: 320px; }
 </style>
@@ -41,6 +41,9 @@
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const vnd = (n) => (n ?? 0).toLocaleString('vi-VN');
   const fmtWhen = (d) => new Date(d).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const cap = (c) => c ? c[0].toUpperCase() + c.slice(1) : '—';
 
   let tab = 'achievements';
   let achievements = [], rewards = [], redemptions = [], profiles = [], awardCounts = new Map();
@@ -184,13 +187,15 @@
       <div style="margin-bottom:12px"><button class="btn small" id="new-rw">+ New reward</button></div>
       <div class="tbl-wrap">
         <table class="tbl">
-          <thead><tr><th>Reward</th><th>Description</th><th>Cost</th><th>Status</th><th>Redeemed</th><th></th></tr></thead>
+          <thead><tr><th>Reward</th><th>Description</th><th>Cost</th><th>Category</th><th>Left</th><th>Status</th><th>Redeemed</th><th></th></tr></thead>
           <tbody>
             ${rewards.map(r => `
               <tr>
                 <td><strong>🎁 ${esc(r.name)}</strong></td>
                 <td class="desc-cell">${esc(r.description || '')}</td>
                 <td><strong>${vnd(r.point_cost)} VND</strong></td>
+                <td>${cap(r.category)}${r.category === 'clothing' && r.sizes?.length ? `<div style="color:var(--muted); font-size:.76rem">${r.sizes.join(' · ')}</div>` : ''}</td>
+                <td>${r.stock == null ? '∞' : (r.stock === 0 ? '<strong style="color:#c8202f">0</strong>' : `<strong>${r.stock}</strong>`)}</td>
                 <td><span class="status-pill ${r.active ? 'live' : 'off'}">${r.active ? 'active' : 'inactive'}</span></td>
                 <td>${redeemCount(r.id)}×</td>
                 <td class="row-actions">
@@ -198,7 +203,7 @@
                   <button class="btn ghost small" data-toggle="${r.id}">${r.active ? 'Deactivate' : 'Activate'}</button>
                   <button class="btn ghost small" data-del="${r.id}">Delete</button>
                 </td>
-              </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted)">No rewards yet — create the first one!</td></tr>'}
+              </tr>`).join('') || '<tr><td colspan="8" style="color:var(--muted)">No rewards yet — create the first one!</td></tr>'}
           </tbody>
         </table>
       </div>`;
@@ -230,7 +235,24 @@
         <form id="m-form">
           <div class="field"><label>Name</label><input id="f-name" required value="${esc(r?.name)}"></div>
           <div class="field"><label>Description</label><textarea id="f-desc">${esc(r?.description)}</textarea></div>
-          <div class="field"><label>Cost (VND)</label><input type="number" id="f-cost" min="0" value="${r?.point_cost ?? 50}"></div>
+          <div class="field-row">
+            <div class="field"><label>Cost (VND)</label><input type="number" id="f-cost" min="0" value="${r?.point_cost ?? 50}"></div>
+            <div class="field"><label>Quantity left <span style="opacity:.55; font-weight:400">(blank = unlimited)</span></label>
+              <input type="number" id="f-stock" min="0" value="${r?.stock ?? ''}"></div>
+          </div>
+          <div class="field"><label>Category</label>
+            <select id="f-cat">
+              <option value="">— none —</option>
+              ${['clothing', 'food', 'drinks', 'accessory'].map(c =>
+                `<option value="${c}" ${r?.category === c ? 'selected' : ''}>${cap(c)}</option>`).join('')}
+            </select></div>
+          <div class="field" id="sizes-field" style="display:${r?.category === 'clothing' ? '' : 'none'}">
+            <label>Available sizes</label>
+            <div style="display:flex; gap:12px; flex-wrap:wrap">
+              ${SIZES.map(sz => `<label style="display:flex; gap:5px; align-items:center; font-size:.88rem">
+                <input type="checkbox" class="f-size" value="${sz}" style="width:15px; height:15px"
+                  ${(r?.sizes || SIZES).includes(sz) ? 'checked' : ''}>${sz}</label>`).join('')}
+            </div></div>
           <label style="display:flex; gap:8px; align-items:center; font-size:.9rem; margin-bottom:6px">
             <input type="checkbox" id="f-active" style="width:16px; height:16px" ${r ? (r.active ? 'checked' : '') : 'checked'}> Active (can be redeemed)</label>
           <div class="row-btns">
@@ -242,12 +264,27 @@
     document.body.appendChild(back);
     back.querySelector('#m-cancel').onclick = () => back.remove();
     back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#f-cat').addEventListener('change', () => {
+      back.querySelector('#sizes-field').style.display =
+        back.querySelector('#f-cat').value === 'clothing' ? '' : 'none';
+    });
     back.querySelector('#m-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const category = back.querySelector('#f-cat').value || null;
+      const sizes = category === 'clothing'
+        ? [...back.querySelectorAll('.f-size:checked')].map(c => c.value)
+        : null;
+      const stockRaw = back.querySelector('#f-stock').value.trim();
+      if (category === 'clothing' && !sizes.length) {
+        const n = back.querySelector('#m-notice'); n.textContent = 'Pick at least one size for a clothing reward.'; n.className = 'notice error';
+        return;
+      }
       const payload = {
         name: back.querySelector('#f-name').value.trim(),
         description: back.querySelector('#f-desc').value.trim() || null,
         point_cost: Math.max(0, Math.floor(+back.querySelector('#f-cost').value || 0)),
+        category, sizes,
+        stock: stockRaw === '' ? null : Math.max(0, Math.floor(+stockRaw || 0)),
         active: back.querySelector('#f-active').checked,
       };
       const { error } = r
@@ -276,8 +313,10 @@
         </div>
         <div class="field" style="margin-bottom:0"><label>Reward</label>
           <select id="rd-reward">${active.map(r =>
-            `<option value="${r.id}">${esc(r.name)} — ${vnd(r.point_cost)} VND</option>`).join('') || '<option value="">No active rewards</option>'}</select>
+            `<option value="${r.id}" ${r.stock === 0 ? 'disabled' : ''}>${esc(r.name)} — ${vnd(r.point_cost)} VND${r.stock != null ? (r.stock === 0 ? ' · sold out' : ` · ${r.stock} left`) : ''}</option>`).join('') || '<option value="">No active rewards</option>'}</select>
         </div>
+        <div class="field" style="margin-bottom:0" id="rd-size-wrap" hidden><label>Size</label>
+          <select id="rd-size"></select></div>
         <button class="btn small" id="rd-go" ${active.length ? '' : 'disabled'} style="margin-bottom:2px">Mark as redeemed</button>
       </div>
       <div class="tbl-wrap">
@@ -288,7 +327,7 @@
               <tr>
                 <td style="color:var(--muted); font-size:.84rem; white-space:nowrap">${fmtWhen(r.created_at)}</td>
                 <td><strong>${esc(nameOf(r.user_id))}</strong></td>
-                <td>🎁 ${esc(r.reward_name)}</td>
+                <td>🎁 ${esc(r.reward_name)}${r.size ? ` <span style="color:var(--muted); font-size:.8rem">(${esc(r.size)})</span>` : ''}</td>
                 <td>−${vnd(r.points_spent)}</td>
                 <td>${r.status === 'pending'
                   ? `<span class="status-pill off" style="background:rgba(224,138,61,.16); color:#e08a3d">pending</span>
@@ -320,19 +359,35 @@
       say(`Cancelled "${r.reward_name}" for ${nameOf(r.user_id)}.`, 'ok');
     });
 
+    const rdReward = body.querySelector('#rd-reward');
+    const rdSizeWrap = body.querySelector('#rd-size-wrap');
+    const syncSize = () => {
+      const r = rewards.find(x => x.id === +rdReward.value);
+      const clothing = r?.category === 'clothing';
+      rdSizeWrap.hidden = !clothing;
+      if (clothing) {
+        body.querySelector('#rd-size').innerHTML =
+          (r.sizes?.length ? r.sizes : SIZES).map(sz => `<option>${sz}</option>`).join('');
+      }
+    };
+    rdReward.addEventListener('change', syncSize);
+    if (active.length) syncSize();
+
     body.querySelector('#rd-go').onclick = async () => {
       const uid = body.querySelector('#rd-member').value;
       const rid = +body.querySelector('#rd-reward').value;
       const m = profiles.find(p => p.id === uid);
       const r = rewards.find(x => x.id === rid);
       if (!m || !r) return;
+      if (r.stock === 0) { say(`"${r.name}" is sold out.`, 'error'); return; }
+      const size = r.category === 'clothing' ? body.querySelector('#rd-size').value : null;
       const spend = m.points - pendOf(m.id);
       if (spend < r.point_cost) {
         say(`${m.full_name} has ${vnd(spend)} VND spendable${pendOf(m.id) ? ` (${vnd(m.points)} balance − ${vnd(pendOf(m.id))} pending)` : ''} — "${r.name}" costs ${vnd(r.point_cost)}.`, 'error');
         return;
       }
-      if (!confirm(`Redeem "${r.name}" (${vnd(r.point_cost)} VND) for ${m.full_name}? They'll have ${vnd(m.points - r.point_cost)} VND left.`)) return;
-      const { data, error } = await supabase.rpc('redeem_reward', { target: uid, reward: rid });
+      if (!confirm(`Redeem "${r.name}"${size ? ` (${size})` : ''} (${vnd(r.point_cost)} VND) for ${m.full_name}? They'll have ${vnd(m.points - r.point_cost)} VND left.`)) return;
+      const { data, error } = await supabase.rpc('redeem_reward', { target: uid, reward: rid, size });
       if (error) { say(error.message, 'error'); return; }
       await load();
       say(`Redeemed "${r.name}" for ${m.full_name} — they now have ${vnd(data)} VND.`, 'ok');
