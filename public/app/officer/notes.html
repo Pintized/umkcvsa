@@ -98,31 +98,70 @@
     const tools = document.getElementById('tbl-tools');
     if (tools) tools.style.display = curCell ? 'flex' : 'none';
 
-    // reflect the cursor's font & size in the selects
-    const fontSel = document.getElementById('rt-font');
-    if (fontSel) {
+    setOn('strikeThrough', document.queryCommandState('strikeThrough'));
+    ['justifyLeft', 'justifyCenter', 'justifyRight'].forEach(c => {
+      let on = false;
+      try { on = document.queryCommandState(c); } catch (_) {}
+      setOn(c, on);
+    });
+
+    // reflect the cursor's font & size in the dropdown labels
+    const fontLb = document.getElementById('rt-font-label');
+    if (fontLb) {
       const fam = (document.queryCommandValue('fontName') || '')
         .split(',')[0].replace(/['"]/g, '').trim().toLowerCase();
-      let matched = '';
-      for (const o of fontSel.options) {
-        const first = o.value.split(',')[0].replace(/['"]/g, '').trim().toLowerCase();
-        if (first && first === fam) { matched = o.value; break; }
-      }
-      fontSel.value = matched;
+      const hit = NOTE_FONTS.find(([, stack]) =>
+        stack.split(',')[0].replace(/['"]/g, '').trim().toLowerCase() === fam);
+      fontLb.textContent = hit ? hit[0] : 'Font';
+      fontLb.style.fontFamily = hit ? hit[1] : '';
     }
-    const sizeSel = document.getElementById('rt-size');
-    if (sizeSel && node) {
+    const sizeLb = document.getElementById('rt-size-label');
+    if (sizeLb && node) {
       if (typingSizePx) {
-        sizeSel.value = String(typingSizePx); // indicator shows what typing will produce
+        sizeLb.textContent = String(typingSizePx); // indicator shows what typing will produce
       } else {
         let px = Math.round(parseFloat(getComputedStyle(node).fontSize));
         if (px % 2) px += 1; // options are even-numbered
-        sizeSel.value = (px >= 6 && px <= 40) ? String(px) : '';
+        sizeLb.textContent = (px >= 6 && px <= 40) ? String(px) : 'Size';
       }
     }
   }
   let curCell = null;
   let typingSizePx = null; // sticky user-chosen size; survives Enter, cleared on deliberate caret moves
+
+  // font list, emoji set, and toolbar icons shared in design with the Inbox editor
+  const NOTE_FONTS = [
+    ['Source Sans', "'Source Sans 3', sans-serif"],
+    ['Playfair Display', "'Playfair Display', serif"],
+    ['Lora', 'Lora, serif'],
+    ['Merriweather', 'Merriweather, serif'],
+    ['Montserrat', 'Montserrat, sans-serif'],
+    ['Georgia', 'Georgia, serif'],
+    ['Times New Roman', "'Times New Roman', serif"],
+    ['Arial', 'Arial, sans-serif'],
+    ['Verdana', 'Verdana, sans-serif'],
+    ['Trebuchet MS', "'Trebuchet MS', sans-serif"],
+    ['Tahoma', 'Tahoma, sans-serif'],
+    ['Roboto Mono', "'Roboto Mono', monospace"],
+    ['Courier New', "'Courier New', monospace"],
+    ['Dancing Script', "'Dancing Script', cursive"],
+    ['Comic Sans', "'Comic Sans MS', cursive"],
+    ['Impact', 'Impact, sans-serif'],
+  ];
+  const NOTE_EMOJI = ['🌸','🎉','😀','😄','😊','😉','😍','🥰','😎','🤩','😅','😂','🥲','🙏','👏','👍','🙌','💪','🔥','✨','⭐','💛','❤️','💙','🍜','🥟','🧋','🍚','🏮','🧧','🎊','📣','📅','✅','❗','❓','🫶','🤝','🎓','🌟'];
+  const RTSVG = (d) => `<svg viewBox="0 0 24 24">${d}</svg>`;
+  const RTI = {
+    alignL: RTSVG('<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>'),
+    alignC: RTSVG('<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>'),
+    alignR: RTSVG('<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>'),
+    ol: RTSVG('<path d="M10 6h10M10 12h10M10 18h10M4 5h1.5v3M4 8h3M4.2 12.6c1.6-1.8 3-.4 1.6 1L4 15.4h3.4M4 17.6h2.2a1.1 1.1 0 0 1 0 2.2H5.2a1.1 1.1 0 0 0 0 2.2H7.6" transform="scale(.92) translate(.5 -1.2)"/>'),
+    ul: RTSVG('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="5" cy="18" r="1.4" fill="currentColor" stroke="none"/>'),
+    outdent: RTSVG('<path d="M4 6h16M11 10h9M11 14h9M4 18h16M8 9.5 5 12l3 2.5"/>'),
+    indent: RTSVG('<path d="M4 6h16M11 10h9M11 14h9M4 18h16M5 9.5 8 12l-3 2.5"/>'),
+    quote: RTSVG('<path d="M6 15a3.5 3.5 0 0 1 0-7v2.2A1.8 1.8 0 0 0 6 13v2ZM14 15a3.5 3.5 0 0 1 0-7v2.2a1.8 1.8 0 0 0 0 2.8v2Z" fill="currentColor" stroke="none"/>'),
+    clear: RTSVG('<path d="M6 6 18 18M13 5h6M9.5 5 7 19"/>'),
+    link: RTSVG('<path d="M10 14a4 4 0 0 0 5.6.4l2.6-2.6a4 4 0 0 0-5.6-5.6L11 7.7"/><path d="M14 10a4 4 0 0 0-5.6-.4L5.8 12.2a4 4 0 0 0 5.6 5.6L13 16.3"/>'),
+  };
   document.addEventListener('selectionchange', updateToolbarState);
 
   // ----- floating image resize bar -----
@@ -435,41 +474,56 @@
       </div>
       ${editing ? `
       <div class="rt-toolbar">
-        <select class="rt-sel" id="rt-font" title="Font">
-          <option value="">Font</option>
-          <option value="'Source Sans 3', sans-serif" style="font-family:'Source Sans 3'">Source Sans</option>
-          <option value="'Playfair Display', serif" style="font-family:'Playfair Display'">Playfair Display</option>
-          <option value="Lora, serif" style="font-family:Lora">Lora</option>
-          <option value="Merriweather, serif" style="font-family:Merriweather">Merriweather</option>
-          <option value="Montserrat, sans-serif" style="font-family:Montserrat">Montserrat</option>
-          <option value="Georgia, serif" style="font-family:Georgia">Georgia</option>
-          <option value="'Times New Roman', serif" style="font-family:'Times New Roman'">Times New Roman</option>
-          <option value="Arial, sans-serif" style="font-family:Arial">Arial</option>
-          <option value="Verdana, sans-serif" style="font-family:Verdana">Verdana</option>
-          <option value="'Trebuchet MS', sans-serif" style="font-family:'Trebuchet MS'">Trebuchet MS</option>
-          <option value="Tahoma, sans-serif" style="font-family:Tahoma">Tahoma</option>
-          <option value="'Roboto Mono', monospace" style="font-family:'Roboto Mono'">Roboto Mono</option>
-          <option value="'Courier New', monospace" style="font-family:'Courier New'">Courier New</option>
-          <option value="'Dancing Script', cursive" style="font-family:'Dancing Script'">Dancing Script</option>
-          <option value="'Comic Sans MS', cursive" style="font-family:'Comic Sans MS'">Comic Sans</option>
-          <option value="Impact, sans-serif" style="font-family:Impact">Impact</option>
-        </select>
-        <select class="rt-sel" id="rt-size" title="Text size (px)">
-          <option value="">Size</option>
-          ${Array.from({ length: 18 }, (_, i) => 6 + i * 2).map(px =>
-            `<option value="${px}">${px}</option>`).join('')}
-        </select>
+        <div class="rt-dd" data-dd="fontName">
+          <button type="button" class="rt-dd-btn" title="Font"><span class="rt-dd-label" id="rt-font-label">Font</span></button>
+          <div class="rt-dd-menu">
+            ${NOTE_FONTS.map(([label, stack]) =>
+              `<button type="button" data-v="${esc(stack)}" style="font-family:${esc(stack)}">${label}</button>`).join('')}
+          </div>
+        </div>
+        <div class="rt-dd" data-dd="fontSize">
+          <button type="button" class="rt-dd-btn" title="Text size (px)"><span class="rt-dd-label" id="rt-size-label">Size</span></button>
+          <div class="rt-dd-menu" style="min-width:76px">
+            ${Array.from({ length: 18 }, (_, i) => 6 + i * 2).map(px =>
+              `<button type="button" data-v="${px}">${px}</button>`).join('')}
+          </div>
+        </div>
+        <span class="rt-sep"></span>
         <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
         <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
         <button class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button class="rt-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+        <label class="rt-color" title="Text color">A<span class="swatch"></span>
+          <input type="color" value="#c8202f" id="rt-color-in"></label>
         <button class="rt-btn" data-cmd="h2" title="Heading">H</button>
-        <button class="rt-btn" data-cmd="insertUnorderedList" title="Bullet list">•≡</button>
-        <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">1≡</button>
+        <span class="rt-sep"></span>
+        <button class="rt-btn" data-cmd="justifyLeft" title="Align left">${RTI.alignL}</button>
+        <button class="rt-btn" data-cmd="justifyCenter" title="Align center">${RTI.alignC}</button>
+        <button class="rt-btn" data-cmd="justifyRight" title="Align right">${RTI.alignR}</button>
+        <span class="rt-sep"></span>
+        <button class="rt-btn" data-cmd="insertUnorderedList" title="Bullet list">${RTI.ul}</button>
+        <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">${RTI.ol}</button>
         <button class="rt-btn" data-cmd="cklist" title="Checklist">☑</button>
-        <button class="rt-btn" data-cmd="outdent" title="Outdent (Shift+Tab)">⇤</button>
-        <button class="rt-btn" data-cmd="indent" title="Indent (Tab)">⇥</button>
+        <button class="rt-btn" data-cmd="outdent" title="Outdent (Shift+Tab)">${RTI.outdent}</button>
+        <button class="rt-btn" data-cmd="indent" title="Indent (Tab)">${RTI.indent}</button>
+        <button class="rt-btn" data-cmd="quote" title="Quote">${RTI.quote}</button>
+        <span class="rt-sep"></span>
         <button class="rt-btn" data-cmd="table" title="Insert table">⊞</button>
         <button class="rt-btn" data-cmd="image" title="Insert image">🖼</button>
+        <button class="rt-btn" data-cmd="link" title="Insert link">${RTI.link}</button>
+        <button class="rt-btn" data-cmd="emoji" title="Insert emoji">😊</button>
+        <button class="rt-btn" data-cmd="clearfmt" title="Remove formatting">${RTI.clear}</button>
+        <div class="emoji-pop" id="rt-emoji-pop">${NOTE_EMOJI.map(e => `<button type="button">${e}</button>`).join('')}</div>
+        <div class="link-pop" id="rt-link-pop">
+          <label for="rt-link-text">Text to display</label>
+          <input type="text" id="rt-link-text" placeholder="(uses the link if empty)">
+          <label for="rt-link-url">Link URL</label>
+          <input type="url" id="rt-link-url" placeholder="https://example.com">
+          <div class="lp-row">
+            <button class="btn ghost sm" type="button" data-lp="cancel">Cancel</button>
+            <button class="btn sm" type="button" data-lp="apply">Insert link</button>
+          </div>
+        </div>
       </div>
       <div class="rt-toolbar" id="tbl-tools" style="display:none; padding-top:0; border-bottom:none; margin-bottom:6px">
         <button class="rt-btn" data-tbl="row-above" title="Add row above">⬆ Row</button>
@@ -632,6 +686,31 @@
         } else if (cmd === 'indent' || cmd === 'outdent') {
           // outside a list, fall through to the plain command (block indent)
           if (!indentList(cmd === 'indent' ? 1 : -1)) document.execCommand(cmd, false, null);
+        } else if (cmd === 'quote') {
+          const nd = document.getSelection().anchorNode;
+          const el = nd && (nd.nodeType === 1 ? nd : nd.parentElement);
+          document.execCommand('formatBlock', false, el?.closest('blockquote') ? 'p' : 'blockquote');
+        } else if (cmd === 'clearfmt') {
+          document.execCommand('removeFormat', false, null);
+          document.execCommand('unlink', false, null);
+        } else if (cmd === 'emoji') {
+          const p = document.getElementById('rt-emoji-pop');
+          const open = p.classList.contains('show');
+          rtClosePops();
+          if (!open) p.classList.add('show');
+          return; // opening a popover isn't an edit
+        } else if (cmd === 'link') {
+          const p = document.getElementById('rt-link-pop');
+          const open = p.classList.contains('show');
+          rtClosePops();
+          if (!open) {
+            edSaveSel();
+            document.getElementById('rt-link-text').value = edRange ? edRange.toString() : '';
+            document.getElementById('rt-link-url').value = '';
+            p.classList.add('show');
+            setTimeout(() => document.getElementById('rt-link-url').focus(), 0);
+          }
+          return;
         } else {
           document.execCommand(cmd, false, null);
         }
@@ -640,31 +719,117 @@
       });
     });
 
-    // font family select (apply to selection, then reset to placeholder)
-    document.getElementById('rt-font').addEventListener('change', (e) => {
-      if (!e.target.value) return;
+    // ---- custom font/size dropdowns + popovers (shared design with Inbox) ----
+    const rtClosePops = () => pane.querySelectorAll('.rt-dd-menu.show, .emoji-pop.show, .link-pop.show')
+      .forEach(m => m.classList.remove('show'));
+
+    pane.querySelectorAll('.rt-dd').forEach(dd => {
+      const ddBtn = dd.querySelector('.rt-dd-btn');
+      const ddMenu = dd.querySelector('.rt-dd-menu');
+      const ddLabel = dd.querySelector('.rt-dd-label');
+      ddBtn.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
+      ddBtn.addEventListener('click', () => {
+        const open = ddMenu.classList.contains('show');
+        rtClosePops();
+        if (!open) ddMenu.classList.add('show');
+      });
+      ddMenu.querySelectorAll('button[data-v]').forEach(item => {
+        item.addEventListener('mousedown', (e) => e.preventDefault());
+        item.addEventListener('click', () => {
+          const content = document.getElementById('ed-content');
+          content.focus();
+          if (dd.dataset.dd === 'fontName') {
+            document.execCommand('styleWithCSS', false, true);
+            document.execCommand('fontName', false, item.dataset.v);
+            ddLabel.textContent = item.textContent;
+            ddLabel.style.fontFamily = item.dataset.v;
+          } else {
+            // pixel font sizes: execCommand only knows 1-7, so apply 7 then
+            // the input pass rewrites the generated tags to the exact px value
+            typingSizePx = item.dataset.v; // sticky until a new size is picked
+            document.execCommand('fontSize', false, '7');
+            content.dispatchEvent(new Event('input', { bubbles: false }));
+            ddLabel.textContent = item.textContent;
+          }
+          ddMenu.querySelectorAll('button').forEach(x => x.classList.toggle('cur', x === item));
+          ddMenu.classList.remove('show');
+          markDirty();
+          updateToolbarState();
+        });
+      });
+    });
+
+    // text color
+    document.getElementById('rt-color-in').addEventListener('input', (e) => {
       const content = document.getElementById('ed-content');
       content.focus();
       document.execCommand('styleWithCSS', false, true);
-      document.execCommand('fontName', false, e.target.value);
+      document.execCommand('foreColor', false, e.target.value);
+      pane.querySelector('.rt-color .swatch').style.background = e.target.value;
       markDirty();
       updateToolbarState();
     });
 
-    // pixel font sizes: execCommand only knows 1-7, so apply 7 then
-    // rewrite the generated font tags to the exact px value. With a
-    // collapsed cursor the tag doesn't exist yet - defer via pendingSizePx.
-    document.getElementById('rt-size').addEventListener('change', (e) => {
-      const px = e.target.value;
-      if (!px) return;
+    // selection bookkeeping for the link/emoji popovers
+    let edRange = null;
+    const edSaveSel = () => {
+      const content = document.getElementById('ed-content');
+      const s = document.getSelection();
+      if (s.rangeCount && content.contains(s.anchorNode)) edRange = s.getRangeAt(0).cloneRange();
+    };
+    const edRestoreSel = () => {
       const content = document.getElementById('ed-content');
       content.focus();
-      typingSizePx = px; // sticky: stays the typing size until a new size is picked
-      document.execCommand('fontSize', false, '7');
-      // normalize whatever form materialized (font[size] or keyword span)
-      content.dispatchEvent(new Event('input', { bubbles: false }));
+      if (edRange) { const s = document.getSelection(); s.removeAllRanges(); s.addRange(edRange); }
+    };
+    ['keyup', 'mouseup', 'blur'].forEach(ev =>
+      document.getElementById('ed-content').addEventListener(ev, edSaveSel));
+
+    // emoji picks
+    document.querySelectorAll('#rt-emoji-pop button').forEach(b => {
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      b.addEventListener('click', () => {
+        edRestoreSel();
+        document.execCommand('insertText', false, b.textContent);
+        document.getElementById('rt-emoji-pop').classList.remove('show');
+        markDirty();
+        updateToolbarState();
+      });
+    });
+
+    // link popover apply/cancel
+    const rtLinkPop = document.getElementById('rt-link-pop');
+    rtLinkPop.addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'INPUT') e.preventDefault(); // keep selection, allow typing
+    });
+    rtLinkPop.querySelector('[data-lp="cancel"]').addEventListener('click', () => rtLinkPop.classList.remove('show'));
+    const edApplyLink = () => {
+      let url = document.getElementById('rt-link-url').value.trim();
+      if (!url) { rtLinkPop.classList.remove('show'); return; }
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      const textInput = document.getElementById('rt-link-text').value.trim();
+      const selText = edRange ? edRange.toString() : '';
+      rtLinkPop.classList.remove('show');
+      edRestoreSel();
+      if (selText && (!textInput || textInput === selText)) {
+        document.execCommand('createLink', false, url);
+      } else {
+        const lbl = textInput || url;
+        document.execCommand('insertHTML', false,
+          `<a href="${url.replace(/"/g, '&quot;')}">${esc(lbl)}</a>`);
+      }
       markDirty();
       updateToolbarState();
+    };
+    rtLinkPop.querySelector('[data-lp="apply"]').addEventListener('click', edApplyLink);
+    document.getElementById('rt-link-url').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); edApplyLink(); }
+    });
+
+    // clicking anywhere outside the toolbar closes any open popover
+    document.addEventListener('pointerdown', (e) => {
+      const bar = pane.querySelector('.rt-toolbar');
+      if (bar && !bar.contains(e.target)) rtClosePops();
     });
 
     // table operations (act on the cell the cursor is in)

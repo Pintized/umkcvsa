@@ -1183,3 +1183,60 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover { background-color: rgba(201, 155
 @supports (-moz-appearance: none) {
   * { scrollbar-width: thin; scrollbar-color: rgba(201, 155, 63, .55) transparent; }
 }
+
+/* ---------- shared rich-editor components (Inbox + Notes) ---------- */
+.rt-toolbar { position: relative; }
+.rt-sep { display: inline-block; width: 1px; height: 20px; background: var(--line, rgba(128,128,128,.3)); margin: 0 4px; vertical-align: middle; }
+.rt-dd { position: relative; display: inline-block; }
+.rt-dd-btn {
+  background: transparent; color: inherit; border: 1px solid var(--line, rgba(128,128,128,.3));
+  border-radius: 7px; font-size: .8rem; padding: 4px 8px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; max-width: 150px; white-space: nowrap;
+}
+.rt-dd-btn::after { content: '▾'; opacity: .5; font-size: .7rem; }
+.rt-dd-btn:hover { background: rgba(128,128,128,.12); }
+.rt-dd-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; min-width: 160px;
+  background: var(--surface, Canvas); color: var(--text, CanvasText);
+  border: 1px solid var(--line, rgba(128,128,128,.35));
+  border-radius: 10px; padding: 5px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  max-height: 260px; overflow-y: auto;
+}
+.rt-dd-menu.show { display: block; }
+.rt-dd-menu button {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  color: inherit; cursor: pointer; padding: 6px 10px; border-radius: 7px; font-size: .9rem;
+}
+.rt-dd-menu button:hover { background: rgba(200,32,47,.14); }
+.rt-dd-menu button.cur { background: rgba(200,32,47,.1); font-weight: 700; }
+.rt-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rt-color { position: relative; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; cursor: pointer; border-radius: 7px; font-weight: 700; font-size: .9rem; }
+.rt-color:hover { background: rgba(128,128,128,.15); }
+.rt-color input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.rt-color .swatch { position: absolute; bottom: 3px; left: 7px; right: 7px; height: 3px; border-radius: 2px; background: #c8202f; }
+.emoji-pop {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
+  background: var(--surface, Canvas); color: var(--text, CanvasText);
+  border: 1px solid var(--line, rgba(128,128,128,.35)); border-radius: 12px; padding: 8px;
+  display: none; grid-template-columns: repeat(8, 30px); gap: 2px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+.emoji-pop.show { display: grid; }
+.emoji-pop button { background: none; border: none; font-size: 1.15rem; cursor: pointer; border-radius: 6px; padding: 2px; }
+.emoji-pop button:hover { background: rgba(128,128,128,.2); }
+.link-pop {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; width: 300px;
+  background: var(--surface, Canvas); color: var(--text, CanvasText);
+  border: 1px solid var(--line, rgba(128,128,128,.35));
+  border-radius: 12px; padding: 12px; display: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+.link-pop.show { display: block; }
+.link-pop label { font-size: .75rem; opacity: .65; display: block; margin: 0 0 3px; }
+.link-pop input {
+  width: 100%; padding: 8px 10px; border-radius: 8px; margin-bottom: 8px; font-size: .85rem;
+  border: 1px solid var(--line, rgba(128,128,128,.35)); background: transparent; color: inherit; font-family: inherit;
+}
+.link-pop .lp-row { display: flex; gap: 6px; justify-content: flex-end; }
+.rt-content blockquote { border-left: 3px solid var(--line, rgba(128,128,128,.45)); margin: 6px 0; padding-left: 10px; opacity: .85; }
