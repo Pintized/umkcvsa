@@ -80,8 +80,6 @@ const OFFICER_LINKS = [
   { href: '/app/officer/finance.html',   label: 'Finance',   icon: 'coin' },
   { href: '/app/officer/notes.html',     label: 'Notes',     icon: 'note' },
   { href: '/app/officer/inbox.html',     label: 'Inbox',     icon: 'mail' },
-  { href: '/app/officer/audit.html',     label: 'Audit Log', icon: 'scope' },
-  { href: '/app/officer/roles.html',     label: 'Roles',     icon: 'shield' },
 ];
 
 // site content managers — admins only
@@ -90,6 +88,8 @@ const ADMIN_LINKS = [
   { href: '/app/admin/eboard.html',    label: 'E-Board',  icon: 'crown' },
   { href: '/app/admin/store.html',     label: 'Store',    icon: 'tag' },
   { href: '/app/officer/gallery.html', label: 'Gallery',  icon: 'camera' },
+  { href: '/app/officer/roles.html',   label: 'Roles',    icon: 'shield' },
+  { href: '/app/officer/audit.html',   label: 'Audit Log', icon: 'scope' },
 ];
 
 function navLink({ href, label, icon, soon }, officerLink = false) {
