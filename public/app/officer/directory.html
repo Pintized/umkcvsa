@@ -38,19 +38,23 @@
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
-  let profiles = [], roleMap = new Map(), achievements = [], awards = [];
+  let profiles = [], roleMap = new Map(), achievements = [], awards = [], rewards = [], redemptions = [];
   let q = '';
 
   async function load() {
-    const [p, r, a, aw] = await Promise.all([
+    const [p, r, a, aw, rw, rd] = await Promise.all([
       supabase.from('profiles').select('id, first_name, last_name, full_name, alias, avatar_path, points, created_at').order('full_name'),
       supabase.from('user_roles').select('user_id, role'),
       supabase.from('achievements').select('id, name, points, active').order('name'),
       supabase.from('achievement_awards').select('id, achievement_id, user_id, points_awarded, created_at').order('created_at'),
+      supabase.from('rewards').select('id, name, point_cost, active').order('name'),
+      supabase.from('reward_redemptions').select('id, reward_name, user_id, points_spent, redeemed_by, created_at').order('created_at', { ascending: false }),
     ]);
     profiles = p.data || [];
     achievements = a.data || [];
     awards = aw.data || [];
+    rewards = rw.data || [];
+    redemptions = rd.data || [];
     roleMap = new Map();
     (r.data || []).forEach(x => {
       if (!roleMap.has(x.user_id)) roleMap.set(x.user_id, new Set());
@@ -119,6 +123,8 @@
       if (!m) { back.remove(); return; }
       const mine = awardsOf(uid);
       const grantable = achievements.filter(a => a.active);
+      const myRedemptions = redemptions.filter(r => r.user_id === uid);
+      const redeemable = rewards.filter(r => r.active);
       back.innerHTML = `
         <div class="modal">
           <h2>${esc(m.full_name || 'Member')}</h2>
@@ -167,6 +173,23 @@
               </div>` : '<p style="color:var(--muted); font-size:.84rem; margin-top:10px">No active achievements exist yet — create some to grant them here.</p>'}
           </div>
 
+          <div class="m-section">
+            <h3>Rewards</h3>
+            ${myRedemptions.slice(0, 5).map(r => `
+              <div class="award-row">
+                <span>🎁 <strong>${esc(r.reward_name)}</strong></span>
+                <span class="aw-meta">−${r.points_spent} pts · ${fmtDate(r.created_at)} · by ${esc(byId(r.redeemed_by)?.full_name || '—')}</span>
+              </div>`).join('') || '<p style="color:var(--muted); font-size:.86rem">No redemptions yet.</p>'}
+            ${myRedemptions.length > 5 ? `<p style="color:var(--muted); font-size:.8rem">…and ${myRedemptions.length - 5} more in Engagement Settings → Redemptions.</p>` : ''}
+            ${redeemable.length ? `
+              <div class="field-row" style="margin-top:12px; align-items:flex-end">
+                <div class="field" style="margin-bottom:0"><label>Redeem a reward</label>
+                  <select id="f-rw">${redeemable.map(r => `<option value="${r.id}" ${r.point_cost > m.points ? 'disabled' : ''}>${esc(r.name)} (${r.point_cost} pts)${r.point_cost > m.points ? ' — not enough points' : ''}</option>`).join('')}</select>
+                </div>
+                <button type="button" class="btn small" id="rw-redeem" style="margin-bottom:2px">Redeem</button>
+              </div>` : '<p style="color:var(--muted); font-size:.84rem; margin-top:10px">No active rewards exist yet — create some in Engagement Settings.</p>'}
+          </div>
+
           <div class="row-btns"><button type="button" class="btn ghost" id="m-close">Close</button></div>
         </div>`;
 
@@ -212,6 +235,21 @@
         if (error) { say(error.message, 'error'); return; }
         await refresh(`Granted "${achById(id)?.name}" — new total ${data} points.`);
       });
+      // ---- rewards ----
+      back.querySelector('#rw-redeem')?.addEventListener('click', async () => {
+        const r = rewards.find(x => x.id === +back.querySelector('#f-rw').value);
+        const cur = byId(uid);
+        if (!r || !cur) return;
+        if (cur.points < r.point_cost) {
+          say(`${cur.full_name} has ${cur.points} points — "${r.name}" costs ${r.point_cost}.`, 'error');
+          return;
+        }
+        if (!confirm(`Redeem "${r.name}" (${r.point_cost} pts) for ${cur.full_name}? They'll have ${cur.points - r.point_cost} points left.`)) return;
+        const { data, error } = await supabase.rpc('redeem_reward', { target: uid, reward: r.id });
+        if (error) { say(error.message, 'error'); return; }
+        await refresh(`Redeemed "${r.name}" — new total ${data} points.`);
+      });
+
       back.querySelectorAll('[data-revoke]').forEach(b => b.addEventListener('click', async () => {
         const w = awards.find(x => x.id === +b.dataset.revoke);
         const a = achById(w?.achievement_id);

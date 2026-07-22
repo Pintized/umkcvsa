@@ -30,7 +30,9 @@
   .act { font-size: .72rem; padding: 1px 8px; border-radius: 99px; margin: 0 4px; font-weight: 700; }
   .act.create, .act.insert { background: rgba(47,158,99,.18); color: #2f9e63; }
   .act.update { background: rgba(63,127,191,.18); color: #3f7fbf; }
-  .act.delete { background: rgba(200,32,47,.16); color: #c8202f; }
+  .act.delete, .act.achievement_revoke { background: rgba(200,32,47,.16); color: #c8202f; }
+  .act.achievement_award { background: rgba(47,158,99,.18); color: #2f9e63; }
+  .act.reward_redeem { background: rgba(224,180,92,.2); color: #b8862f; }
   .aud-main details { margin-top: 4px; }
   .aud-main details > summary { cursor: pointer; font-size: .8rem; opacity: .65; list-style: none; }
   .aud-main details > summary::before { content: '▸ '; }
@@ -68,7 +70,7 @@
     announcements: 'Announcement', eboard_members: 'E-Board member',
     store_products: 'Store product', sponsors: 'Sponsor', inbox_emails: 'Email',
     user_roles: 'Role', site_settings: 'Site setting', event_attendance: 'Event attendance',
-    achievement_awards: 'Achievement award', task_assignees: 'Task assignee',
+    achievement_awards: 'Achievement award', reward_redemptions: 'Reward redemption', task_assignees: 'Task assignee',
     task_edges: 'Task link', note_attendees: 'Note attendee', inventory_log: 'Inventory log',
     finance_budgets: 'Budget', finance_dues: 'Dues', finance_fundraisers: 'Fundraiser',
     finance_planner_items: 'Budget planner item', finance_planner_receipts: 'Planner receipt',
@@ -76,7 +78,7 @@
     finance_sponsorships: 'Sponsorship', finance_transactions: 'Transaction',
     profiles: 'Profile',
   };
-  const VERB = { insert: 'created', create: 'created', update: 'updated', delete: 'deleted' };
+  const VERB = { insert: 'created', create: 'created', update: 'updated', delete: 'deleted', achievement_award: 'granted', achievement_revoke: 'removed', reward_redeem: 'redeemed' };
   // Fields that are noise in detail views
   const SKIP_FIELDS = new Set(['id', 'created_at', 'updated_at', 'raw', 'html_body', 'message_id', 'embedding']);
 

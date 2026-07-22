@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engagement Settings | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .eng-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .eng-tabs .tab {
+    padding: 7px 14px; border-radius: 99px; cursor: pointer; font-size: .88rem;
+    border: 1px solid rgba(128,128,128,.3); background: transparent; color: inherit;
+  }
+  .eng-tabs .tab.on { background: rgba(200,32,47,.12); border-color: var(--gold, #e0b45c); font-weight: 700; }
+  .btn.small { padding: 6px 13px; font-size: .82rem; }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .status-pill { font-size: .74rem; padding: 2px 9px; border-radius: 99px; }
+  .status-pill.live { background: rgba(47,158,99,.15); color: #2f9e63; }
+  .status-pill.off { background: rgba(128,128,128,.18); color: var(--muted); }
+  .redeem-bar { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 18px; }
+  @media (max-width: 700px) { .redeem-bar { grid-template-columns: 1fr; } }
+  .desc-cell { color: var(--muted); font-size: .84rem; max-width: 320px; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading engagement settings…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Engagement Settings');
+
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const fmtWhen = (d) => new Date(d).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  let tab = 'achievements';
+  let achievements = [], rewards = [], redemptions = [], profiles = [], awardCounts = new Map();
+
+  async function load() {
+    const [a, r, rd, p, aw] = await Promise.all([
+      supabase.from('achievements').select('*').order('name'),
+      supabase.from('rewards').select('*').order('name'),
+      supabase.from('reward_redemptions').select('*').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, full_name, alias, points').order('full_name'),
+      supabase.from('achievement_awards').select('achievement_id'),
+    ]);
+    achievements = a.data || [];
+    rewards = r.data || [];
+    redemptions = rd.data || [];
+    profiles = p.data || [];
+    awardCounts = new Map();
+    (aw.data || []).forEach(x => awardCounts.set(x.achievement_id, (awardCounts.get(x.achievement_id) || 0) + 1));
+    render();
+  }
+
+  const nameOf = (id) => profiles.find(p => p.id === id)?.full_name || '—';
+  const redeemCount = (id) => redemptions.filter(r => r.reward_id === id).length;
+
+  function render() {
+    page.innerHTML = `
+      <div class="card">
+        <h2>Engagement Settings</h2>
+        <p style="color:var(--muted); font-size:.86rem; margin-bottom:14px">
+          The points economy: achievements put points in, rewards take points out.
+          Prefer <strong>deactivating</strong> over deleting — inactive items keep their history but can't be granted or redeemed.</p>
+        <div class="eng-tabs" id="tabs">
+          <button class="tab ${tab === 'achievements' ? 'on' : ''}" data-tab="achievements">🏆 Achievements</button>
+          <button class="tab ${tab === 'rewards' ? 'on' : ''}" data-tab="rewards">🎁 Rewards</button>
+          <button class="tab ${tab === 'redemptions' ? 'on' : ''}" data-tab="redemptions">✅ Redemptions</button>
+        </div>
+        <div id="tab-body"></div>
+        <p class="notice" id="notice" style="margin-top:14px"></p>
+      </div>`;
+    page.querySelectorAll('#tabs .tab').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+    ({ achievements: renderAchievements, rewards: renderRewards, redemptions: renderRedemptions })[tab]();
+  }
+
+  const say = (msg, cls) => {
+    const n = page.querySelector('#notice');
+    n.textContent = msg; n.className = `notice ${cls}`;
+  };
+
+  // ---------- achievements tab ----------
+  function renderAchievements() {
+    const body = page.querySelector('#tab-body');
+    body.innerHTML = `
+      <div style="margin-bottom:12px"><button class="btn small" id="new-ach">+ New achievement</button></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Achievement</th><th>Description</th><th>Points</th><th>Status</th><th>Awarded</th><th></th></tr></thead>
+          <tbody>
+            ${achievements.map(a => `
+              <tr>
+                <td><strong>${a.icon ? esc(a.icon) + ' ' : '🏆 '}${esc(a.name)}</strong></td>
+                <td class="desc-cell">${esc(a.description || '')}</td>
+                <td><strong>+${a.points}</strong></td>
+                <td><span class="status-pill ${a.active ? 'live' : 'off'}">${a.active ? 'active' : 'inactive'}</span></td>
+                <td>${awardCounts.get(a.id) || 0}×</td>
+                <td class="row-actions">
+                  <button class="btn ghost small" data-edit="${a.id}">Edit</button>
+                  <button class="btn ghost small" data-toggle="${a.id}">${a.active ? 'Deactivate' : 'Activate'}</button>
+                  ${(awardCounts.get(a.id) || 0) === 0 ? `<button class="btn ghost small" data-del="${a.id}">Delete</button>` : ''}
+                </td>
+              </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted)">No achievements yet — create the first one!</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+    body.querySelector('#new-ach').onclick = () => achModal(null);
+    body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => achModal(achievements.find(a => a.id === +b.dataset.edit)));
+    body.querySelectorAll('[data-toggle]').forEach(b => b.onclick = async () => {
+      const a = achievements.find(x => x.id === +b.dataset.toggle);
+      const { error } = await supabase.from('achievements').update({ active: !a.active }).eq('id', a.id);
+      if (error) { say(error.message, 'error'); return; }
+      await load(); say(`"${a.name}" is now ${a.active ? 'inactive' : 'active'}.`, 'ok');
+    });
+    body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const a = achievements.find(x => x.id === +b.dataset.del);
+      if (!confirm(`Delete "${a.name}"? It has never been awarded, so nothing else is affected.`)) return;
+      const { error } = await supabase.from('achievements').delete().eq('id', a.id);
+      if (error) { say(error.message, 'error'); return; }
+      await load(); say(`Deleted "${a.name}".`, 'ok');
+    });
+  }
+
+  function achModal(a) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${a ? 'Edit achievement' : 'New achievement'}</h2>
+        <div class="notice" id="m-notice"></div>
+        <form id="m-form">
+          <div class="field-row">
+            <div class="field" style="flex:0 0 90px"><label>Icon (emoji)</label><input id="f-icon" maxlength="8" placeholder="🏆" value="${esc(a?.icon || '')}"></div>
+            <div class="field"><label>Name</label><input id="f-name" required value="${esc(a?.name)}"></div>
+          </div>
+          <div class="field"><label>Description</label><textarea id="f-desc">${esc(a?.description)}</textarea></div>
+          <div class="field"><label>Points granted when awarded</label><input type="number" id="f-pts" min="0" value="${a?.points ?? 10}"></div>
+          <label style="display:flex; gap:8px; align-items:center; font-size:.9rem; margin-bottom:6px">
+            <input type="checkbox" id="f-active" style="width:16px; height:16px" ${a ? (a.active ? 'checked' : '') : 'checked'}> Active (can be granted)</label>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
+            <button type="submit" class="btn">${a ? 'Save' : 'Create'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        icon: back.querySelector('#f-icon').value.trim() || null,
+        name: back.querySelector('#f-name').value.trim(),
+        description: back.querySelector('#f-desc').value.trim() || null,
+        points: Math.max(0, Math.floor(+back.querySelector('#f-pts').value || 0)),
+        active: back.querySelector('#f-active').checked,
+      };
+      const { error } = a
+        ? await supabase.from('achievements').update(payload).eq('id', a.id)
+        : await supabase.from('achievements').insert({ ...payload, created_by: ctx.user.id });
+      if (error) {
+        const n = back.querySelector('#m-notice'); n.textContent = error.message; n.className = 'notice error';
+        return;
+      }
+      back.remove();
+      await load(); say(`${a ? 'Saved' : 'Created'} "${payload.name}".`, 'ok');
+    });
+  }
+
+  // ---------- rewards tab ----------
+  function renderRewards() {
+    const body = page.querySelector('#tab-body');
+    body.innerHTML = `
+      <div style="margin-bottom:12px"><button class="btn small" id="new-rw">+ New reward</button></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Reward</th><th>Description</th><th>Cost</th><th>Status</th><th>Redeemed</th><th></th></tr></thead>
+          <tbody>
+            ${rewards.map(r => `
+              <tr>
+                <td><strong>🎁 ${esc(r.name)}</strong></td>
+                <td class="desc-cell">${esc(r.description || '')}</td>
+                <td><strong>${r.point_cost} pts</strong></td>
+                <td><span class="status-pill ${r.active ? 'live' : 'off'}">${r.active ? 'active' : 'inactive'}</span></td>
+                <td>${redeemCount(r.id)}×</td>
+                <td class="row-actions">
+                  <button class="btn ghost small" data-edit="${r.id}">Edit</button>
+                  <button class="btn ghost small" data-toggle="${r.id}">${r.active ? 'Deactivate' : 'Activate'}</button>
+                  <button class="btn ghost small" data-del="${r.id}">Delete</button>
+                </td>
+              </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted)">No rewards yet — create the first one!</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+    body.querySelector('#new-rw').onclick = () => rwModal(null);
+    body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => rwModal(rewards.find(r => r.id === +b.dataset.edit)));
+    body.querySelectorAll('[data-toggle]').forEach(b => b.onclick = async () => {
+      const r = rewards.find(x => x.id === +b.dataset.toggle);
+      const { error } = await supabase.from('rewards').update({ active: !r.active }).eq('id', r.id);
+      if (error) { say(error.message, 'error'); return; }
+      await load(); say(`"${r.name}" is now ${r.active ? 'inactive' : 'active'}.`, 'ok');
+    });
+    body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const r = rewards.find(x => x.id === +b.dataset.del);
+      const n = redeemCount(r.id);
+      if (!confirm(`Delete "${r.name}"?${n ? ` Its ${n} past redemption${n > 1 ? 's' : ''} will stay in the history.` : ''}`)) return;
+      const { error } = await supabase.from('rewards').delete().eq('id', r.id);
+      if (error) { say(error.message, 'error'); return; }
+      await load(); say(`Deleted "${r.name}".`, 'ok');
+    });
+  }
+
+  function rwModal(r) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${r ? 'Edit reward' : 'New reward'}</h2>
+        <div class="notice" id="m-notice"></div>
+        <form id="m-form">
+          <div class="field"><label>Name</label><input id="f-name" required value="${esc(r?.name)}"></div>
+          <div class="field"><label>Description</label><textarea id="f-desc">${esc(r?.description)}</textarea></div>
+          <div class="field"><label>Point cost</label><input type="number" id="f-cost" min="0" value="${r?.point_cost ?? 50}"></div>
+          <label style="display:flex; gap:8px; align-items:center; font-size:.9rem; margin-bottom:6px">
+            <input type="checkbox" id="f-active" style="width:16px; height:16px" ${r ? (r.active ? 'checked' : '') : 'checked'}> Active (can be redeemed)</label>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
+            <button type="submit" class="btn">${r ? 'Save' : 'Create'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-cancel').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    back.querySelector('#m-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: back.querySelector('#f-name').value.trim(),
+        description: back.querySelector('#f-desc').value.trim() || null,
+        point_cost: Math.max(0, Math.floor(+back.querySelector('#f-cost').value || 0)),
+        active: back.querySelector('#f-active').checked,
+      };
+      const { error } = r
+        ? await supabase.from('rewards').update(payload).eq('id', r.id)
+        : await supabase.from('rewards').insert({ ...payload, created_by: ctx.user.id });
+      if (error) {
+        const n = back.querySelector('#m-notice'); n.textContent = error.message; n.className = 'notice error';
+        return;
+      }
+      back.remove();
+      await load(); say(`${r ? 'Saved' : 'Created'} "${payload.name}".`, 'ok');
+    });
+  }
+
+  // ---------- redemptions tab ----------
+  function renderRedemptions() {
+    const body = page.querySelector('#tab-body');
+    const active = rewards.filter(r => r.active);
+    body.innerHTML = `
+      <div class="redeem-bar">
+        <div class="field" style="margin-bottom:0"><label>Member</label>
+          <select id="rd-member">${profiles.map(p =>
+            `<option value="${p.id}">${esc(p.full_name)}${p.alias ? ` “${esc(p.alias)}”` : ''} — ${p.points} pts</option>`).join('')}</select>
+        </div>
+        <div class="field" style="margin-bottom:0"><label>Reward</label>
+          <select id="rd-reward">${active.map(r =>
+            `<option value="${r.id}">${esc(r.name)} — ${r.point_cost} pts</option>`).join('') || '<option value="">No active rewards</option>'}</select>
+        </div>
+        <button class="btn small" id="rd-go" ${active.length ? '' : 'disabled'} style="margin-bottom:2px">Mark as redeemed</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>When</th><th>Member</th><th>Reward</th><th>Points</th><th>Marked by</th></tr></thead>
+          <tbody>
+            ${redemptions.map(r => `
+              <tr>
+                <td style="color:var(--muted); font-size:.84rem; white-space:nowrap">${fmtWhen(r.created_at)}</td>
+                <td><strong>${esc(nameOf(r.user_id))}</strong></td>
+                <td>🎁 ${esc(r.reward_name)}</td>
+                <td>−${r.points_spent}</td>
+                <td>${esc(nameOf(r.redeemed_by))}</td>
+              </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No redemptions yet.</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+
+    body.querySelector('#rd-go').onclick = async () => {
+      const uid = body.querySelector('#rd-member').value;
+      const rid = +body.querySelector('#rd-reward').value;
+      const m = profiles.find(p => p.id === uid);
+      const r = rewards.find(x => x.id === rid);
+      if (!m || !r) return;
+      if (m.points < r.point_cost) {
+        say(`${m.full_name} has ${m.points} points — "${r.name}" costs ${r.point_cost}.`, 'error');
+        return;
+      }
+      if (!confirm(`Redeem "${r.name}" (${r.point_cost} pts) for ${m.full_name}? They'll have ${m.points - r.point_cost} points left.`)) return;
+      const { data, error } = await supabase.rpc('redeem_reward', { target: uid, reward: rid });
+      if (error) { say(error.message, 'error'); return; }
+      await load();
+      say(`Redeemed "${r.name}" for ${m.full_name} — they now have ${data} points.`, 'ok');
+    };
+  }
+
+  await load();
+</script>
+</body>
+</html>
