@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirming… | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card" style="text-align:center">
+    <a class="brand" href="/" style="justify-content:center">
+      <img src="/assets/img/logo-128.png" alt="UMKC VSA logo">
+      <span>UMKC VSA</span>
+    </a>
+    <div id="working">
+      <h1>One moment…</h1>
+      <p class="sub">Confirming your link.</p>
+    </div>
+    <div id="failed" style="display:none">
+      <h1>Link didn't work</h1>
+      <p class="sub" id="fail-why">This link is invalid or has expired.</p>
+      <p class="sub">Request a fresh one from the login page and try again.</p>
+      <a class="btn" href="/app/login.html" style="display:inline-block; text-decoration:none; margin-top:10px">
+        Back to login
+      </a>
+    </div>
+  </div>
+</div>
+<script type="module">
+  // Verifies email links on our own domain: the email only ever shows
+  // umkcvsa.org, and this page exchanges the one-time token behind the
+  // scenes (signup confirmation or password recovery).
+  import { supabase } from '/app/shared/supabase.js';
+
+  const q = new URLSearchParams(location.search);
+  const token_hash = q.get('token_hash');
+  const type = q.get('type') === 'recovery' ? 'recovery' : 'signup';
+
+  const fail = (msg) => {
+    document.getElementById('working').style.display = 'none';
+    const f = document.getElementById('failed');
+    if (msg) document.getElementById('fail-why').textContent = msg;
+    f.style.display = 'block';
+  };
+
+  if (!token_hash) {
+    fail('This link is incomplete — use the button in the email, or copy the whole link.');
+  } else {
+    const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+    if (error) {
+      fail(/expired|invalid/i.test(error.message)
+        ? 'This link is invalid or has already expired — they only last a little while.'
+        : error.message);
+    } else {
+      location.replace(type === 'recovery' ? '/app/reset.html' : '/app/verified.html');
+    }
+  }
+</script>
+</body>
+</html>
