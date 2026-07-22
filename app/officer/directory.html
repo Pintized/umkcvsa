@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Member Directory | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .dir-search { max-width: 340px; margin-bottom: 14px; }
+  .dir-ava { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 9px; }
+  .dir-alias { color: var(--muted); font-size: .82rem; }
+  .role-badge { text-transform: capitalize; margin-right: 4px; }
+  .m-section { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+  .m-section > h3 { font-size: .95rem; margin-bottom: 10px; }
+  .award-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: .88rem; }
+  .award-row .aw-meta { color: var(--muted); font-size: .8rem; }
+  .award-row button { margin-left: auto; }
+  .btn.small { padding: 6px 13px; font-size: .82rem; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading directory…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const AVATAR_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/';
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Member Directory');
+
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+  let profiles = [], roleMap = new Map(), achievements = [], awards = [];
+  let q = '';
+
+  async function load() {
+    const [p, r, a, aw] = await Promise.all([
+      supabase.from('profiles').select('id, first_name, last_name, full_name, alias, avatar_path, points, created_at').order('full_name'),
+      supabase.from('user_roles').select('user_id, role'),
+      supabase.from('achievements').select('id, name, points, active').order('name'),
+      supabase.from('achievement_awards').select('id, achievement_id, user_id, points_awarded, created_at').order('created_at'),
+    ]);
+    profiles = p.data || [];
+    achievements = a.data || [];
+    awards = aw.data || [];
+    roleMap = new Map();
+    (r.data || []).forEach(x => {
+      if (!roleMap.has(x.user_id)) roleMap.set(x.user_id, new Set());
+      roleMap.get(x.user_id).add(x.role);
+    });
+  }
+
+  const extraRoles = (id) => [...(roleMap.get(id) || [])].filter(r => r !== 'member');
+  const awardsOf = (id) => awards.filter(w => w.user_id === id);
+  const achById = (id) => achievements.find(x => x.id === id);
+  const byId = (id) => profiles.find(p => p.id === id);
+
+  function render() {
+    const needle = q.trim().toLowerCase();
+    const rows = profiles.filter(p => !needle
+      || `${p.first_name} ${p.last_name} ${p.full_name} ${p.alias || ''}`.toLowerCase().includes(needle));
+    page.innerHTML = `
+      <div class="card">
+        <h2>Member Directory</h2>
+        <p style="color:var(--muted); font-size:.86rem; margin-bottom:14px">
+          Fix name typos, set aliases, and manage each member's points and achievements.
+          Every change here is recorded in the audit log.</p>
+        <div class="field dir-search">
+          <input id="dir-q" placeholder="Search by name or alias…" value="${esc(q)}" autocomplete="off">
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Member</th><th>Roles</th><th>Points</th><th>Achievements</th><th>Joined</th><th></th></tr></thead>
+            <tbody>
+              ${rows.map(p => `
+                <tr>
+                  <td>
+                    <img class="dir-ava" src="${p.avatar_path ? AVATAR_BASE + esc(p.avatar_path) : '/assets/img/logo-128.png'}" alt="">
+                    <strong>${esc(p.full_name || 'Member')}</strong>${p.id === ctx.user.id ? ' <span class="badge">you</span>' : ''}
+                    ${p.alias ? `<div class="dir-alias" style="margin-left:39px">“${esc(p.alias)}”</div>` : ''}
+                  </td>
+                  <td>${extraRoles(p.id).map(r => `<span class="badge role-badge">${esc(r)}</span>`).join('') || '<span style="color:var(--muted)">member</span>'}</td>
+                  <td><strong>${p.points}</strong></td>
+                  <td>${awardsOf(p.id).length || '—'}</td>
+                  <td style="color:var(--muted); font-size:.84rem">${fmtDate(p.created_at)}</td>
+                  <td><button class="btn ghost small" data-manage="${p.id}">Manage</button></td>
+                </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted)">No members match.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+
+    const search = page.querySelector('#dir-q');
+    search.addEventListener('input', () => { q = search.value; render(); page.querySelector('#dir-q').focus(); const el = page.querySelector('#dir-q'); el.setSelectionRange(el.value.length, el.value.length); });
+    page.querySelectorAll('[data-manage]').forEach(b => b.addEventListener('click', () => openManage(b.dataset.manage)));
+  }
+
+  function openManage(uid) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    document.body.appendChild(back);
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+
+    const say = (msg, cls) => {
+      const n = back.querySelector('#m-notice');
+      n.textContent = msg; n.className = `notice ${cls}`;
+    };
+
+    function renderModal() {
+      const m = byId(uid);
+      if (!m) { back.remove(); return; }
+      const mine = awardsOf(uid);
+      const grantable = achievements.filter(a => a.active);
+      back.innerHTML = `
+        <div class="modal">
+          <h2>${esc(m.full_name || 'Member')}</h2>
+          <div class="notice" id="m-notice"></div>
+
+          <form id="name-form">
+            <div class="field-row">
+              <div class="field"><label>First name</label><input id="f-first" required value="${esc(m.first_name)}"></div>
+              <div class="field"><label>Last name</label><input id="f-last" required value="${esc(m.last_name)}"></div>
+            </div>
+            <div class="field"><label>Alias <span style="opacity:.55; font-weight:400">(optional, must be unique)</span></label>
+              <input id="f-alias" maxlength="24" value="${esc(m.alias || '')}"></div>
+            <div class="row-btns" style="margin-top:6px"><button type="submit" class="btn small">Save name & alias</button></div>
+          </form>
+
+          <div class="m-section">
+            <h3>Points — currently <strong id="m-pts">${m.points}</strong></h3>
+            <div class="field-row">
+              <div class="field"><label>Amount</label><input type="number" id="f-amt" min="1" value="5"></div>
+              <div class="field"><label>Reason <span style="opacity:.55; font-weight:400">(shown in audit log)</span></label>
+                <input id="f-reason" placeholder="e.g. tabling volunteer"></div>
+            </div>
+            <div class="row-btns" style="justify-content:flex-start; margin-top:2px">
+              <button type="button" class="btn small" id="pts-give">+ Give</button>
+              <button type="button" class="btn ghost small" id="pts-take">− Take</button>
+            </div>
+          </div>
+
+          <div class="m-section">
+            <h3>Achievements</h3>
+            ${mine.map(w => {
+              const a = achById(w.achievement_id);
+              return `
+                <div class="award-row">
+                  <span>🏆 <strong>${esc(a?.name || 'Achievement')}</strong></span>
+                  <span class="aw-meta">+${w.points_awarded} pts · ${fmtDate(w.created_at)}</span>
+                  <button type="button" class="btn ghost small" data-revoke="${w.id}">Remove</button>
+                </div>`;
+            }).join('') || '<p style="color:var(--muted); font-size:.86rem">No achievements yet.</p>'}
+            ${grantable.length ? `
+              <div class="field-row" style="margin-top:12px; align-items:flex-end">
+                <div class="field" style="margin-bottom:0"><label>Grant an achievement</label>
+                  <select id="f-ach">${grantable.map(a => `<option value="${a.id}">${esc(a.name)} (+${a.points} pts)</option>`).join('')}</select>
+                </div>
+                <button type="button" class="btn small" id="ach-grant" style="margin-bottom:2px">Grant</button>
+              </div>` : '<p style="color:var(--muted); font-size:.84rem; margin-top:10px">No active achievements exist yet — create some to grant them here.</p>'}
+          </div>
+
+          <div class="row-btns"><button type="button" class="btn ghost" id="m-close">Close</button></div>
+        </div>`;
+
+      back.querySelector('#m-close').onclick = () => back.remove();
+
+      // ---- names & alias ----
+      back.querySelector('#name-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const first = back.querySelector('#f-first').value.trim();
+        const last = back.querySelector('#f-last').value.trim();
+        const alias = back.querySelector('#f-alias').value.trim();
+        if (!first || !last) { say('First and last name are required.', 'error'); return; }
+        if (alias && profiles.some(p => p.id !== uid && (p.alias || '').toLowerCase() === alias.toLowerCase())) {
+          say(`The alias "${alias}" is already taken by another member.`, 'error');
+          return;
+        }
+        const { error } = await supabase.from('profiles')
+          .update({ first_name: first, last_name: last, full_name: `${first} ${last}`.trim(), alias: alias || null })
+          .eq('id', uid);
+        if (error) {
+          say(error.code === '23505' ? `The alias "${alias}" is already taken.` : error.message, 'error');
+          return;
+        }
+        await refresh(`Saved — ${first} ${last}${alias ? ` “${alias}”` : ''}.`);
+      });
+
+      // ---- points ----
+      const adjust = async (sign) => {
+        const amt = Math.floor(+back.querySelector('#f-amt').value || 0);
+        if (amt < 1) { say('Enter an amount of at least 1.', 'error'); return; }
+        const reason = back.querySelector('#f-reason').value.trim() || null;
+        const { data, error } = await supabase.rpc('grant_points', { target: uid, delta: sign * amt, reason });
+        if (error) { say(error.message, 'error'); return; }
+        await refresh(`${sign > 0 ? 'Gave' : 'Took'} ${amt} points — new total ${data}.`);
+      };
+      back.querySelector('#pts-give').onclick = () => adjust(1);
+      back.querySelector('#pts-take').onclick = () => adjust(-1);
+
+      // ---- achievements ----
+      back.querySelector('#ach-grant')?.addEventListener('click', async () => {
+        const id = +back.querySelector('#f-ach').value;
+        const { data, error } = await supabase.rpc('award_achievement', { target: uid, achievement: id });
+        if (error) { say(error.message, 'error'); return; }
+        await refresh(`Granted "${achById(id)?.name}" — new total ${data} points.`);
+      });
+      back.querySelectorAll('[data-revoke]').forEach(b => b.addEventListener('click', async () => {
+        const w = awards.find(x => x.id === +b.dataset.revoke);
+        const a = achById(w?.achievement_id);
+        if (!confirm(`Remove "${a?.name}" from ${byId(uid)?.full_name}? They will lose the ${w?.points_awarded} points it granted.`)) return;
+        const { data, error } = await supabase.rpc('revoke_achievement', { award: +b.dataset.revoke });
+        if (error) { say(error.message, 'error'); return; }
+        await refresh(`Removed "${a?.name}" — new total ${data} points.`);
+      }));
+    }
+
+    async function refresh(msg) {
+      await load();
+      render();
+      renderModal();
+      say(msg, 'ok');
+    }
+
+    renderModal();
+  }
+
+  await load();
+  render();
+</script>
+</body>
+</html>
