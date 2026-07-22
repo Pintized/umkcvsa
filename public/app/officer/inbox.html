@@ -8,7 +8,7 @@
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <script src="/app/shared/theme-init.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Roboto+Mono:wght@400;700&family=Dancing+Script:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
 <style>
   .inbox-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -219,7 +219,26 @@
     image: I('<rect x="3.6" y="5" width="16.8" height="14" rx="2"/><circle cx="8.6" cy="9.6" r="1.6"/><path d="m5 17 4.6-4.6 3.2 3.2 2.6-2.6L20.4 17"/>'),
     attach: I('<path d="m20 11-7.6 7.6a5 5 0 0 1-7-7L13 4a3.4 3.4 0 0 1 4.8 4.8L10.6 16a1.8 1.8 0 0 1-2.6-2.6l6.6-6.6"/>'),
   };
-  const FONTS = ['Arial', 'Georgia', 'Times New Roman', 'Verdana', 'Trebuchet MS', 'Courier New', 'Comic Sans MS'];
+  // Font list and pixel-size range cloned from the Notes editor
+  const FONTS = [
+    ['Source Sans', "'Source Sans 3', sans-serif"],
+    ['Playfair Display', "'Playfair Display', serif"],
+    ['Lora', 'Lora, serif'],
+    ['Merriweather', 'Merriweather, serif'],
+    ['Montserrat', 'Montserrat, sans-serif'],
+    ['Georgia', 'Georgia, serif'],
+    ['Times New Roman', "'Times New Roman', serif"],
+    ['Arial', 'Arial, sans-serif'],
+    ['Verdana', 'Verdana, sans-serif'],
+    ['Trebuchet MS', "'Trebuchet MS', sans-serif"],
+    ['Tahoma', 'Tahoma, sans-serif'],
+    ['Roboto Mono', "'Roboto Mono', monospace"],
+    ['Courier New', "'Courier New', monospace"],
+    ['Dancing Script', "'Dancing Script', cursive"],
+    ['Comic Sans', "'Comic Sans MS', cursive"],
+    ['Impact', 'Impact, sans-serif'],
+  ];
+  const SIZES = Array.from({ length: 18 }, (_, i) => 6 + i * 2); // 6–40 px
   const EMOJI = ['🌸','🎉','😀','😄','😊','😉','😍','🥰','😎','🤩','😅','😂','🥲','🙏','👏','👍','🙌','💪','🔥','✨','⭐','💛','❤️','💙','🍜','🥟','🧋','🍚','🏮','🧧','🎊','📣','📅','✅','❗','❓','🫶','🤝','🎓','🌟'];
 
   function editorHTML(id, placeholder) {
@@ -229,16 +248,13 @@
         <div class="rt-dd" data-dd="fontName">
           <button type="button" class="rt-dd-btn" title="Font"><span class="rt-dd-label">Font</span></button>
           <div class="rt-dd-menu">
-            ${FONTS.map(f => `<button type="button" data-v="${f}" style="font-family:'${f}'">${f}</button>`).join('')}
+            ${FONTS.map(([label, stack]) => `<button type="button" data-v="${esc(stack)}" style="font-family:${esc(stack)}">${label}</button>`).join('')}
           </div>
         </div>
         <div class="rt-dd" data-dd="fontSize">
-          <button type="button" class="rt-dd-btn" title="Font size"><span class="rt-dd-label">Size</span></button>
-          <div class="rt-dd-menu">
-            <button type="button" data-v="1" style="font-size:.78rem">Small</button>
-            <button type="button" data-v="3" style="font-size:.95rem">Normal</button>
-            <button type="button" data-v="5" style="font-size:1.25rem">Large</button>
-            <button type="button" data-v="7" style="font-size:1.6rem">Huge</button>
+          <button type="button" class="rt-dd-btn" title="Text size (px)"><span class="rt-dd-label">Size</span></button>
+          <div class="rt-dd-menu" style="min-width:76px">
+            ${SIZES.map(px => `<button type="button" data-v="${px}">${px}</button>`).join('')}
           </div>
         </div>
         <span class="rt-sep"></span>
@@ -348,6 +364,49 @@
       saveSel();
     });
 
+    // ---- pixel font sizes, cloned from Notes ----
+    // execCommand('fontSize') materializes as EITHER <font size=N> or a span
+    // with a KEYWORD size depending on styleWithCSS at insertion time — so we
+    // normalize both forms to the exact px everywhere.
+    const LEGACY_SIZE = { 1: 10, 2: 13, 3: 16, 4: 18, 5: 24, 6: 32, 7: 48 };
+    const KEYWORD_PX = {
+      'x-small': 10, 'small': 13, 'medium': 16, 'large': 18,
+      'x-large': 24, 'xx-large': 32, 'xxx-large': 48, '-webkit-xxx-large': 48,
+    };
+    let typingSizePx = null; // sticky user-chosen size; stays the typing size until a new size is picked
+    const normalizeSizes = (root, forcePx) => {
+      root.querySelectorAll('font[size]').forEach(f => {
+        const px = forcePx || LEGACY_SIZE[f.getAttribute('size')] || 16;
+        f.removeAttribute('size');
+        f.style.fontSize = px + 'px';
+      });
+      root.querySelectorAll('span[style], font[style]').forEach(el => {
+        if (KEYWORD_PX[el.style.fontSize]) {
+          el.style.fontSize = (forcePx || KEYWORD_PX[el.style.fontSize]) + 'px';
+        }
+      });
+    };
+    // freshly created size elements become the sticky px on the next input
+    area.addEventListener('input', () => { if (typingSizePx) normalizeSizes(area, +typingSizePx); });
+    // sticky size: re-applied just-in-time whenever a keystroke would land at any other size
+    area.addEventListener('beforeinput', (e) => {
+      if (e.inputType !== 'insertText' || !typingSizePx) return;
+      const s = document.getSelection();
+      if (!s?.anchorNode || !area.contains(s.anchorNode)) return;
+      const nd = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
+      if (Math.round(parseFloat(getComputedStyle(nd).fontSize)) !== +typingSizePx) {
+        document.execCommand('fontSize', false, '7');
+        // whichever form materializes, the input pass normalizes it to the sticky px
+      }
+    });
+    function setSizePx(px) {
+      closePops(); restoreSel();
+      typingSizePx = px;
+      document.execCommand('fontSize', false, '7');
+      normalizeSizes(area, +px);
+      saveSel(); refresh();
+    }
+
     const exec = (cmd, val = null) => { closePops(); restoreSel(); document.execCommand(cmd, false, val); saveSel(); refresh(); };
 
     // toolbar buttons with direct commands
@@ -377,9 +436,18 @@
       menu.querySelectorAll('button[data-v]').forEach(item => {
         item.addEventListener('mousedown', (e) => e.preventDefault());
         item.addEventListener('click', () => {
-          exec(dd.dataset.dd, item.dataset.v);
-          label.textContent = item.textContent;
-          if (dd.dataset.dd === 'fontName') label.style.fontFamily = item.dataset.v;
+          const v = item.dataset.v;
+          if (dd.dataset.dd === 'fontName') {
+            closePops(); restoreSel();
+            document.execCommand('styleWithCSS', false, true);
+            document.execCommand('fontName', false, v);
+            saveSel(); refresh();
+            label.textContent = item.textContent;
+            label.style.fontFamily = v;
+          } else {
+            setSizePx(v);
+            label.textContent = item.textContent;
+          }
           menu.querySelectorAll('button').forEach(x => x.classList.toggle('cur', x === item));
           menu.classList.remove('show');
         });
@@ -508,6 +576,28 @@
         let on = false;
         try { on = document.queryCommandState(cmd); } catch (_) {}
         btn.classList.toggle('on', on);
+      }
+      // reflect the cursor's font & size in the dropdown labels (Notes-style)
+      const fontLabel = bar.querySelector('[data-dd="fontName"] .rt-dd-label');
+      const sizeLabel = bar.querySelector('[data-dd="fontSize"] .rt-dd-label');
+      const s = document.getSelection();
+      const nd = s?.anchorNode && area.contains(s.anchorNode)
+        ? (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement) : null;
+      if (nd && fontLabel) {
+        let fam = '';
+        try { fam = (document.queryCommandValue('fontName') || '').split(',')[0].replace(/['"]/g, '').trim().toLowerCase(); } catch (_) {}
+        const hit = FONTS.find(([, stack]) => stack.split(',')[0].replace(/['"]/g, '').trim().toLowerCase() === fam);
+        fontLabel.textContent = hit ? hit[0] : 'Font';
+        fontLabel.style.fontFamily = hit ? hit[1] : '';
+      }
+      if (nd && sizeLabel) {
+        if (typingSizePx) {
+          sizeLabel.textContent = String(typingSizePx); // shows what typing will produce
+        } else {
+          let px = Math.round(parseFloat(getComputedStyle(nd).fontSize));
+          if (px % 2) px += 1; // options are even-numbered
+          sizeLabel.textContent = (px >= 6 && px <= 40) ? String(px) : 'Size';
+        }
       }
     }
     document.addEventListener('selectionchange', () => {
