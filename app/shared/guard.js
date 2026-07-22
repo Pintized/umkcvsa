@@ -10,12 +10,29 @@ export async function requireLogin() {
     return new Promise(() => {}); // halt caller while redirecting
   }
   recordLogin(session);
+  joinPresence(session);
   const [profileRes, rolesRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', session.user.id).single(),
     supabase.from('user_roles').select('role').eq('user_id', session.user.id),
   ]);
   const roles = (rolesRes.data || []).map(r => r.role);
   return { session, user: session.user, profile: profileRes.data, roles };
+}
+
+// Every signed-in page joins the shared presence channel, so "online"
+// means the portal is open somewhere. Deliberately no opt-out.
+let presenceCh = null;
+function joinPresence(session) {
+  if (presenceCh) return;
+  try {
+    presenceCh = supabase.channel('online-members', {
+      config: { presence: { key: session.user.id } },
+    });
+    window.__vsaPresence = presenceCh;
+    presenceCh.subscribe((s) => {
+      if (s === 'SUBSCRIBED') presenceCh.track({ at: new Date().toISOString() });
+    });
+  } catch (_) {}
 }
 
 function deviceLabel() {
