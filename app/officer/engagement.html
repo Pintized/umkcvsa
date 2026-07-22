@@ -25,6 +25,11 @@
   .redeem-bar { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 12px; align-items: end; margin-bottom: 18px; }
   @media (max-width: 700px) { .redeem-bar { grid-template-columns: 1fr; } }
   .desc-cell { color: var(--muted); font-size: .84rem; max-width: 320px; }
+  .grant-list { max-height: 46vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 4px 0; margin-top: 10px; }
+  .grant-row { display: flex; align-items: center; gap: 10px; padding: 7px 13px; cursor: pointer; font-size: .9rem; }
+  .grant-row:hover { background: rgba(128,128,128,.08); }
+  .grant-row input { width: 16px; height: 16px; cursor: pointer; }
+  .grant-row .gr-meta { color: var(--muted); font-size: .8rem; margin-left: auto; }
 </style>
 </head>
 <body>
@@ -79,12 +84,13 @@
           <button class="tab ${tab === 'achievements' ? 'on' : ''}" data-tab="achievements">🏆 Achievements</button>
           <button class="tab ${tab === 'rewards' ? 'on' : ''}" data-tab="rewards">🎁 Rewards</button>
           <button class="tab ${tab === 'redemptions' ? 'on' : ''}" data-tab="redemptions">✅ Redemptions</button>
+          <button class="tab ${tab === 'grant' ? 'on' : ''}" data-tab="grant">💰 Grant VND</button>
         </div>
         <div id="tab-body"></div>
         <p class="notice" id="notice" style="margin-top:14px"></p>
       </div>`;
     page.querySelectorAll('#tabs .tab').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-    ({ achievements: renderAchievements, rewards: renderRewards, redemptions: renderRedemptions })[tab]();
+    ({ achievements: renderAchievements, rewards: renderRewards, redemptions: renderRedemptions, grant: renderGrant })[tab]();
   }
 
   const say = (msg, cls) => {
@@ -391,6 +397,67 @@
       if (error) { say(error.message, 'error'); return; }
       await load();
       say(`Redeemed "${r.name}" for ${m.full_name} — they now have ${vnd(data)} VND.`, 'ok');
+    };
+  }
+
+  // ---------- bulk grant tab ----------
+  let grantSel = new Set(), grantQ = '';
+  function renderGrant() {
+    const body = page.querySelector('#tab-body');
+    const needle = grantQ.trim().toLowerCase();
+    const visible = profiles.filter(p => !needle
+      || `${p.full_name} ${p.alias || ''}`.toLowerCase().includes(needle));
+    body.innerHTML = `
+      <p style="color:var(--muted); font-size:.86rem; margin-bottom:12px">
+        Grant VND to several members at once — e.g. everyone who attended an event.
+        Each member gets their own audit entry with the reason.</p>
+      <div class="field-row">
+        <div class="field"><label>Amount (VND each)</label><input type="number" id="g-amt" min="1" value="10"></div>
+        <div class="field"><label>Reason <span style="opacity:.55; font-weight:400">(shown in audit log)</span></label>
+          <input id="g-reason" placeholder="e.g. Attended Tết 2026"></div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div class="field" style="margin-bottom:0; flex:1; min-width:200px">
+          <input id="g-q" placeholder="Search members…" value="${esc(grantQ)}" autocomplete="off"></div>
+        <button class="btn ghost small" id="g-all">Select all shown</button>
+        <button class="btn ghost small" id="g-none">Clear</button>
+      </div>
+      <div class="grant-list">
+        ${visible.map(p => `
+          <label class="grant-row">
+            <input type="checkbox" data-gm="${p.id}" ${grantSel.has(p.id) ? 'checked' : ''}>
+            <span><strong>${esc(p.full_name)}</strong>${p.alias ? ` <span style="color:var(--muted)">“${esc(p.alias)}”</span>` : ''}</span>
+            <span class="gr-meta">${vnd(p.points)} VND</span>
+          </label>`).join('') || '<p style="color:var(--muted); padding:10px 13px">No members match.</p>'}
+      </div>
+      <div class="row-btns" style="justify-content:flex-start; margin-top:14px">
+        <button class="btn small" id="g-go">Grant to ${grantSel.size} member${grantSel.size === 1 ? '' : 's'}</button>
+      </div>`;
+
+    body.querySelector('#g-q').addEventListener('input', (e) => {
+      grantQ = e.target.value;
+      renderGrant();
+      const q = page.querySelector('#g-q');
+      q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+    });
+    body.querySelectorAll('[data-gm]').forEach(cb => cb.addEventListener('change', () => {
+      cb.checked ? grantSel.add(cb.dataset.gm) : grantSel.delete(cb.dataset.gm);
+      body.querySelector('#g-go').textContent = `Grant to ${grantSel.size} member${grantSel.size === 1 ? '' : 's'}`;
+    }));
+    body.querySelector('#g-all').onclick = () => { visible.forEach(p => grantSel.add(p.id)); renderGrant(); };
+    body.querySelector('#g-none').onclick = () => { grantSel.clear(); renderGrant(); };
+    body.querySelector('#g-go').onclick = async () => {
+      const amt = Math.floor(+body.querySelector('#g-amt').value || 0);
+      const reason = body.querySelector('#g-reason').value.trim() || null;
+      if (amt < 1) { say('Enter an amount of at least 1 VND.', 'error'); return; }
+      if (!grantSel.size) { say('Select at least one member.', 'error'); return; }
+      if (!confirm(`Give ${vnd(amt)} VND to ${grantSel.size} member${grantSel.size === 1 ? '' : 's'}${reason ? ` for "${reason}"` : ''}?`)) return;
+      const { data, error } = await supabase.rpc('grant_points_many',
+        { targets: [...grantSel], delta: amt, reason });
+      if (error) { say(error.message, 'error'); return; }
+      grantSel.clear();
+      await load();
+      say(`Granted ${vnd(amt)} VND to ${data} members. 🎉`, 'ok');
     };
   }
 

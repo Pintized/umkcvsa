@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forms | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .btn.small { padding: 6px 13px; font-size: .82rem; }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .status-pill { font-size: .74rem; padding: 2px 9px; border-radius: 99px; font-weight: 700; }
+  .status-pill.live { background: rgba(47,158,99,.15); color: #2f9e63; }
+  .status-pill.off { background: rgba(128,128,128,.18); color: var(--muted); }
+  .q-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface-2); }
+  .q-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .q-head select { width: auto; }
+  .q-head .q-tools { margin-left: auto; display: flex; gap: 4px; }
+  .q-tools button { border: none; background: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 2px 6px; border-radius: 6px; }
+  .q-tools button:hover { background: rgba(128,128,128,.15); color: var(--text); }
+  .modal.wide { max-width: 680px; }
+  .resp-tally { margin: 4px 0 10px; font-size: .86rem; }
+  .resp-tally .bar { display: inline-block; height: 9px; background: linear-gradient(90deg, var(--gold-bright, #f0cf7a), var(--gold, #e0b45c)); border-radius: 5px; vertical-align: middle; margin-right: 7px; }
+  .resp-one { border-top: 1px solid var(--line); padding: 10px 0; font-size: .88rem; }
+  .resp-one .who { color: var(--gold, #e0b45c); font-weight: 700; }
+  .resp-ans { margin: 3px 0 3px 14px; }
+  .resp-ans b { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading forms…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Forms');
+
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const fmtWhen = (d) => new Date(d).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const Q_TYPES = [
+    ['short', 'Short answer'], ['para', 'Paragraph'],
+    ['radio', 'Multiple choice'], ['check', 'Checkboxes'], ['drop', 'Dropdown'],
+  ];
+  const NEEDS_OPTIONS = ['radio', 'check', 'drop'];
+  const formLink = (id) => `https://umkcvsa.org/app/form.html?id=${id}`;
+
+  let forms = [], respCounts = new Map(), profiles = new Map();
+
+  async function load() {
+    const [f, rc, p] = await Promise.all([
+      supabase.from('forms').select('*').order('created_at', { ascending: false }),
+      supabase.from('form_responses').select('form_id'),
+      supabase.from('profiles').select('id, full_name'),
+    ]);
+    forms = f.data || [];
+    respCounts = new Map();
+    (rc.data || []).forEach(r => respCounts.set(r.form_id, (respCounts.get(r.form_id) || 0) + 1));
+    profiles = new Map((p.data || []).map(x => [x.id, x.full_name]));
+    render();
+  }
+
+  function render() {
+    page.innerHTML = `
+      <div class="card">
+        <h2>Forms</h2>
+        <p style="color:var(--muted); font-size:.86rem; margin-bottom:14px">
+          Build surveys and check-ins, then share the link anywhere — no account needed
+          to fill one out. Responses collect here.</p>
+        <div style="margin-bottom:12px"><button class="btn small" id="new-form">+ New form</button></div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Form</th><th>Questions</th><th>Responses</th><th>Status</th><th>Created</th><th></th></tr></thead>
+            <tbody>
+              ${forms.map(f => `
+                <tr>
+                  <td><strong>📋 ${esc(f.title)}</strong>${f.description ? `<div style="color:var(--muted); font-size:.8rem; max-width:300px">${esc(f.description)}</div>` : ''}</td>
+                  <td>${(f.questions || []).length}</td>
+                  <td><strong>${respCounts.get(f.id) || 0}</strong></td>
+                  <td><span class="status-pill ${f.accepting ? 'live' : 'off'}">${f.accepting ? 'open' : 'closed'}</span></td>
+                  <td style="color:var(--muted); font-size:.84rem">${fmtWhen(f.created_at)}</td>
+                  <td class="row-actions">
+                    <button class="btn ghost small" data-link="${f.id}">Copy link</button>
+                    <button class="btn ghost small" data-resp="${f.id}">Responses</button>
+                    <button class="btn ghost small" data-edit="${f.id}">Edit</button>
+                    <button class="btn ghost small" data-toggle="${f.id}">${f.accepting ? 'Close' : 'Reopen'}</button>
+                    <button class="btn ghost small" data-del="${f.id}">Delete</button>
+                  </td>
+                </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted)">No forms yet — create the first one!</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        <p class="notice" id="notice" style="margin-top:14px"></p>
+      </div>`;
+
+    const say = (msg, cls) => {
+      const n = page.querySelector('#notice');
+      n.textContent = msg; n.className = `notice ${cls}`;
+    };
+
+    page.querySelector('#new-form').onclick = () => builder(null);
+    page.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => builder(forms.find(f => f.id === b.dataset.edit)));
+    page.querySelectorAll('[data-link]').forEach(b => b.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(formLink(b.dataset.link));
+        say('Link copied — share it anywhere!', 'ok');
+      } catch {
+        prompt('Copy this link:', formLink(b.dataset.link));
+      }
+    });
+    page.querySelectorAll('[data-toggle]').forEach(b => b.onclick = async () => {
+      const f = forms.find(x => x.id === b.dataset.toggle);
+      const { error } = await supabase.from('forms')
+        .update({ accepting: !f.accepting, updated_at: new Date().toISOString() }).eq('id', f.id);
+      if (error) { say(error.message, 'error'); return; }
+      await load(); say(`"${f.title}" is now ${f.accepting ? 'closed' : 'open'}.`, 'ok');
+    });
+    page.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const f = forms.find(x => x.id === b.dataset.del);
+      const n = respCounts.get(f.id) || 0;
+      if (!confirm(`Delete "${f.title}"?${n ? ` Its ${n} response${n > 1 ? 's' : ''} will be deleted too.` : ''} The shared link will stop working.`)) return;
+      const { error } = await supabase.from('forms').delete().eq('id', f.id);
+      if (error) { say(error.message, 'error'); return; }
+      await load(); say(`Deleted "${f.title}".`, 'ok');
+    });
+    page.querySelectorAll('[data-resp]').forEach(b => b.onclick = () => viewResponses(forms.find(f => f.id === b.dataset.resp)));
+  }
+
+  // ---------- builder ----------
+  function builder(f) {
+    let questions = structuredClone(f?.questions || []);
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    document.body.appendChild(back);
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+
+    const qCard = (q, i) => `
+      <div class="q-card" data-i="${i}">
+        <div class="q-head">
+          <select data-qtype="${i}">${Q_TYPES.map(([v, l]) => `<option value="${v}" ${q.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <label style="display:flex; gap:5px; align-items:center; font-size:.84rem">
+            <input type="checkbox" data-qreq="${i}" style="width:15px; height:15px" ${q.required ? 'checked' : ''}> Required</label>
+          <span class="q-tools">
+            <button type="button" data-qup="${i}" title="Move up">↑</button>
+            <button type="button" data-qdown="${i}" title="Move down">↓</button>
+            <button type="button" data-qdel="${i}" title="Remove">✕</button>
+          </span>
+        </div>
+        <div class="field" style="margin-bottom:${NEEDS_OPTIONS.includes(q.type) ? '10px' : '0'}">
+          <input data-qlabel="${i}" placeholder="Question text…" value="${esc(q.label)}">
+        </div>
+        ${NEEDS_OPTIONS.includes(q.type) ? `
+          <div class="field" style="margin-bottom:0"><label style="font-size:.78rem">Options — one per line</label>
+            <textarea data-qopts="${i}" rows="3">${esc((q.options || []).join('\n'))}</textarea></div>` : ''}
+      </div>`;
+
+    function draw() {
+      back.innerHTML = `
+        <div class="modal wide">
+          <h2>${f ? 'Edit form' : 'New form'}</h2>
+          <div class="notice" id="m-notice"></div>
+          <div class="field"><label>Title</label><input id="f-title" value="${esc(f?.title)}" placeholder="e.g. Tết 2026 Check-in"></div>
+          <div class="field"><label>Description <span style="opacity:.55; font-weight:400">(optional)</span></label>
+            <textarea id="f-desc" rows="2">${esc(f?.description)}</textarea></div>
+          <div id="q-list">${questions.map(qCard).join('') || '<p style="color:var(--muted); font-size:.88rem">No questions yet.</p>'}</div>
+          <button type="button" class="btn ghost small" id="q-add">+ Add question</button>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
+            <button type="button" class="btn" id="m-save">${f ? 'Save' : 'Create form'}</button>
+          </div>
+        </div>`;
+
+      const sync = () => {
+        questions.forEach((q, i) => {
+          q.type = back.querySelector(`[data-qtype="${i}"]`).value;
+          q.label = back.querySelector(`[data-qlabel="${i}"]`).value;
+          q.required = back.querySelector(`[data-qreq="${i}"]`).checked;
+          const opts = back.querySelector(`[data-qopts="${i}"]`);
+          q.options = opts ? opts.value.split('\n').map(o => o.trim()).filter(Boolean) : [];
+        });
+      };
+
+      back.querySelector('#m-cancel').onclick = () => back.remove();
+      back.querySelector('#q-add').onclick = () => {
+        sync();
+        questions.push({ id: 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), type: 'short', label: '', required: false, options: [] });
+        draw();
+      };
+      back.querySelectorAll('[data-qtype]').forEach(el => el.addEventListener('change', () => { sync(); draw(); }));
+      back.querySelectorAll('[data-qdel]').forEach(el => el.onclick = () => { sync(); questions.splice(+el.dataset.qdel, 1); draw(); });
+      back.querySelectorAll('[data-qup]').forEach(el => el.onclick = () => {
+        const i = +el.dataset.qup; if (!i) return;
+        sync(); [questions[i - 1], questions[i]] = [questions[i], questions[i - 1]]; draw();
+      });
+      back.querySelectorAll('[data-qdown]').forEach(el => el.onclick = () => {
+        const i = +el.dataset.qdown; if (i >= questions.length - 1) return;
+        sync(); [questions[i + 1], questions[i]] = [questions[i], questions[i + 1]]; draw();
+      });
+
+      back.querySelector('#m-save').onclick = async () => {
+        sync();
+        const mSay = (msg) => { const n = back.querySelector('#m-notice'); n.textContent = msg; n.className = 'notice error'; };
+        const title = back.querySelector('#f-title').value.trim();
+        if (!title) { mSay('Give the form a title.'); return; }
+        const qs = questions.filter(q => q.label.trim());
+        if (!qs.length) { mSay('Add at least one question (with text).'); return; }
+        for (const q of qs) {
+          if (NEEDS_OPTIONS.includes(q.type) && !q.options.length) {
+            mSay(`"${q.label}" needs at least one option.`); return;
+          }
+        }
+        const payload = {
+          title,
+          description: back.querySelector('#f-desc').value.trim() || null,
+          questions: qs,
+          updated_at: new Date().toISOString(),
+        };
+        const { data, error } = f
+          ? await supabase.from('forms').update(payload).eq('id', f.id).select().single()
+          : await supabase.from('forms').insert({ ...payload, created_by: ctx.user.id }).select().single();
+        if (error) { mSay(error.message); return; }
+        back.remove();
+        await load();
+        const n = page.querySelector('#notice');
+        if (!f) {
+          try { await navigator.clipboard.writeText(formLink(data.id)); } catch {}
+          n.textContent = `Created "${title}" — the share link is copied to your clipboard!`;
+        } else {
+          n.textContent = `Saved "${title}".`;
+        }
+        n.className = 'notice ok';
+      };
+    }
+    draw();
+  }
+
+  // ---------- responses ----------
+  async function viewResponses(f) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal wide"><h2>Responses — ${esc(f.title)}</h2><div id="r-body" style="color:var(--muted)">Loading…</div>
+      <div class="row-btns"><button type="button" class="btn ghost" id="m-close">Close</button></div></div>`;
+    document.body.appendChild(back);
+    back.querySelector('#m-close').onclick = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+
+    const { data: resp, error } = await supabase.from('form_responses')
+      .select('*').eq('form_id', f.id).order('created_at', { ascending: false });
+    const body = back.querySelector('#r-body');
+    if (error) { body.textContent = error.message; return; }
+    if (!resp.length) { body.textContent = 'No responses yet — share the link!'; return; }
+
+    const who = (r) => r.submitted_by
+      ? (profiles.get(r.submitted_by) || 'Member')
+      : (r.submitter_name || 'Anonymous');
+    const qs = f.questions || [];
+
+    // tallies for choice questions
+    const tallies = qs.filter(q => NEEDS_OPTIONS.includes(q.type)).map(q => {
+      const counts = new Map(q.options.map(o => [o, 0]));
+      resp.forEach(r => {
+        const v = r.answers?.[q.id];
+        (Array.isArray(v) ? v : v != null ? [v] : []).forEach(x => {
+          if (counts.has(x)) counts.set(x, counts.get(x) + 1);
+        });
+      });
+      const max = Math.max(1, ...counts.values());
+      return `
+        <div class="resp-tally">
+          <strong>${esc(q.label)}</strong>
+          ${[...counts].map(([opt, n]) => `
+            <div style="margin:3px 0 0 14px"><span class="bar" style="width:${Math.round(120 * n / max)}px"></span>${esc(opt)} — <strong>${n}</strong></div>`).join('')}
+        </div>`;
+    }).join('');
+
+    body.style.color = '';
+    body.innerHTML = `
+      <p style="color:var(--muted); font-size:.86rem; margin-bottom:10px"><strong>${resp.length}</strong> response${resp.length > 1 ? 's' : ''}</p>
+      ${tallies}
+      ${resp.map(r => `
+        <div class="resp-one">
+          <span class="who">${esc(who(r))}</span>
+          <span style="color:var(--muted); font-size:.8rem"> · ${fmtWhen(r.created_at)}</span>
+          ${qs.map(q => {
+            const v = r.answers?.[q.id];
+            const shown = Array.isArray(v) ? v.join(', ') : (v ?? '');
+            return shown ? `<div class="resp-ans"><b>${esc(q.label)}:</b> ${esc(shown)}</div>` : '';
+          }).join('')}
+        </div>`).join('')}`;
+  }
+
+  await load();
+</script>
+</body>
+</html>
