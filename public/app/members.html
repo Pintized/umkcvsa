@@ -35,6 +35,17 @@
 .lb-row img { width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0; }
 .lb-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; font-size:.92rem; }
 .lb-dong { font-weight:700; color:var(--gold); font-size:.9rem; white-space:nowrap; }
+.on-ind { display:none; }
+.member-card.online .on-ind {
+  display:inline-flex; align-items:center; gap:5px;
+  color:var(--ok); font-weight:600;
+}
+.on-ind::before {
+  content:''; display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:var(--ok); box-shadow:0 0 6px rgba(47, 158, 99, .7);
+  animation:onpulse 2s ease-in-out infinite;
+}
+@keyframes onpulse { 50% { opacity:.45; } }
 </style>
 </head>
 <body>
@@ -63,11 +74,11 @@
   const card = (m) => {
     const showPts = officer || m.id === ctx.user.id || !m.hide_points;
     return `
-    <div class="member-card" data-name="${((m.full_name || '') + ' ' + (m.alias || '')).toLowerCase()}">
+    <div class="member-card" data-id="${m.id}" data-name="${((m.full_name || '') + ' ' + (m.alias || '')).toLowerCase()}">
       <img src="${m.avatar_path ? AVATAR_BASE + m.avatar_path : '/assets/img/logo-128.png'}" alt="">
       <div>
         <div class="mname">${m.full_name || 'Member'}${m.alias ? ` <span style="color:var(--gold); font-size:.85rem">“${m.alias}”</span>` : ''}${m.show_linkedin && m.linkedin_url ? ` <a href="${m.linkedin_url}" target="_blank" rel="noopener" title="LinkedIn" style="color:#0a66c2; vertical-align:-2px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.55C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.72C24 .77 23.2 0 22.22 0z"/></svg></a>` : ''}</div>
-        <div class="msub">${showPts ? m.points + ' Đồng' : 'Đồng hidden'} · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+        <div class="msub">${showPts ? m.points + ' Đồng' : 'Đồng hidden'} · joined ${new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} <span class="on-ind">online</span></div>
       </div>
     </div>`;
   };
@@ -111,6 +122,21 @@
         <p style="color:var(--muted); font-size:.85rem; margin-top:14px">${(members || []).length} member${members?.length === 1 ? '' : 's'}</p>
       `}
     </div>`;
+
+  // live online indicators — shares the presence channel guard.js
+  // already joined (any open portal page counts as online)
+  const pch = window.__vsaPresence
+    || supabase.channel('online-members', { config: { presence: { key: ctx.user.id } } });
+  const paintOnline = () => {
+    const on = new Set(Object.keys(pch.presenceState()));
+    document.querySelectorAll('.member-card[data-id]').forEach(c =>
+      c.classList.toggle('online', on.has(c.dataset.id)));
+  };
+  pch.on('presence', { event: 'sync' }, paintOnline);
+  if (!window.__vsaPresence) {
+    pch.subscribe(s => { if (s === 'SUBSCRIBED') pch.track({ at: new Date().toISOString() }); });
+  }
+  paintOnline();
 
   const drawBoard = () => {
     document.getElementById('lb-list').innerHTML = lbRows();
