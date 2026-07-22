@@ -10,6 +10,29 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .name-warn {
+    display: flex; gap: 8px; align-items: flex-start;
+    font-size: .8rem; line-height: 1.45; color: #e0b45c;
+    background: rgba(224,180,92,.1); border: 1px solid rgba(224,180,92,.35);
+    border-radius: 10px; padding: 8px 11px; margin: -4px 0 14px;
+  }
+  .alias-hint { font-size: .76rem; margin-top: 4px; min-height: 1em; opacity: .75; }
+  .alias-hint.ok { color: #2f9e63; opacity: 1; }
+  .alias-hint.bad { color: #c8202f; opacity: 1; }
+  .pw-meter { height: 6px; border-radius: 4px; background: rgba(128,128,128,.25);
+    overflow: hidden; margin: 8px 0 4px; }
+  .pw-meter > div { height: 100%; width: 0; border-radius: 4px; transition: width .25s, background .25s; }
+  .pw-label { font-size: .76rem; min-height: 1em; opacity: .8; margin-bottom: 6px; }
+  .pw-reqs { list-style: none; padding: 0; margin: 0 0 12px; font-size: .78rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
+  .pw-reqs li { opacity: .55; }
+  .pw-reqs li::before { content: '○ '; }
+  .pw-reqs li.met { opacity: 1; color: #2f9e63; }
+  .pw-reqs li.met::before { content: '● '; }
+  .match-hint { font-size: .76rem; margin-top: 4px; min-height: 1em; }
+  .match-hint.ok { color: #2f9e63; }
+  .match-hint.bad { color: #c8202f; }
+</style>
 </head>
 <body>
 <div class="auth-wrap">
@@ -32,13 +55,37 @@
           <input type="text" id="last" autocomplete="family-name" required>
         </div>
       </div>
+      <div class="name-warn">
+        <span>⚠️</span>
+        <span><b>Double-check your name!</b> Your first and last name are permanent
+        and <b>cannot be changed later</b> — only an officer can correct a typo.
+        Use your real name; you can pick a fun alias below.</span>
+      </div>
+      <div class="field">
+        <label for="alias">Alias / nickname <span style="opacity:.55; font-weight:400">(optional — shown to other members, changeable later)</span></label>
+        <input type="text" id="alias" maxlength="24" autocomplete="off" placeholder="e.g. Kevy, Bánh Bao, ...">
+        <div class="alias-hint" id="alias-hint"></div>
+      </div>
       <div class="field">
         <label for="email">Email</label>
         <input type="email" id="email" autocomplete="email" required>
       </div>
       <div class="field">
         <label for="password">Password</label>
-        <input type="password" id="password" autocomplete="new-password" minlength="8" required>
+        <input type="password" id="password" autocomplete="new-password" required>
+        <div class="pw-meter"><div id="pw-bar"></div></div>
+        <div class="pw-label" id="pw-label"></div>
+        <ul class="pw-reqs">
+          <li id="rq-len">6+ characters</li>
+          <li id="rq-upper">A capital letter</li>
+          <li id="rq-lower">A lowercase letter</li>
+          <li id="rq-special">A special character (!?-#…)</li>
+        </ul>
+      </div>
+      <div class="field">
+        <label for="password2">Confirm password</label>
+        <input type="password" id="password2" autocomplete="new-password" required>
+        <div class="match-hint" id="match-hint"></div>
       </div>
       <button class="btn" id="submit" type="submit">Create account</button>
     </form>
@@ -48,20 +95,105 @@
 <script type="module">
   import { supabase } from '/app/shared/supabase.js';
 
-  const notice = document.getElementById('notice');
+  const $ = (id) => document.getElementById(id);
+  const notice = $('notice');
   const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
 
-  document.getElementById('signup-form').addEventListener('submit', async (e) => {
+  // ---- alias availability (live, debounced) ----
+  let aliasTimer = null, aliasOk = true;
+  $('alias').addEventListener('input', () => {
+    const v = $('alias').value.trim();
+    const hint = $('alias-hint');
+    clearTimeout(aliasTimer);
+    if (!v) { hint.textContent = ''; hint.className = 'alias-hint'; aliasOk = true; return; }
+    hint.textContent = 'Checking…'; hint.className = 'alias-hint';
+    aliasTimer = setTimeout(async () => {
+      const { data, error } = await supabase.rpc('alias_available', { candidate: v });
+      if (error) { hint.textContent = ''; aliasOk = true; return; } // don't block signup on a hiccup
+      aliasOk = !!data;
+      hint.textContent = aliasOk ? `✓ "${v}" is available` : `✗ "${v}" is already taken`;
+      hint.className = `alias-hint ${aliasOk ? 'ok' : 'bad'}`;
+    }, 350);
+  });
+
+  // ---- password rules & strength ----
+  const rules = {
+    len: (p) => p.length >= 6,
+    upper: (p) => /[A-Z]/.test(p),
+    lower: (p) => /[a-z]/.test(p),
+    special: (p) => /[^A-Za-z0-9]/.test(p),
+  };
+  const meetsAll = (p) => Object.values(rules).every(r => r(p));
+
+  function strength(p) {
+    if (!p) return { pct: 0, color: '', label: '' };
+    let score = 0;
+    if (rules.len(p)) score++;
+    if (rules.upper(p)) score++;
+    if (rules.lower(p)) score++;
+    if (rules.special(p)) score++;
+    if (/\d/.test(p)) score++;          // digits strengthen but aren't required
+    if (p.length >= 10) score++;        // length bonus
+    if (p.length >= 14) score++;
+    const tiers = [
+      [2, 18, '#c8202f', 'Weak — keep going'],
+      [4, 45, '#e08a3d', 'Fair'],
+      [5, 65, '#e0b45c', 'Good'],
+      [6, 85, '#7cb56b', 'Strong'],
+      [99, 100, '#2f9e63', 'Excellent 💪'],
+    ];
+    const [, pct, color, label] = tiers.find(([max]) => score <= max);
+    return { pct, color, label };
+  }
+
+  function refreshPw() {
+    const p = $('password').value;
+    for (const [key, test] of Object.entries(rules)) {
+      $(`rq-${key}`).classList.toggle('met', test(p));
+    }
+    const s = strength(p);
+    $('pw-bar').style.width = s.pct + '%';
+    $('pw-bar').style.background = s.color;
+    $('pw-label').textContent = s.label;
+    refreshMatch();
+  }
+  function refreshMatch() {
+    const p = $('password').value, p2 = $('password2').value;
+    const hint = $('match-hint');
+    if (!p2) { hint.textContent = ''; hint.className = 'match-hint'; return; }
+    const ok = p === p2;
+    hint.textContent = ok ? '✓ Passwords match' : '✗ Passwords don\'t match';
+    hint.className = `match-hint ${ok ? 'ok' : 'bad'}`;
+  }
+  $('password').addEventListener('input', refreshPw);
+  $('password2').addEventListener('input', refreshMatch);
+
+  // ---- submit ----
+  $('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const btn = document.getElementById('submit');
+    const p = $('password').value;
+    if (!meetsAll(p)) {
+      say('Your password doesn\'t meet the requirements yet — check the list under the password field.', 'error');
+      return;
+    }
+    if (p !== $('password2').value) {
+      say('The two passwords don\'t match.', 'error');
+      return;
+    }
+    if (!aliasOk) {
+      say('That alias is already taken — pick another (or leave it blank for now).', 'error');
+      return;
+    }
+    const btn = $('submit');
     btn.disabled = true; btn.textContent = 'Creating account…';
-    const first = document.getElementById('first').value.trim();
-    const last = document.getElementById('last').value.trim();
+    const first = $('first').value.trim();
+    const last = $('last').value.trim();
+    const alias = $('alias').value.trim();
     const { data, error } = await supabase.auth.signUp({
-      email: document.getElementById('email').value.trim(),
-      password: document.getElementById('password').value,
+      email: $('email').value.trim(),
+      password: p,
       options: {
-        data: { first_name: first, last_name: last },
+        data: { first_name: first, last_name: last, ...(alias ? { alias } : {}) },
         emailRedirectTo: 'https://umkcvsa.org/app/verified.html',
       },
     });
@@ -76,7 +208,7 @@
       return;
     }
     say('Account created! Check your email for a confirmation link, then log in.', 'ok');
-    document.getElementById('signup-form').style.display = 'none';
+    $('signup-form').style.display = 'none';
   });
 </script>
 </body>
