@@ -177,6 +177,36 @@
       back.addEventListener('click', (e) => { if (e.target === back) done(null); });
     });
 
+    const confirmRedeem = (r, size) => new Promise((resolve) => {
+      const back = document.createElement('div');
+      back.className = 'modal-back';
+      back.innerHTML = `
+        <div class="modal pop">
+          <h2>Redeem this reward?</h2>
+          <p style="font-size:1rem; margin-bottom:6px">🎁 <strong>${esc(r.name)}</strong>${size ? ` <span style="color:var(--muted)">· size ${esc(size)}</span>` : ''}</p>
+          <p style="color:var(--gold, #e0b45c); font-weight:700; margin-bottom:12px">${vnd(r.point_cost)} VND</p>
+          <p style="color:var(--muted); font-size:.88rem; line-height:1.5; margin-bottom:12px">
+            An officer will complete this when they hand you the item —
+            only then is the VND deducted from your balance.</p>
+          <div style="display:flex; gap:8px; align-items:flex-start; font-size:.82rem; line-height:1.45;
+              color:#e0b45c; background:rgba(224,180,92,.1); border:1px solid rgba(224,180,92,.35);
+              border-radius:10px; padding:8px 11px; margin-bottom:6px">
+            <span>⏳</span>
+            <span>You can cancel this redemption for up to <b>4 hours</b>.
+            After that, only an officer can cancel it for you.</span>
+          </div>
+          <div class="row-btns">
+            <button type="button" class="btn ghost" id="cf-cancel">Never mind</button>
+            <button type="button" class="btn" id="cf-ok">Redeem</button>
+          </div>
+        </div>`;
+      document.body.appendChild(back);
+      const done = (v) => { back.remove(); resolve(v); };
+      back.querySelector('#cf-cancel').onclick = () => done(false);
+      back.querySelector('#cf-ok').onclick = () => done(true);
+      back.addEventListener('click', (e) => { if (e.target === back) done(false); });
+    });
+
     page.querySelectorAll('[data-redeem]').forEach(b => b.addEventListener('click', async () => {
       const r = rewards.find(x => x.id === +b.dataset.redeem);
       if (!r) return;
@@ -192,9 +222,7 @@
         size = await pickSize(r);
         if (!size) return;
       }
-      if (!confirm(`Redeem "${r.name}"${size ? ` (size ${size})` : ''} for ${vnd(r.point_cost)} VND?\n\n`
-        + `An officer will complete it when they hand you the item — only then is the VND deducted.\n\n`
-        + `⚠️ You can cancel this redemption for up to 4 hours. After that, only an officer can cancel it.`)) return;
+      if (!await confirmRedeem(r, size)) return;
       const { error } = await supabase.rpc('request_reward', { reward: r.id, size });
       if (error) { say(error.message, 'error'); return; }
       await load();
