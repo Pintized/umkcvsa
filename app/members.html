@@ -123,19 +123,14 @@
       `}
     </div>`;
 
-  // live online indicators — shares the presence channel guard.js
-  // already joined (any open portal page counts as online)
-  const pch = window.__vsaPresence
-    || supabase.channel('online-members', { config: { presence: { key: ctx.user.id } } });
+  // live online indicators — guard.js joins the presence channel on
+  // every page and broadcasts roster changes as 'vsa:presence'
   const paintOnline = () => {
-    const on = new Set(Object.keys(pch.presenceState()));
+    const on = window.__vsaOnline || new Set();
     document.querySelectorAll('.member-card[data-id]').forEach(c =>
       c.classList.toggle('online', on.has(c.dataset.id)));
   };
-  pch.on('presence', { event: 'sync' }, paintOnline);
-  if (!window.__vsaPresence) {
-    pch.subscribe(s => { if (s === 'SUBSCRIBED') pch.track({ at: new Date().toISOString() }); });
-  }
+  window.addEventListener('vsa:presence', paintOnline);
   paintOnline();
 
   const drawBoard = () => {

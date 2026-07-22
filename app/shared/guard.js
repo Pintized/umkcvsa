@@ -28,7 +28,13 @@ function joinPresence(session) {
     presenceCh = supabase.channel('online-members', {
       config: { presence: { key: session.user.id } },
     });
-    window.__vsaPresence = presenceCh;
+    // listeners must attach before subscribe(); pages consume the
+    // roster via window.__vsaOnline + the 'vsa:presence' event
+    window.__vsaOnline = new Set();
+    presenceCh.on('presence', { event: 'sync' }, () => {
+      window.__vsaOnline = new Set(Object.keys(presenceCh.presenceState()));
+      window.dispatchEvent(new CustomEvent('vsa:presence'));
+    });
     presenceCh.subscribe((s) => {
       if (s === 'SUBSCRIBED') presenceCh.track({ at: new Date().toISOString() });
     });
