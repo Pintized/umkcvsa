@@ -278,7 +278,7 @@
         <input type="file" id="${id}-imgfile" accept="image/*" style="display:none">
         <input type="file" id="${id}-attfile" multiple style="display:none">
       </div>
-      <div class="rt-area" id="${id}" contenteditable="true" data-placeholder="${esc(placeholder)}"></div>
+      <div class="rt-area rt-content" id="${id}" contenteditable="true" data-placeholder="${esc(placeholder)}"></div>
     </div>
     <div class="att-chips" id="${id}-chips"></div>`;
   }
@@ -308,18 +308,43 @@
     area.addEventListener('mouseup', saveSel);
     area.addEventListener('blur', saveSel);
 
-    // Tab behaves like the Notes editor: indents/outdents inside lists,
-    // types spacing in plain text, and never moves focus out of the editor.
+    // List system cloned from the Notes editor: nested lists up to 10 levels,
+    // Tab/Shift+Tab (and the toolbar buttons) walk the nesting, Tab in plain
+    // text types spacing, and Tab never moves focus out of the editor.
+    area.addEventListener('focus', () => document.execCommand('styleWithCSS', false, true));
+    const MAX_LIST_DEPTH = 10;
+    const curLi = () => {
+      const s = document.getSelection();
+      if (!s?.anchorNode) return null;
+      const el = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
+      const li = el?.closest('li');
+      return li && area.contains(li) ? li : null;
+    };
+    const listDepth = (li) => {
+      let d = 0;
+      for (let p = li.parentElement; p && p !== area; p = p.parentElement) {
+        if (p.tagName === 'UL' || p.tagName === 'OL') d++;
+      }
+      return d;
+    };
+    // returns false when the caret isn't in a list (caller may fall back)
+    function indentList(dir) {
+      const li = curLi();
+      if (!li) return false;
+      if (dir > 0 && listDepth(li) >= MAX_LIST_DEPTH) return true; // cap reached — swallow
+      // styleWithCSS off so indent nests the list instead of styling margins
+      document.execCommand('styleWithCSS', false, false);
+      document.execCommand(dir > 0 ? 'indent' : 'outdent');
+      document.execCommand('styleWithCSS', false, true);
+      saveSel(); refresh();
+      return true;
+    }
     area.addEventListener('keydown', (e) => {
       if (e.key !== 'Tab') return;
-      e.preventDefault();
-      const selNode = document.getSelection().anchorNode;
-      const el = selNode && (selNode.nodeType === 1 ? selNode : selNode.parentElement);
-      if (el?.closest('li')) {
-        document.execCommand(e.shiftKey ? 'outdent' : 'indent');
-      } else if (!e.shiftKey) {
-        document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
-      }
+      e.preventDefault(); // Tab never leaves the editor
+      if (indentList(e.shiftKey ? -1 : 1)) return;
+      // plain text: Tab types spacing instead of jumping focus away
+      if (!e.shiftKey) document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
       saveSel();
     });
 
@@ -328,7 +353,15 @@
     // toolbar buttons with direct commands
     bar.querySelectorAll('.rt-btn[data-cmd]').forEach(b => {
       b.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
-      b.addEventListener('click', () => exec(b.dataset.cmd));
+      b.addEventListener('click', () => {
+        const cmd = b.dataset.cmd;
+        // indent buttons walk list nesting first, like Tab does
+        if (cmd === 'indent' || cmd === 'outdent') {
+          closePops(); restoreSel();
+          if (indentList(cmd === 'indent' ? 1 : -1)) return;
+        }
+        exec(cmd);
+      });
     });
     // custom dropdowns (font / size)
     bar.querySelectorAll('.rt-dd').forEach(dd => {
