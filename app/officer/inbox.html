@@ -106,6 +106,19 @@
   .emoji-pop.show { display: grid; }
   .emoji-pop button { background: none; border: none; font-size: 1.15rem; cursor: pointer; border-radius: 6px; padding: 2px; }
   .emoji-pop button:hover { background: rgba(128,128,128,.2); }
+  .link-pop {
+    position: absolute; top: 40px; right: 0; z-index: 30; width: 300px;
+    background: Canvas; color: CanvasText; border: 1px solid rgba(128,128,128,.35);
+    border-radius: 12px; padding: 12px; display: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  .link-pop.show { display: block; }
+  .link-pop label { font-size: .75rem; opacity: .65; display: block; margin: 0 0 3px; }
+  .link-pop input {
+    width: 100%; padding: 8px 10px; border-radius: 8px; margin-bottom: 8px; font-size: .85rem;
+    border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; font-family: inherit;
+  }
+  .link-pop .lp-row { display: flex; gap: 6px; justify-content: flex-end; }
   .att-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .att-chip {
     display: inline-flex; align-items: center; gap: 6px; font-size: .8rem;
@@ -252,6 +265,16 @@
         <button class="rt-btn" data-act="image" title="Insert photo">${ICONS.image}</button>
         <button class="rt-btn" data-act="attach" title="Attach files">${ICONS.attach}</button>
         <div class="emoji-pop" id="${id}-emoji">${EMOJI.map(e => `<button type="button">${e}</button>`).join('')}</div>
+        <div class="link-pop" id="${id}-linkpop">
+          <label for="${id}-linktext">Text to display</label>
+          <input type="text" id="${id}-linktext" placeholder="(uses the link if empty)">
+          <label for="${id}-linkurl">Link URL</label>
+          <input type="url" id="${id}-linkurl" placeholder="https://example.com">
+          <div class="lp-row">
+            <button class="btn ghost sm" type="button" data-lp="cancel">Cancel</button>
+            <button class="btn sm" type="button" data-lp="apply">Insert link</button>
+          </div>
+        </div>
         <input type="file" id="${id}-imgfile" accept="image/*" style="display:none">
         <input type="file" id="${id}-attfile" multiple style="display:none">
       </div>
@@ -264,7 +287,14 @@
     const area = document.getElementById(id);
     const bar = document.getElementById(`${id}-bar`);
     const pop = document.getElementById(`${id}-emoji`);
+    const linkPop = document.getElementById(`${id}-linkpop`);
     let savedRange = null;
+
+    const closePops = (except) => {
+      if (except !== pop) pop.classList.remove('show');
+      if (except !== linkPop) linkPop.classList.remove('show');
+      bar.querySelectorAll('.rt-dd-menu.show').forEach(m => { if (m !== except) m.classList.remove('show'); });
+    };
 
     const saveSel = () => {
       const s = document.getSelection();
@@ -278,7 +308,22 @@
     area.addEventListener('mouseup', saveSel);
     area.addEventListener('blur', saveSel);
 
-    const exec = (cmd, val = null) => { restoreSel(); document.execCommand(cmd, false, val); saveSel(); refresh(); };
+    // Tab behaves like the Notes editor: indents/outdents inside lists,
+    // types spacing in plain text, and never moves focus out of the editor.
+    area.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      e.preventDefault();
+      const selNode = document.getSelection().anchorNode;
+      const el = selNode && (selNode.nodeType === 1 ? selNode : selNode.parentElement);
+      if (el?.closest('li')) {
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+      } else if (!e.shiftKey) {
+        document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
+      }
+      saveSel();
+    });
+
+    const exec = (cmd, val = null) => { closePops(); restoreSel(); document.execCommand(cmd, false, val); saveSel(); refresh(); };
 
     // toolbar buttons with direct commands
     bar.querySelectorAll('.rt-btn[data-cmd]').forEach(b => {
@@ -293,8 +338,7 @@
       btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
       btn.addEventListener('click', () => {
         const open = menu.classList.contains('show');
-        bar.querySelectorAll('.rt-dd-menu.show').forEach(m => m.classList.remove('show'));
-        pop.classList.remove('show');
+        closePops();
         if (!open) menu.classList.add('show');
       });
       menu.querySelectorAll('button[data-v]').forEach(item => {
@@ -308,12 +352,9 @@
         });
       });
     });
-    // close dropdowns/emoji when clicking elsewhere
-    document.addEventListener('click', (e) => {
-      if (!bar.contains(e.target)) {
-        bar.querySelectorAll('.rt-dd-menu.show').forEach(m => m.classList.remove('show'));
-        pop.classList.remove('show');
-      }
+    // clicking anywhere outside the toolbar closes any open popover
+    document.addEventListener('pointerdown', (e) => {
+      if (!bar.contains(e.target)) closePops();
     });
     // color
     const color = bar.querySelector('input[type="color"]');
@@ -339,10 +380,22 @@
           document.execCommand('unlink');
           saveSel();
         } else if (act === 'link') {
-          const url = prompt('Link URL (https://…):', 'https://');
-          if (url && url !== 'https://') exec('createLink', url);
+          const open = linkPop.classList.contains('show');
+          closePops();
+          if (!open) {
+            // prefill display text from the current selection
+            const selText = savedRange ? savedRange.toString() : '';
+            document.getElementById(`${id}-linktext`).value = selText;
+            document.getElementById(`${id}-linkurl`).value = '';
+            linkPop.classList.add('show');
+            setTimeout(() => document.getElementById(`${id}-linkurl`).focus(), 0);
+          }
+          return;
         } else if (act === 'emoji') {
-          pop.classList.toggle('show');
+          const open = pop.classList.contains('show');
+          closePops();
+          if (!open) pop.classList.add('show');
+          return;
         } else if (act === 'image') {
           document.getElementById(`${id}-imgfile`).click();
         } else if (act === 'attach') {
@@ -357,6 +410,33 @@
     pop.querySelectorAll('button').forEach(b => {
       b.addEventListener('mousedown', (e) => e.preventDefault());
       b.addEventListener('click', () => { exec('insertText', b.textContent); pop.classList.remove('show'); });
+    });
+
+    // link popover apply/cancel
+    linkPop.addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'INPUT') e.preventDefault(); // keep editor selection, allow typing
+    });
+    linkPop.querySelector('[data-lp="cancel"]').addEventListener('click', () => linkPop.classList.remove('show'));
+    const applyLink = () => {
+      let url = document.getElementById(`${id}-linkurl`).value.trim();
+      if (!url) { linkPop.classList.remove('show'); return; }
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      const textInput = document.getElementById(`${id}-linktext`).value.trim();
+      const selText = savedRange ? savedRange.toString() : '';
+      linkPop.classList.remove('show');
+      restoreSel();
+      if (selText && (!textInput || textInput === selText)) {
+        document.execCommand('createLink', false, url);
+      } else {
+        const label = textInput || url;
+        const a = `<a href="${url.replace(/"/g, '&quot;')}">${esc(label)}</a>`;
+        document.execCommand('insertHTML', false, a);
+      }
+      saveSel(); refresh();
+    };
+    linkPop.querySelector('[data-lp="apply"]').addEventListener('click', applyLink);
+    document.getElementById(`${id}-linkurl`).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
     });
 
     // inline image upload -> storage -> insert
