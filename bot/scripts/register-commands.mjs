@@ -43,6 +43,30 @@ const commands = [
     ],
   },
   {
+    name: "verify",
+    description: "Link your Discord to your umkcvsa.org account",
+    options: [
+      {
+        type: 3, // STRING
+        name: "code",
+        description: "The code from umkcvsa.org → Settings → Discord",
+        required: true,
+      },
+    ],
+  },
+  {
+    name: "teach",
+    description: "Teach the VSA bot a fact to remember (Officers only)",
+    options: [
+      {
+        type: 3, // STRING
+        name: "fact",
+        description: "The fact to remember",
+        required: true,
+      },
+    ],
+  },
+  {
     name: "announce",
     description: "Post an announcement to the announcements channel (Officers only)",
     options: [

@@ -64,7 +64,7 @@ Nothing else — the Supabase half is unaffected.
 - [x] `/warnings <user>` — officer-only lookup of a member's warning count
 - [ ] Run gateway bot; verify welcome message fires
 - [ ] `/events` — polish formatting (Discord timestamps, embeds)
-- [ ] Member verification: `/verify` links Discord account ↔ Supabase profile, assigns Member/Officer roles
+- [x] Member verification: portal Settings → Discord → "Get code" generates a 15-minute code (`discord_verify_code()` RPC); `/verify <code>` in Discord links the account (`discord_links` table) and grants the ᴍᴇᴍʙᴇʀ role (DISCORD_MEMBER_ROLE_ID secret). NOTE: the bot's role must sit ABOVE the member role in Server Settings → Roles for the auto-grant to work.
 - [ ] Role picker: buttons/dropdown for interest roles (handled by edge function)
 - [x] Auto-start gateway bot: pm2 manages it (`bot/ecosystem.config.cjs`).
       `pm2 status` / `pm2 logs vsa-bot` / `pm2 restart vsa-bot`; auto-restarts

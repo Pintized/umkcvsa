@@ -8,6 +8,7 @@ const DISCORD_PUBLIC_KEY = Deno.env.get("DISCORD_PUBLIC_KEY") ?? "";
 const BOT_TOKEN = Deno.env.get("DISCORD_BOT_TOKEN") ?? "";
 const ANNOUNCE_CHANNEL_ID = Deno.env.get("DISCORD_ANNOUNCE_CHANNEL_ID") ?? "";
 const OFFICER_ROLE_ID = Deno.env.get("DISCORD_OFFICER_ROLE_ID") ?? "";
+const MEMBER_ROLE_ID = Deno.env.get("DISCORD_MEMBER_ROLE_ID") ?? "";
 const AI_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 // Discord role allowed to use /teach (role ids are public identifiers)
 const TEACH_ROLE_ID = "1512393150478422238";
@@ -322,6 +323,68 @@ async function runChat(
   if (!res.ok) console.error(`Chat followup failed (${res.status}):`, await res.text());
 }
 
+async function handleVerify(interaction: {
+  guild_id?: string;
+  member?: { user?: { id: string; username?: string; global_name?: string } };
+  user?: { id: string; username?: string; global_name?: string };
+  data: { options?: { name: string; value: string }[] };
+}): Promise<Response> {
+  const du = interaction.member?.user ?? interaction.user;
+  const discordId = du?.id;
+  if (!discordId) return reply("I couldn't tell who you are — try again.", true);
+
+  const code = interaction.data.options?.find((o) => o.name === "code")?.value
+    ?.trim().toUpperCase();
+  if (!code) {
+    return reply("Usage: `/verify code` — grab your code from umkcvsa.org -> Settings -> Discord.", true);
+  }
+
+  const { data: row } = await supabase
+    .from("discord_verify_codes")
+    .select("user_id, expires_at")
+    .eq("code", code)
+    .maybeSingle();
+  if (!row || new Date(row.expires_at).getTime() < Date.now()) {
+    return reply(
+      "That code isn't valid (or it expired — codes last 15 minutes). " +
+        "Generate a fresh one at umkcvsa.org -> Settings -> Discord.",
+      true,
+    );
+  }
+
+  // this discord account may have been linked to a different portal account
+  await supabase.from("discord_links").delete().eq("discord_id", discordId);
+  const { error } = await supabase.from("discord_links").upsert({
+    user_id: row.user_id,
+    discord_id: discordId,
+    discord_tag: du?.global_name || du?.username || null,
+    linked_at: new Date().toISOString(),
+  });
+  if (error) {
+    console.error("discord link failed:", error.message);
+    return reply("Something went wrong saving the link — try again in a bit.", true);
+  }
+  await supabase.from("discord_verify_codes").delete().eq("user_id", row.user_id);
+
+  const { data: prof } = await supabase
+    .from("profiles").select("full_name").eq("id", row.user_id).maybeSingle();
+
+  let roleNote = "";
+  if (MEMBER_ROLE_ID && interaction.guild_id) {
+    const r = await fetch(
+      `https://discord.com/api/v10/guilds/${interaction.guild_id}/members/${discordId}/roles/${MEMBER_ROLE_ID}`,
+      { method: "PUT", headers: { "Authorization": `Bot ${BOT_TOKEN}` } },
+    );
+    if (r.ok) roleNote = " You've got the member role now, too.";
+    else console.error("member role grant failed:", r.status, await r.text());
+  }
+
+  return reply(
+    `✅ Verified! This Discord account is now linked to **${prof?.full_name ?? "your VSA account"}**.${roleNote} 🌸`,
+    true,
+  );
+}
+
 async function handleTeach(interaction: {
   member?: { roles?: string[]; user?: { id: string; username?: string; global_name?: string } };
   data: { options?: { name: string; value: string }[] };
@@ -396,6 +459,8 @@ Deno.serve(async (req) => {
         return handleChat(interaction);
       case "teach":
         return await handleTeach(interaction);
+      case "verify":
+        return await handleVerify(interaction);
       default:
         return reply(`Unknown command: ${interaction.data.name}`, true);
     }
