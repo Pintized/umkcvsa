@@ -27,6 +27,23 @@ SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 # one channel id, or several separated by commas
 CHANNEL_IDS = {int(x) for x in re.split(r"[,\s]+", os.environ["VSA_CHAT_CHANNEL_ID"].strip()) if x}
 
+# per-channel model overrides: "id=model,id=model" using aliases below
+# or full model ids; unlisted channels use DEFAULT_MODEL
+MODEL_ALIASES = {
+    "haiku": "claude-haiku-4-5",
+    "sonnet": "claude-sonnet-5",
+    "opus": "claude-opus-4-8",
+}
+DEFAULT_MODEL = MODEL_ALIASES.get(
+    os.environ.get("VSA_DEFAULT_MODEL", "haiku").lower(),
+    os.environ.get("VSA_DEFAULT_MODEL", "claude-haiku-4-5"),
+)
+CHANNEL_MODELS: dict[int, str] = {}
+for pair in re.split(r"[,\s]+", os.environ.get("VSA_CHANNEL_MODELS", "").strip()):
+    if "=" in pair:
+        cid, model = pair.split("=", 1)
+        CHANNEL_MODELS[int(cid)] = MODEL_ALIASES.get(model.lower(), model)
+
 COOLDOWN_SECONDS = 8          # per-user, keeps spam from burning AI calls
 MAX_QUESTION_CHARS = 1200
 HISTORY_MESSAGES = 20
@@ -143,7 +160,9 @@ async def on_ready() -> None:
     names = []
     for cid in sorted(CHANNEL_IDS):
         ch = client.get_channel(cid)
-        names.append(f"#{ch.name}" if ch else f"{cid} (not visible — check permissions!)")
+        label = f"#{ch.name}" if ch else f"{cid} (not visible — check permissions!)"
+        model = CHANNEL_MODELS.get(cid, DEFAULT_MODEL)
+        names.append(f"{label} [{model}]")
     print(f"VSA Bot is live as {client.user} — answering everything in {', '.join(names)}. Ctrl+C to stop.")
 
 
@@ -169,7 +188,7 @@ async def on_message(message: discord.Message) -> None:
             )
             today = time.strftime("%A, %B %-d, %Y") if os.name != "nt" else time.strftime("%A, %B %#d, %Y")
             msg = await anthropic.messages.create(
-                model="claude-haiku-4-5",
+                model=CHANNEL_MODELS.get(message.channel.id, DEFAULT_MODEL),
                 max_tokens=1024,
                 system=(
                     CHAT_SYSTEM_PROMPT
