@@ -28,6 +28,7 @@ const ICONS = {
   gear: SVG('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5"/>'),
   mail: SVG('<rect x="3.2" y="5.4" width="17.6" height="13.2" rx="1.8"/><path d="m4.4 7 7.6 5.6L19.6 7"/>'),
   form: SVG('<rect x="4.6" y="3.6" width="14.8" height="16.8" rx="2"/><path d="m7.6 8.2 1.1 1.1 2-2.1M13 8.6h3.6"/><path d="m7.6 13 1.1 1.1 2-2.1M13 13.4h3.6"/><path d="M8 17.6h8.6"/>'),
+  bot: SVG('<rect x="5" y="8.6" width="14" height="9.8" rx="3"/><circle cx="9.4" cy="13.2" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.6" cy="13.2" r="1.3" fill="currentColor" stroke="none"/><path d="M12 8.6V5.6M12 4.2a1.3 1.3 0 1 0 0 .01M5 13.4H3.4M20.6 13.4H19"/>'),
 };
 
 const MEMBER_LINKS = [
@@ -94,6 +95,7 @@ const ADMIN_LINKS = [
   { href: '/app/officer/gallery.html', label: 'Gallery',  icon: 'camera' },
   { href: '/app/officer/roles.html',   label: 'Roles',    icon: 'shield' },
   { href: '/app/officer/audit.html',   label: 'Audit Log', icon: 'scope' },
+  { href: '/app/admin/bot.html',       label: 'VSA Bot',  icon: 'bot' },
 ];
 
 function navLink({ href, label, icon, soon }, officerLink = false) {

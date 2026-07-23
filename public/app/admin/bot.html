@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSA Bot | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+.kn-row { display:flex; gap:14px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line); }
+.kn-row:last-child { border-bottom:none; }
+.kn-fact { flex:1; min-width:0; font-size:.94rem; line-height:1.5; }
+.kn-meta { color:var(--muted); font-size:.76rem; margin-top:3px; }
+.kn-src { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.66rem; font-weight:700; text-transform:uppercase; }
+.kn-src.portal { background:rgba(201, 155, 63, .16); color:var(--gold); }
+.kn-src.discord { background:rgba(88, 101, 242, .18); color:#7289da; }
+.kn-add { display:flex; gap:10px; align-items:flex-start; margin-bottom:6px; }
+.kn-add textarea { flex:1; min-height:64px; resize:vertical; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading bot knowledge…</div>
+<script type="module">
+  import { requireAdmin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireAdmin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'VSA Bot');
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  let facts = [];
+  async function load() {
+    const { data, error } = await supabase.from('bot_knowledge')
+      .select('*').order('created_at', { ascending: false });
+    facts = data || [];
+    render(error?.message);
+  }
+
+  function render(err) {
+    page.innerHTML = `
+      <div class="card">
+        <h2>Teach the Discord bot</h2>
+        <p style="color:var(--muted); font-size:.88rem; margin:6px 0 16px">
+          Everything here is baked into the bot's brain and can be repeated to
+          <strong>anyone on the Discord server</strong> — club info only, nothing private.
+          The bot also reads the live event calendar on its own, so events don't need
+          to be taught. Facts can be added here or with <code>/teach</code> in Discord.
+        </p>
+        <div class="notice" id="notice">${err ? `<span class="error">${esc(err)}</span>` : ''}</div>
+        <div class="kn-add">
+          <textarea id="new-fact" maxlength="500" placeholder="e.g. General meetings are every other Thursday at 6pm in the Student Union."></textarea>
+          <button class="btn" id="add-btn">Teach</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>What it knows (${facts.length})</h2>
+        ${facts.length ? facts.map(f => `
+          <div class="kn-row">
+            <div class="kn-fact">${esc(f.fact)}
+              <div class="kn-meta">
+                <span class="kn-src ${f.source}">${f.source}</span>
+                ${f.taught_by ? ` taught by ${esc(f.taught_by)}` : ''}
+                · ${new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            </div>
+            <button class="btn sm ghost" data-del="${f.id}">Forget</button>
+          </div>`).join('')
+        : '<p style="color:var(--muted)">Nothing taught yet — the bot only knows its manners and the event calendar.</p>'}
+      </div>`;
+
+    const notice = page.querySelector('#notice');
+    const say = (m, cls) => { notice.textContent = m; notice.className = `notice ${cls}`; };
+
+    page.querySelector('#add-btn').onclick = async () => {
+      const fact = page.querySelector('#new-fact').value.trim();
+      if (fact.length < 3) return say('Write a fact first.', 'error');
+      const { error } = await supabase.from('bot_knowledge').insert({
+        fact, source: 'portal',
+        taught_by: ctx.profile?.full_name || null,
+        created_by: ctx.user.id,
+      });
+      if (error) return say(error.message, 'error');
+      await load();
+    };
+
+    page.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const { error } = await supabase.from('bot_knowledge').delete().eq('id', b.dataset.del);
+      if (error) return say(error.message, 'error');
+      await load();
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>
