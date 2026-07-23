@@ -129,6 +129,12 @@ nav.site-nav::after {
   box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(224, 180, 92, .3);
 }
 .navlinks { display: flex; align-items: center; }
+/* true-center the links in the bar (space-between alone skews them,
+   since the brand is wider than the Login button); below 840px the
+   centered block would collide with the brand, so let flex handle it */
+@media (min-width: 840px) {
+  .navlinks { position: absolute; left: 50%; transform: translateX(-50%); }
+}
 .navlinks a {
   margin: 0 12px;
   color: var(--text);
