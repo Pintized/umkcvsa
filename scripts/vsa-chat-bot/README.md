@@ -22,7 +22,8 @@ either way (they run in the cloud).
    - `ANTHROPIC_API_KEY` — the same key the edge functions use
    - `SUPABASE_SERVICE_ROLE_KEY` — Supabase dashboard → Project
      Settings → API keys → service_role (keep this one especially safe)
-   - `VSA_CHAT_CHANNEL_ID` — from step 3
+   - `VSA_CHAT_CHANNEL_ID` — from step 3; multiple channels are
+     comma-separated: `VSA_CHAT_CHANNEL_ID=111,222,333`
 
 ## Run it
 

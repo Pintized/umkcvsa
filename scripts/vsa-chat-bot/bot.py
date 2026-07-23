@@ -24,7 +24,8 @@ BOT_TOKEN = os.environ["DISCORD_BOT_TOKEN"]
 AI_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-CHANNEL_ID = int(os.environ["VSA_CHAT_CHANNEL_ID"])
+# one channel id, or several separated by commas
+CHANNEL_IDS = {int(x) for x in re.split(r"[,\s]+", os.environ["VSA_CHAT_CHANNEL_ID"].strip()) if x}
 
 COOLDOWN_SECONDS = 8          # per-user, keeps spam from burning AI calls
 MAX_QUESTION_CHARS = 1200
@@ -139,14 +140,16 @@ async def channel_history(channel: discord.TextChannel, before: discord.Message)
 
 @client.event
 async def on_ready() -> None:
-    channel = client.get_channel(CHANNEL_ID)
-    where = f"#{channel.name}" if channel else f"channel {CHANNEL_ID} (not visible — check permissions!)"
-    print(f"VSA Bot is live as {client.user} — answering everything in {where}. Ctrl+C to stop.")
+    names = []
+    for cid in sorted(CHANNEL_IDS):
+        ch = client.get_channel(cid)
+        names.append(f"#{ch.name}" if ch else f"{cid} (not visible — check permissions!)")
+    print(f"VSA Bot is live as {client.user} — answering everything in {', '.join(names)}. Ctrl+C to stop.")
 
 
 @client.event
 async def on_message(message: discord.Message) -> None:
-    if message.author.bot or message.channel.id != CHANNEL_ID:
+    if message.author.bot or message.channel.id not in CHANNEL_IDS:
         return
     question = message.content.strip()
     if not question:
