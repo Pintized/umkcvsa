@@ -57,7 +57,7 @@
       </div>
     </div>
     <a href="/eboard/">E-BOARD</a>
-    <a href="/store/">STORE</a>
+    <a href="/merch/">MERCHANDISE</a>
     <a href="/contact/">CONTACT</a>
   </div>
   <a class="login" href="/app/login.html">Login</a>
@@ -156,7 +156,7 @@
     <div class="steps" style="margin-top:52px">
       <div class="step fx"><h3>Sign Up</h3><p>Create your free member account — no fees, everyone welcome.</p></div>
       <div class="step fx"><h3>Show Up</h3><p>Come to a meeting or event. Free food, good people, zero pressure.</p></div>
-      <div class="step fx"><h3>Level Up</h3><p>Earn points for showing up and trade them for real rewards & merch.</p></div>
+      <div class="step fx"><h3>Level Up</h3><p>Earn VND for showing up and redeem them for real rewards & merch.</p></div>
     </div>
     <p style="text-align:center; margin-top:40px"><a class="btn fx" href="/app/signup.html">Create Your Account</a></p>
   </div>
@@ -170,7 +170,7 @@
   <div class="finale">
     <h2 class="statement fx">Rep the <span class="g">culture</span>.</h2>
     <p class="fx">Exclusive VSA apparel and accessories — wear your pride.</p>
-    <a class="btn ghost fx" href="/store/">Visit the Store</a>
+    <a class="btn ghost fx" href="/merch/">Browse the Merchandise</a>
   </div>
 
 </main>
@@ -181,7 +181,7 @@
       <div class="footer-brand"><img class="footer-icon" src="/assets/img/logo.png" alt="UMKC VSA logo"><span class="brand-name">UMKC VSA</span></div>
       <p>Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
     </div>
-    <div class="footer-col"><h4>Quick Links</h4><a href="/about/">About</a><a href="/eboard/">E-Board</a><a href="/store/">Store</a><a href="/about/gallery/">Gallery</a></div>
+    <div class="footer-col"><h4>Quick Links</h4><a href="/about/">About</a><a href="/eboard/">E-Board</a><a href="/merch/">Merchandise</a><a href="/about/gallery/">Gallery</a></div>
     <div class="footer-col"><h4>Contact</h4><p>support@umkcvsa.org</p><p>Student Union Building Room 302</p></div>
     <div class="footer-col"><h4>Follow Us</h4><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@vsaumkc" target="_blank">TikTok</a><a href="https://discord.gg/KAF8CZSdBN" target="_blank">Discord</a></div>
   </div>
@@ -323,8 +323,15 @@ if (events.length) {
     `<b>${esc(ev.name)}</b> · ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
     .join('&nbsp;&nbsp;✦&nbsp;&nbsp;');
   const half = names + '&nbsp;&nbsp;✦&nbsp;&nbsp;';
-  document.getElementById('ticker-track').innerHTML = half + half;
-  document.getElementById('ticker').style.display = 'block';
+  const ticker = document.getElementById('ticker');
+  const track = document.getElementById('ticker-track');
+  ticker.style.display = 'block';
+  // repeat until one copy spans the bar (short event lists left a blank
+  // gap and a visible jump), then duplicate for the seamless -50% loop
+  track.innerHTML = half;
+  for (let i = 0; i < 60 && track.scrollWidth < ticker.offsetWidth; i++) track.innerHTML += half;
+  track.innerHTML += track.innerHTML;
+  track.style.animationDuration = Math.max(12, Math.round(track.scrollWidth / 2 / 55)) + 's';
 }
 
 // announcements

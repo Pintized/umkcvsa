@@ -133,7 +133,9 @@ nav.site-nav::after {
    since the brand is wider than the Login button); below 840px the
    centered block would collide with the brand, so let flex handle it */
 @media (min-width: 840px) {
-  .navlinks { position: absolute; left: 50%; transform: translateX(-50%); }
+  /* z-index lifts the links' stacking context (created by the transform)
+     above the nav's ::after glow bar, so the About dropdown covers it */
+  .navlinks { position: absolute; left: 50%; transform: translateX(-50%); z-index: 1; }
 }
 .navlinks a {
   margin: 0 12px;

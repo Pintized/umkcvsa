@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gallery | UMKC VSA</title>
-<meta name="description" content="Moments from UMKC VSA events, celebrations, and community gatherings.">
-<link rel="canonical" href="https://umkcvsa.org/about/gallery/">
+<title>Merchandise | UMKC VSA</title>
+<meta name="description" content="Official UMKC VSA merch — apparel and accessories.">
+<link rel="canonical" href="https://umkcvsa.org/merch/">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,17 +34,17 @@
   <div class="navlinks">
     <a href="/">HOME</a>
     <div class="has-sub">
-      <a href="/about/" class="active">ABOUT</a>
+      <a href="/about/">ABOUT</a>
       <div class="sub">
         <a href="/about/">About Us</a>
         <a href="/about/partners/">Partners &amp; Sponsors</a>
         <a href="/about/news/">News</a>
-        <a href="/about/gallery/" class="active">Gallery</a>
+        <a href="/about/gallery/">Gallery</a>
         <a href="/about/constitution/">Constitution</a>
       </div>
     </div>
     <a href="/eboard/">E-BOARD</a>
-    <a href="/merch/">MERCHANDISE</a>
+    <a href="/merch/" class="active">MERCHANDISE</a>
     <a href="/contact/">CONTACT</a>
   </div>
   <a class="login" href="/app/login.html">Login</a>
@@ -52,13 +52,14 @@
 </nav>
 
 <header class="page-hero">
-  <h1>Gallery</h1>
+  <h1>VSA Merchandise</h1>
   <hr class="hero-rule">
-  <p style="margin-top:16px">Moments from our events, celebrations, and community gatherings.</p>
+  <p style="margin-top:16px">Show your VSA pride with our exclusive apparel and accessories.</p>
 </header>
 
 <section class="section">
-  <div class="gallery" id="gallery"></div>
+  <div class="product-grid" id="products"></div>
+  <p class="store-note">🛍️ Grab your merch at any VSA event, or DM <a href="https://www.instagram.com/umkc_vsa" target="_blank" style="color:var(--gold-bright)">@umkc_vsa</a> to arrange a pickup. Online checkout coming soon.</p>
 </section>
 
 <footer>
@@ -76,32 +77,32 @@
 
 <script src="/assets/js/site.js"></script>
 <script type="module">
-// Photos come straight from the Supabase gallery bucket (officers
-// upload via the portal). Branded placeholders until photos exist.
+// Catalog is managed from the portal's Admin > Store page
 import { supabase } from '/app/shared/supabase.js';
-const grid = document.getElementById('gallery');
-const FALLBACK = ['Lunar New Year 2025','Cultural Night','Welcome Week','Spring Picnic','Pho Night','Volunteer Day','General Meeting','Mid-Autumn Festival','Senior Send-Off'];
+const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-const { data } = await supabase.storage.from('gallery')
-  .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+const { data } = await supabase.from('store_products')
+  .select('name, description, price, badge, photo_path')
+  .eq('active', true)
+  .order('sort');
 
-const photos = (data || []).filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f.name));
-
-if (photos.length) {
-  grid.innerHTML = photos.map(f => {
-    const url = supabase.storage.from('gallery').getPublicUrl(f.name).data.publicUrl;
-    return `<div class="gtile"><img src="${url}" alt="UMKC VSA event photo" loading="lazy"></div>`;
-  }).join('');
-} else {
-  const h = [320, 240, 290, 250, 330, 260, 300, 240, 310];
-  grid.innerHTML = FALLBACK.map((cap, i) => `
-    <div class="gtile">
-      <div class="ph" style="height:${h[i % h.length]}px">
-        <img class="ph-logo" src="/assets/img/logo.png" alt="">
-      </div>
-      <div class="cap">${cap} — photos coming soon</div>
-    </div>`).join('');
-}
+document.getElementById('products').innerHTML = (data && data.length)
+  ? data.map(p => `
+      <div class="product">
+        <div class="pimg">
+          ${p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
+          ${p.photo_path
+            ? `<img src="${IMG + p.photo_path}" alt="${esc(p.name)}" style="width:100%; height:100%; object-fit:cover">`
+            : '<div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div>'}
+        </div>
+        <div class="pbody">
+          <h3>${esc(p.name)}</h3>
+          <p class="desc">${esc(p.description)}</p>
+          <div class="prow"><span class="price">$${Number(p.price).toFixed(2).replace(/\.00$/, '')}</span></div>
+        </div>
+      </div>`).join('')
+  : '<p style="grid-column:1/-1; text-align:center; color:var(--muted)">The merch is being restocked — check back soon!</p>';
 </script>
 </body>
 </html>
