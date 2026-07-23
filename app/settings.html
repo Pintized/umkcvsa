@@ -110,6 +110,16 @@
       </section>
 
       <section class="set-sec">
+        <h3>Discord</h3>
+        <div class="set-row">
+          <div class="txt"><strong>Server verification</strong>
+            <small id="dc-status">Checking…</small>
+          </div>
+          <button class="btn sm secondary" id="dc-btn" style="display:none"></button>
+        </div>
+      </section>
+
+      <section class="set-sec">
         <h3>Preferences</h3>
         <div class="set-row">
           <div class="txt"><strong>Theme</strong><small>"System" follows your device's light/dark setting.</small></div>
@@ -189,6 +199,37 @@
       </section>
 
     </div>`;
+
+  // ---------- discord ----------
+  async function refreshDiscord() {
+    const st = document.getElementById('dc-status');
+    const btn = document.getElementById('dc-btn');
+    const { data: link } = await supabase.from('discord_links')
+      .select('discord_tag, linked_at').eq('user_id', ctx.user.id).maybeSingle();
+    btn.style.display = '';
+    if (link) {
+      const when = new Date(link.linked_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      st.innerHTML = `Linked to <strong>${(link.discord_tag || 'your Discord').replace(/</g, '&lt;')}</strong> <span class="badge-ok">verified</span> · since ${when}`;
+      btn.textContent = 'Unlink';
+      btn.onclick = async () => {
+        if (!confirm('Unlink your Discord account? You can re-verify any time with a new code.')) return;
+        const { error } = await supabase.from('discord_links').delete().eq('user_id', ctx.user.id);
+        if (error) { toast(error.message); return; }
+        toast('Discord unlinked.');
+        refreshDiscord();
+      };
+    } else {
+      st.textContent = 'Link your Discord to your VSA account: generate a code, then run /verify in the server.';
+      btn.textContent = 'Get code';
+      btn.onclick = async () => {
+        const { data: code, error } = await supabase.rpc('discord_verify_code');
+        if (error) { toast(error.message); return; }
+        st.innerHTML = `In the VSA Discord, run <strong style="color:var(--gold, #e0b45c)">/verify ${code}</strong> — the code lasts 15 minutes.`;
+        btn.textContent = 'New code';
+      };
+    }
+  }
+  refreshDiscord();
 
   // ---------- theme ----------
   document.getElementById('theme-sel').onchange = (e) => {
