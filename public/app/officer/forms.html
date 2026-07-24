@@ -426,6 +426,7 @@
           </div>
           <div class="fb-foot">
             <span class="count">${nQ} question${nQ === 1 ? '' : 's'}</span>
+            <button type="button" class="btn ghost" id="m-preview" title="See the form exactly as fillers will — opens a new tab">👁️ Preview</button>
             <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
             <button type="button" class="btn" id="m-save">${f ? 'Save' : 'Create form'}</button>
           </div>
@@ -496,6 +497,18 @@
         });
       };
 
+      back.querySelector('#m-preview').onclick = () => {
+        sync();
+        const qs = structuredClone(questions.filter(q => stripRich(q.label)));
+        qs.forEach(q => { q.options = (q.options || []).map(o => o.trim()).filter(Boolean); });
+        localStorage.setItem('vsa-form-preview', JSON.stringify({
+          title: meta.title.trim() || 'Untitled form',
+          description: meta.desc.trim() || null,
+          questions: qs,
+          settings: { confirm_msg: meta.confirm.trim() || null },
+        }));
+        window.open('/app/form?preview=1', '_blank');
+      };
       back.querySelector('#m-cancel').onclick = () => back.remove();
       back.querySelector('#q-add').onclick = () => {
         sync();
