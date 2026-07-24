@@ -138,14 +138,17 @@
   /* rich text mini-toolbar */
   .rich-wrap { position: relative; }
   .rt-bar {
-    display: none; position: absolute; top: -34px; left: 0; z-index: 5;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
-    box-shadow: var(--shadow-lg, 0 8px 22px rgba(0,0,0,.3)); padding: 2px 4px; gap: 1px;
+    /* hugs the field's top-right corner so it never covers the type
+       select above or the field below */
+    display: none; position: absolute; top: 3px; right: 3px; z-index: 5;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 7px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .25); padding: 1px 3px; gap: 1px;
   }
   .rich-wrap:focus-within .rt-bar { display: inline-flex; }
+  .rich-wrap:focus-within .rich { padding-right: 140px; }
   .rt-bar button {
     border: none; background: none; color: var(--text); cursor: pointer;
-    font-size: .82rem; width: 26px; height: 26px; border-radius: 6px;
+    font-size: .78rem; width: 24px; height: 24px; border-radius: 5px;
   }
   .rt-bar button:hover { background: rgba(201, 155, 63, .16); color: var(--gold, #c99b3f); }
   .rich {
