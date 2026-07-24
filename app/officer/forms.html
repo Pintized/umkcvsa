@@ -226,10 +226,12 @@
           const opts = back.querySelector(`[data-qopts="${i}"]`);
           q.options = opts ? opts.value.split('\n').map(o => o.trim()).filter(Boolean) : [];
           if (q.type === 'scale') {
-            q.min = +back.querySelector(`[data-qmin="${i}"]`).value;
-            q.max = +back.querySelector(`[data-qmax="${i}"]`).value;
-            q.lo = back.querySelector(`[data-qlo="${i}"]`).value.trim();
-            q.hi = back.querySelector(`[data-qhi="${i}"]`).value.trim();
+            // the scale config inputs don't exist yet on the very sync
+            // that switches a question TO scale — fall back to defaults
+            q.min = +(back.querySelector(`[data-qmin="${i}"]`)?.value ?? q.min ?? 1);
+            q.max = +(back.querySelector(`[data-qmax="${i}"]`)?.value ?? q.max ?? 5);
+            q.lo = (back.querySelector(`[data-qlo="${i}"]`)?.value ?? q.lo ?? '').trim();
+            q.hi = (back.querySelector(`[data-qhi="${i}"]`)?.value ?? q.hi ?? '').trim();
           }
         });
       };
