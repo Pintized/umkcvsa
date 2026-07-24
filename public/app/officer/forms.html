@@ -16,13 +16,84 @@
   .status-pill { font-size: .74rem; padding: 2px 9px; border-radius: 99px; font-weight: 700; }
   .status-pill.live { background: rgba(47,158,99,.15); color: #2f9e63; }
   .status-pill.off { background: rgba(128,128,128,.18); color: var(--muted); }
-  .q-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface-2); }
-  .q-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-  .q-head select { width: auto; }
-  .q-head .q-tools { margin-left: auto; display: flex; gap: 4px; }
-  .q-tools button { border: none; background: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 2px 6px; border-radius: 6px; }
-  .q-tools button:hover { background: rgba(128,128,128,.15); color: var(--text); }
   .modal.wide { max-width: 680px; }
+  /* ---- form builder ---- */
+  .modal.fb { max-width: 780px; width: 100%; max-height: 88vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .fb-head { padding: 20px 26px 4px; }
+  .fb-head h2 { margin-bottom: 12px; }
+  .fb-title input {
+    width: 100%; font-size: 1.3rem; font-weight: 700; color: var(--text);
+    background: transparent; border: none; border-bottom: 2px solid var(--line);
+    border-radius: 0; padding: 6px 2px; outline: none; transition: border-color .18s;
+  }
+  .fb-title input:focus { border-bottom-color: var(--gold, #c99b3f); }
+  .fb-desc input {
+    width: 100%; font-size: .88rem; color: var(--muted); background: transparent;
+    border: none; border-bottom: 1px dashed var(--line); border-radius: 0;
+    padding: 6px 2px; outline: none;
+  }
+  .fb-desc input:focus { border-bottom-color: var(--gold, #c99b3f); color: var(--text); }
+  .fb-body { flex: 1; overflow-y: auto; padding: 14px 26px 6px; }
+  .fb-foot {
+    padding: 12px 26px; border-top: 1px solid var(--line);
+    display: flex; gap: 10px; align-items: center;
+  }
+  .fb-foot .count { color: var(--muted); font-size: .82rem; margin-right: auto; }
+  .fb-set { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 16px; }
+  .fb-set summary {
+    cursor: pointer; padding: 10px 14px; font-size: .85rem; font-weight: 600;
+    color: var(--muted); list-style: none; user-select: none;
+  }
+  .fb-set summary::before { content: '▸ '; }
+  .fb-set[open] summary::before { content: '▾ '; }
+  .fb-set summary::-webkit-details-marker { display: none; }
+  .fb-set .set-inner { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; padding: 2px 14px 14px; }
+  .q-card {
+    border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;
+    background: var(--surface-2); transition: border-color .18s, box-shadow .18s;
+  }
+  .q-card:focus-within { border-left-color: var(--gold, #c99b3f); box-shadow: 0 4px 16px rgba(0,0,0,.14); }
+  .q-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .q-num {
+    width: 24px; height: 24px; border-radius: 50%; flex: none;
+    background: rgba(201, 155, 63, .16); color: var(--gold, #c99b3f);
+    font-size: .76rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .q-head select { width: auto; font-size: .85rem; }
+  .q-head .q-tools { margin-left: auto; display: flex; gap: 2px; }
+  .q-tools button { border: none; background: none; cursor: pointer; color: var(--muted); font-size: .95rem; padding: 3px 7px; border-radius: 7px; }
+  .q-tools button:hover { background: rgba(128,128,128,.15); color: var(--text); }
+  .q-label-in input { font-weight: 600; }
+  .q-desc-in input { font-size: .84rem; }
+  .opt-item { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .opt-item .opt-dot { color: var(--muted); font-size: .95rem; width: 20px; text-align: center; flex: none; }
+  .opt-item input { flex: 1; height: 34px; font-size: .9rem; }
+  .opt-item button { border: none; background: none; color: var(--muted); cursor: pointer; font-size: .95rem; padding: 2px 6px; border-radius: 6px; }
+  .opt-item button:hover { color: var(--red, #c8202f); background: rgba(200,32,47,.08); }
+  .opt-add {
+    border: none; background: none; color: var(--gold, #c99b3f); cursor: pointer;
+    font-size: .84rem; font-weight: 600; padding: 4px 0 0 28px;
+  }
+  .opt-add:hover { text-decoration: underline; }
+  .q-foot { display: flex; gap: 18px; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .q-foot label { display: flex; gap: 7px; align-items: center; font-size: .82rem; color: var(--muted); cursor: pointer; }
+  .sw { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+  .sw input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+  .sw .tr { position: absolute; inset: 0; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); transition: background .15s, border-color .15s; }
+  .sw .tr::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+  .sw input:checked + .tr { background: rgba(201, 155, 63, .25); border-color: var(--gold, #c99b3f); }
+  .sw input:checked + .tr::after { transform: translateX(16px); background: var(--gold, #c99b3f); }
+  .q-empty {
+    border: 2px dashed var(--line); border-radius: 12px; text-align: center;
+    color: var(--muted); padding: 26px; font-size: .9rem; margin-bottom: 12px;
+  }
+  .q-addbig {
+    width: 100%; border: 2px dashed var(--line); background: none; border-radius: 12px;
+    color: var(--gold, #c99b3f); font-weight: 700; font-size: .9rem; padding: 12px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .q-addbig:hover { border-color: var(--gold, #c99b3f); background: rgba(201, 155, 63, .06); }
   .resp-tally { margin: 4px 0 10px; font-size: .86rem; }
   .resp-tally .bar { display: inline-block; height: 9px; background: linear-gradient(90deg, var(--gold-bright, #f0cf7a), var(--gold, #e0b45c)); border-radius: 5px; vertical-align: middle; margin-right: 7px; }
   .resp-one { border-top: 1px solid var(--line); padding: 10px 0; font-size: .88rem; }
@@ -163,14 +234,12 @@
     document.body.appendChild(back);
     back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
 
+    const optDot = (q, j) => q.type === 'check' ? '☐' : q.type === 'drop' ? `${j + 1}.` : '○';
     const qCard = (q, i) => `
       <div class="q-card" data-i="${i}">
         <div class="q-head">
+          <span class="q-num">${i + 1}</span>
           <select data-qtype="${i}">${Q_TYPES.map(([v, l]) => `<option value="${v}" ${q.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-          ${q.type === 'section' ? '' : `<label style="display:flex; gap:5px; align-items:center; font-size:.84rem">
-            <input type="checkbox" data-qreq="${i}" style="width:15px; height:15px" ${q.required ? 'checked' : ''}> Required</label>`}
-          ${CAN_OTHER.includes(q.type) ? `<label style="display:flex; gap:5px; align-items:center; font-size:.84rem">
-            <input type="checkbox" data-qother="${i}" style="width:15px; height:15px" ${q.other ? 'checked' : ''}> "Other…" option</label>` : ''}
           <span class="q-tools">
             <button type="button" data-qup="${i}" title="Move up">↑</button>
             <button type="button" data-qdown="${i}" title="Move down">↓</button>
@@ -178,48 +247,71 @@
             <button type="button" data-qdel="${i}" title="Remove">✕</button>
           </span>
         </div>
-        <div class="field" style="margin-bottom:8px">
-          <input data-qlabel="${i}" placeholder="${q.type === 'section' ? 'Section title…' : 'Question text…'}" value="${esc(q.label)}">
+        <div class="field q-label-in" style="margin-bottom:6px">
+          <input data-qlabel="${i}" placeholder="${q.type === 'section' ? 'Section title…' : 'Question…'}" value="${esc(q.label)}">
         </div>
-        <div class="field" style="margin-bottom:${NEEDS_OPTIONS.includes(q.type) || q.type === 'scale' ? '10px' : '0'}">
-          <input data-qdesc="${i}" placeholder="Description / help text (optional)…" value="${esc(q.desc || '')}" style="font-size:.85rem">
+        <div class="field q-desc-in" style="margin-bottom:${NEEDS_OPTIONS.includes(q.type) || q.type === 'scale' ? '12px' : '0'}">
+          <input data-qdesc="${i}" placeholder="Help text (optional)…" value="${esc(q.desc || '')}">
         </div>
         ${NEEDS_OPTIONS.includes(q.type) ? `
-          <div class="field" style="margin-bottom:0"><label style="font-size:.78rem">Options — one per line</label>
-            <textarea data-qopts="${i}" rows="3">${esc((q.options || []).join('\n'))}</textarea></div>` : ''}
+          <div data-optlist="${i}">
+            ${(q.options.length ? q.options : ['']).map((o, j) => `
+              <div class="opt-item">
+                <span class="opt-dot">${optDot(q, j)}</span>
+                <input data-qopt="${i}" placeholder="Option ${j + 1}" value="${esc(o)}">
+                <button type="button" data-odel="${i}:${j}" title="Remove option">✕</button>
+              </div>`).join('')}
+            <button type="button" class="opt-add" data-oadd="${i}">+ Add option</button>
+          </div>` : ''}
         ${q.type === 'scale' ? `
           <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end">
-            <div class="field" style="margin:0; width:82px"><label style="font-size:.78rem">From</label>
+            <div class="field" style="margin:0; width:78px"><label style="font-size:.78rem">From</label>
               <select data-qmin="${i}">${[0, 1].map(n => `<option ${(q.min ?? 1) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-            <div class="field" style="margin:0; width:82px"><label style="font-size:.78rem">To</label>
+            <div class="field" style="margin:0; width:78px"><label style="font-size:.78rem">To</label>
               <select data-qmax="${i}">${[2,3,4,5,6,7,8,9,10].map(n => `<option ${(q.max ?? 5) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-            <div class="field" style="margin:0; flex:1; min-width:120px"><label style="font-size:.78rem">Low label</label>
+            <div class="field" style="margin:0; flex:1; min-width:110px"><label style="font-size:.78rem">Low label</label>
               <input data-qlo="${i}" placeholder="e.g. Not at all" value="${esc(q.lo || '')}"></div>
-            <div class="field" style="margin:0; flex:1; min-width:120px"><label style="font-size:.78rem">High label</label>
+            <div class="field" style="margin:0; flex:1; min-width:110px"><label style="font-size:.78rem">High label</label>
               <input data-qhi="${i}" placeholder="e.g. Absolutely" value="${esc(q.hi || '')}"></div>
           </div>` : ''}
+        ${q.type === 'section' ? '' : `
+          <div class="q-foot">
+            <label><span class="sw"><input type="checkbox" data-qreq="${i}" ${q.required ? 'checked' : ''}><span class="tr"></span></span> Required</label>
+            ${CAN_OTHER.includes(q.type) ? `
+              <label><span class="sw"><input type="checkbox" data-qother="${i}" ${q.other ? 'checked' : ''}><span class="tr"></span></span> "Other…" option</label>` : ''}
+          </div>`}
       </div>`;
 
     function draw() {
+      const nQ = questions.filter(q => q.type !== 'section').length;
       back.innerHTML = `
-        <div class="modal wide">
-          <h2>${f ? 'Edit form' : 'New form'}</h2>
-          <div class="notice" id="m-notice"></div>
-          <div class="field"><label>Title</label><input id="f-title" value="${esc(meta.title)}" placeholder="e.g. Tết 2026 Check-in"></div>
-          <div class="field"><label>Description <span style="opacity:.55; font-weight:400">(optional)</span></label>
-            <textarea id="f-desc" rows="2">${esc(meta.desc)}</textarea></div>
-          <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-bottom:14px">
-            <label style="display:flex; gap:6px; align-items:center; font-size:.84rem">
-              <input type="checkbox" id="s-one" style="width:15px; height:15px" ${meta.one ? 'checked' : ''}>
-              Limit to 1 response <span style="opacity:.55">(requires sign-in)</span></label>
-            <div class="field" style="margin:0"><label style="font-size:.78rem">Auto-close at (optional)</label>
-              <input type="datetime-local" id="s-close" value="${meta.close}"></div>
-            <div class="field" style="margin:0; flex:1; min-width:180px"><label style="font-size:.78rem">Confirmation message (optional)</label>
-              <input id="s-confirm" placeholder="Cảm ơn bạn! Thanks for filling this out. 🌸" value="${esc(meta.confirm)}"></div>
+        <div class="modal fb">
+          <div class="fb-head">
+            <h2>${f ? 'Edit form' : 'New form'}</h2>
+            <div class="notice" id="m-notice"></div>
+            <div class="field fb-title" style="margin-bottom:2px"><input id="f-title" value="${esc(meta.title)}" placeholder="Form title — e.g. Tết 2026 Check-in"></div>
+            <div class="field fb-desc" style="margin-bottom:10px"><input id="f-desc" value="${esc(meta.desc)}" placeholder="Description (optional)"></div>
           </div>
-          <div id="q-list">${questions.map(qCard).join('') || '<p style="color:var(--muted); font-size:.88rem">No questions yet.</p>'}</div>
-          <button type="button" class="btn ghost small" id="q-add">+ Add question</button>
-          <div class="row-btns">
+          <div class="fb-body">
+            <details class="fb-set" ${meta.one || meta.close || meta.confirm ? 'open' : ''}>
+              <summary>Form settings</summary>
+              <div class="set-inner">
+                <label style="display:flex; gap:7px; align-items:center; font-size:.84rem; cursor:pointer">
+                  <span class="sw"><input type="checkbox" id="s-one" ${meta.one ? 'checked' : ''}><span class="tr"></span></span>
+                  Limit to 1 response <span style="opacity:.55">(requires sign-in)</span></label>
+                <div class="field" style="margin:0"><label style="font-size:.78rem">Auto-close at (optional)</label>
+                  <input type="datetime-local" id="s-close" value="${meta.close}"></div>
+                <div class="field" style="margin:0; flex:1; min-width:180px"><label style="font-size:.78rem">Confirmation message (optional)</label>
+                  <input id="s-confirm" placeholder="Cảm ơn bạn! Thanks for filling this out. 🌸" value="${esc(meta.confirm)}"></div>
+              </div>
+            </details>
+            <div id="q-list">${questions.map(qCard).join('')
+              || '<div class="q-empty">No questions yet — add your first one below.</div>'}</div>
+            <button type="button" class="q-addbig" id="q-add">+ Add question</button>
+            <div style="height:14px"></div>
+          </div>
+          <div class="fb-foot">
+            <span class="count">${nQ} question${nQ === 1 ? '' : 's'}</span>
             <button type="button" class="btn ghost" id="m-cancel">Cancel</button>
             <button type="button" class="btn" id="m-save">${f ? 'Save' : 'Create form'}</button>
           </div>
@@ -237,8 +329,12 @@
           q.required = back.querySelector(`[data-qreq="${i}"]`)?.checked ?? false;
           q.desc = back.querySelector(`[data-qdesc="${i}"]`).value.trim();
           q.other = back.querySelector(`[data-qother="${i}"]`)?.checked ?? false;
-          const opts = back.querySelector(`[data-qopts="${i}"]`);
-          q.options = opts ? opts.value.split('\n').map(o => o.trim()).filter(Boolean) : [];
+          const optIns = [...back.querySelectorAll(`[data-qopt="${i}"]`)];
+          // keep blanks while editing (a just-added empty row must survive
+          // the redraw); they're dropped at save time
+          if (optIns.length || !NEEDS_OPTIONS.includes(q.type)) {
+            q.options = optIns.map(el => el.value);
+          }
           if (q.type === 'scale') {
             // the scale config inputs don't exist yet on the very sync
             // that switches a question TO scale — fall back to defaults
@@ -265,6 +361,15 @@
           id: 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) });
         draw();
       });
+      back.querySelectorAll('[data-oadd]').forEach(el => el.onclick = () => {
+        sync(); questions[+el.dataset.oadd].options.push(''); draw();
+        back.querySelectorAll(`[data-qopt="${el.dataset.oadd}"]`)?.[
+          back.querySelectorAll(`[data-qopt="${el.dataset.oadd}"]`).length - 1]?.focus();
+      });
+      back.querySelectorAll('[data-odel]').forEach(el => el.onclick = () => {
+        const [qi, oi] = el.dataset.odel.split(':').map(Number);
+        sync(); questions[qi].options.splice(oi, 1); draw();
+      });
       back.querySelectorAll('[data-qup]').forEach(el => el.onclick = () => {
         const i = +el.dataset.qup; if (!i) return;
         sync(); [questions[i - 1], questions[i]] = [questions[i], questions[i - 1]]; draw();
@@ -279,7 +384,8 @@
         const mSay = (msg) => { const n = back.querySelector('#m-notice'); n.textContent = msg; n.className = 'notice error'; };
         const title = meta.title.trim();
         if (!title) { mSay('Give the form a title.'); return; }
-        const qs = questions.filter(q => q.label.trim());
+        const qs = structuredClone(questions.filter(q => q.label.trim()));
+        qs.forEach(q => { q.options = (q.options || []).map(o => o.trim()).filter(Boolean); });
         if (!qs.some(q => q.type !== 'section')) { mSay('Add at least one question (with text).'); return; }
         for (const q of qs) {
           if (NEEDS_OPTIONS.includes(q.type) && !q.options.length) {
