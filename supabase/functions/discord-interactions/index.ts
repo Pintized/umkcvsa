@@ -136,6 +136,40 @@ async function handleEvents(): Promise<Response> {
   return reply(`📅 **Upcoming UMKC VSA Events**\n${lines.join("\n")}`);
 }
 
+// Top 10 by Đồng, styled like the website leaderboard (gold accent,
+// medals, aliases in quotes). Same privacy rules as the members page:
+// hide_points members sit out, directory-hidden members don't appear.
+async function handleLeaderboard(): Promise<Response> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("full_name, alias, points, hide_points, hide_directory")
+    .order("points", { ascending: false })
+    .limit(50);
+  if (error) return reply("Couldn't load the leaderboard right now.", true);
+
+  const rows = (data ?? []).filter((m) => !m.hide_points && !m.hide_directory).slice(0, 10);
+  if (!rows.length) return reply("No one is on the board yet — come to an event and start earning Đồng! 🌸");
+
+  const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `\`#${i + 1}\``;
+  const vnd = (n: number) => (n ?? 0).toLocaleString("vi-VN");
+  const lines = rows.map((m, i) =>
+    `${medal(i)} **${m.full_name ?? "Member"}**${m.alias ? ` “${m.alias}”` : ""} — ${vnd(m.points)} Đồng`);
+
+  return Response.json({
+    type: ResponseType.CHANNEL_MESSAGE,
+    data: {
+      embeds: [{
+        title: "🏆 VSA Đồng Leaderboard",
+        description: lines.join("\n"),
+        color: 0xc99b3f, // --gold
+        thumbnail: { url: "https://umkcvsa.org/assets/img/logo-128.png" },
+        footer: { text: "Top 10 · earn Đồng at events · umkcvsa.org" },
+        timestamp: new Date().toISOString(),
+      }],
+    },
+  });
+}
+
 function isOfficer(interaction: { member?: { roles?: string[] } }): boolean {
   if (!OFFICER_ROLE_ID) return false;
   return (interaction.member?.roles ?? []).includes(OFFICER_ROLE_ID);
@@ -460,6 +494,8 @@ Deno.serve(async (req) => {
         return reply("Pong! 🏓 The VSA bot is alive.", true);
       case "events":
         return await handleEvents();
+      case "leaderboard":
+        return await handleLeaderboard();
       case "announce":
         return await handleAnnounce(interaction);
       case "warnings":

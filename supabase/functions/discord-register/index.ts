@@ -8,6 +8,7 @@ const STRING = 3, USER = 6;
 const COMMANDS = [
   { name: "ping", description: "Check that the VSA bot is alive" },
   { name: "events", description: "See upcoming UMKC VSA events" },
+  { name: "leaderboard", description: "Top 10 members by Đồng" },
   {
     name: "announce",
     description: "Post an announcement (officers only)",
