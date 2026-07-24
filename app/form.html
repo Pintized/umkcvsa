@@ -18,6 +18,14 @@
   .fq .req { color: #c8202f; }
   .opt-row { display: flex; gap: 9px; align-items: center; padding: 4px 0; cursor: pointer; font-size: .94rem; }
   .opt-row input { width: 16px; height: 16px; cursor: pointer; flex: none; }
+  .q-desc { color: var(--muted); font-size: .82rem; margin: -3px 0 8px; white-space: pre-wrap; }
+  .f-sec { border-top: 2px solid var(--gold, #c99b3f); margin: 24px 0 14px; padding-top: 12px; }
+  .f-sec h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  .scale-row { display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap; }
+  .scale-row .end { color: var(--muted); font-size: .8rem; padding: 0 6px 6px; }
+  .scale-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 2px 5px; cursor: pointer; font-size: .84rem; }
+  .scale-cell input { width: 16px; height: 16px; cursor: pointer; }
+  .other-in { flex: 1; min-width: 120px; }
   .thanks { text-align: center; padding: 20px 0; }
   .thanks .big { font-size: 3rem; animation: pop .5s cubic-bezier(.2, .9, .3, 1.4); }
   @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
@@ -52,21 +60,41 @@
     ]);
     const signedIn = !!sess?.session;
 
+    const closedByDate = form?.settings?.close_at && Date.now() > new Date(form.settings.close_at).getTime();
+
     if (error || !form) {
       dead('Form not found', 'This link doesn\'t match any form — it may have been deleted, or the URL is incomplete.');
-    } else if (!form.accepting) {
+    } else if (!form.accepting || closedByDate) {
       dead(esc(form.title), 'This form is no longer accepting responses. 🙏');
+    } else if (form.settings?.limit_one && !signedIn) {
+      dead(esc(form.title), `This form is limited to one response per member, so you need to be
+        signed in. <a href="/app/login" style="color:var(--gold, #c99b3f)">Log in</a> and then reopen this link.`);
     } else {
       const qs = form.questions || [];
       const qHtml = (q) => {
         const req = q.required ? ' <span class="req">*</span>' : '';
-        const label = `<label class="q-label">${esc(q.label)}${req}</label>`;
+        const desc = q.desc ? `<div class="q-desc">${esc(q.desc)}</div>` : '';
+        const label = `<label class="q-label">${esc(q.label)}${req}</label>${desc}`;
+        if (q.type === 'section') return `<div class="f-sec"><h2>${esc(q.label)}</h2>${q.desc ? `<div class="q-desc">${esc(q.desc)}</div>` : ''}</div>`;
         if (q.type === 'short') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><input data-in="${q.id}"></div></div>`;
         if (q.type === 'para') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><textarea data-in="${q.id}" rows="3"></textarea></div></div>`;
+        if (q.type === 'date') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><input type="date" data-in="${q.id}"></div></div>`;
+        if (q.type === 'time') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><input type="time" data-in="${q.id}"></div></div>`;
         if (q.type === 'drop') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><select data-in="${q.id}"><option value="">— pick one —</option>${(q.options || []).map(o => `<option>${esc(o)}</option>`).join('')}</select></div></div>`;
+        if (q.type === 'scale') {
+          const min = q.min ?? 1, max = q.max ?? 5;
+          const cells = [];
+          for (let n = min; n <= max; n++) {
+            cells.push(`<label class="scale-cell"><span>${n}</span><input type="radio" name="${q.id}" value="${n}"></label>`);
+          }
+          return `<div class="fq" data-q="${q.id}">${label}
+            <div class="scale-row">${q.lo ? `<span class="end">${esc(q.lo)}</span>` : ''}${cells.join('')}${q.hi ? `<span class="end">${esc(q.hi)}</span>` : ''}</div></div>`;
+        }
         const type = q.type === 'check' ? 'checkbox' : 'radio';
         return `<div class="fq" data-q="${q.id}">${label}${(q.options || []).map(o => `
-          <label class="opt-row"><input type="${type}" name="${q.id}" value="${esc(o)}">${esc(o)}</label>`).join('')}</div>`;
+          <label class="opt-row"><input type="${type}" name="${q.id}" value="${esc(o)}">${esc(o)}</label>`).join('')}
+          ${q.other ? `<label class="opt-row"><input type="${type}" name="${q.id}" value="__other">Other:
+            <input type="text" class="other-in" data-other="${q.id}" style="height:32px"></label>` : ''}</div>`;
       };
 
       body.innerHTML = `
@@ -90,13 +118,21 @@
       document.getElementById('the-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const answers = {};
+        const otherText = (qid) => {
+          const t = body.querySelector(`[data-other="${qid}"]`)?.value.trim();
+          return t ? `Other: ${t}` : 'Other';
+        };
         for (const q of qs) {
+          if (q.type === 'section') continue;
           let v = null;
           if (q.type === 'check') {
-            v = [...body.querySelectorAll(`input[name="${q.id}"]:checked`)].map(c => c.value);
+            v = [...body.querySelectorAll(`input[name="${q.id}"]:checked`)]
+              .map(c => c.value === '__other' ? otherText(q.id) : c.value);
             if (!v.length) v = null;
-          } else if (q.type === 'radio') {
+          } else if (q.type === 'radio' || q.type === 'scale') {
             v = body.querySelector(`input[name="${q.id}"]:checked`)?.value ?? null;
+            if (v === '__other') v = otherText(q.id);
+            if (q.type === 'scale' && v != null) v = +v;
           } else {
             v = body.querySelector(`[data-in="${q.id}"]`)?.value.trim() || null;
           }
@@ -122,7 +158,7 @@
           <div class="thanks">
             <div class="big">🎉</div>
             <h1>Response recorded!</h1>
-            <p class="sub">Cảm ơn bạn! Thanks for filling this out. 🌸</p>
+            <p class="sub">${esc(form.settings?.confirm_msg || 'Cảm ơn bạn! Thanks for filling this out. 🌸')}</p>
           </div>`;
       });
     }

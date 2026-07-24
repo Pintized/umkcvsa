@@ -47,8 +47,11 @@
   const Q_TYPES = [
     ['short', 'Short answer'], ['para', 'Paragraph'],
     ['radio', 'Multiple choice'], ['check', 'Checkboxes'], ['drop', 'Dropdown'],
+    ['scale', 'Linear scale'], ['date', 'Date'], ['time', 'Time'],
+    ['section', 'Section header'],
   ];
   const NEEDS_OPTIONS = ['radio', 'check', 'drop'];
+  const CAN_OTHER = ['radio', 'check'];
   const formLink = (id) => `https://umkcvsa.org/app/form?id=${id}`;
 
   let forms = [], respCounts = new Map(), profiles = new Map();
@@ -89,6 +92,7 @@
                     <button class="btn ghost small" data-link="${f.id}">Copy link</button>
                     <button class="btn ghost small" data-resp="${f.id}">Responses</button>
                     <button class="btn ghost small" data-edit="${f.id}">Edit</button>
+                    <button class="btn ghost small" data-dup="${f.id}">Duplicate</button>
                     <button class="btn ghost small" data-toggle="${f.id}">${f.accepting ? 'Close' : 'Reopen'}</button>
                     <button class="btn ghost small" data-del="${f.id}">Delete</button>
                   </td>
@@ -130,6 +134,16 @@
       await load(); say(`Deleted "${f.title}".`, 'ok');
     });
     page.querySelectorAll('[data-resp]').forEach(b => b.onclick = () => viewResponses(forms.find(f => f.id === b.dataset.resp)));
+    page.querySelectorAll('[data-dup]').forEach(b => b.onclick = async () => {
+      const f = forms.find(x => x.id === b.dataset.dup);
+      const { error } = await supabase.from('forms').insert({
+        title: `${f.title} (copy)`, description: f.description,
+        questions: f.questions, settings: f.settings || {},
+        accepting: false, created_by: ctx.user.id,
+      });
+      if (error) { say(error.message, 'error'); return; }
+      await load(); say(`Duplicated "${f.title}" — the copy starts closed.`, 'ok');
+    });
   }
 
   // ---------- builder ----------
@@ -144,20 +158,37 @@
       <div class="q-card" data-i="${i}">
         <div class="q-head">
           <select data-qtype="${i}">${Q_TYPES.map(([v, l]) => `<option value="${v}" ${q.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-          <label style="display:flex; gap:5px; align-items:center; font-size:.84rem">
-            <input type="checkbox" data-qreq="${i}" style="width:15px; height:15px" ${q.required ? 'checked' : ''}> Required</label>
+          ${q.type === 'section' ? '' : `<label style="display:flex; gap:5px; align-items:center; font-size:.84rem">
+            <input type="checkbox" data-qreq="${i}" style="width:15px; height:15px" ${q.required ? 'checked' : ''}> Required</label>`}
+          ${CAN_OTHER.includes(q.type) ? `<label style="display:flex; gap:5px; align-items:center; font-size:.84rem">
+            <input type="checkbox" data-qother="${i}" style="width:15px; height:15px" ${q.other ? 'checked' : ''}> "Other…" option</label>` : ''}
           <span class="q-tools">
             <button type="button" data-qup="${i}" title="Move up">↑</button>
             <button type="button" data-qdown="${i}" title="Move down">↓</button>
+            <button type="button" data-qdup="${i}" title="Duplicate">⧉</button>
             <button type="button" data-qdel="${i}" title="Remove">✕</button>
           </span>
         </div>
-        <div class="field" style="margin-bottom:${NEEDS_OPTIONS.includes(q.type) ? '10px' : '0'}">
-          <input data-qlabel="${i}" placeholder="Question text…" value="${esc(q.label)}">
+        <div class="field" style="margin-bottom:8px">
+          <input data-qlabel="${i}" placeholder="${q.type === 'section' ? 'Section title…' : 'Question text…'}" value="${esc(q.label)}">
+        </div>
+        <div class="field" style="margin-bottom:${NEEDS_OPTIONS.includes(q.type) || q.type === 'scale' ? '10px' : '0'}">
+          <input data-qdesc="${i}" placeholder="Description / help text (optional)…" value="${esc(q.desc || '')}" style="font-size:.85rem">
         </div>
         ${NEEDS_OPTIONS.includes(q.type) ? `
           <div class="field" style="margin-bottom:0"><label style="font-size:.78rem">Options — one per line</label>
             <textarea data-qopts="${i}" rows="3">${esc((q.options || []).join('\n'))}</textarea></div>` : ''}
+        ${q.type === 'scale' ? `
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end">
+            <div class="field" style="margin:0; width:82px"><label style="font-size:.78rem">From</label>
+              <select data-qmin="${i}">${[0, 1].map(n => `<option ${(q.min ?? 1) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+            <div class="field" style="margin:0; width:82px"><label style="font-size:.78rem">To</label>
+              <select data-qmax="${i}">${[2,3,4,5,6,7,8,9,10].map(n => `<option ${(q.max ?? 5) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+            <div class="field" style="margin:0; flex:1; min-width:120px"><label style="font-size:.78rem">Low label</label>
+              <input data-qlo="${i}" placeholder="e.g. Not at all" value="${esc(q.lo || '')}"></div>
+            <div class="field" style="margin:0; flex:1; min-width:120px"><label style="font-size:.78rem">High label</label>
+              <input data-qhi="${i}" placeholder="e.g. Absolutely" value="${esc(q.hi || '')}"></div>
+          </div>` : ''}
       </div>`;
 
     function draw() {
@@ -168,6 +199,15 @@
           <div class="field"><label>Title</label><input id="f-title" value="${esc(f?.title)}" placeholder="e.g. Tết 2026 Check-in"></div>
           <div class="field"><label>Description <span style="opacity:.55; font-weight:400">(optional)</span></label>
             <textarea id="f-desc" rows="2">${esc(f?.description)}</textarea></div>
+          <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-bottom:14px">
+            <label style="display:flex; gap:6px; align-items:center; font-size:.84rem">
+              <input type="checkbox" id="s-one" style="width:15px; height:15px" ${f?.settings?.limit_one ? 'checked' : ''}>
+              Limit to 1 response <span style="opacity:.55">(requires sign-in)</span></label>
+            <div class="field" style="margin:0"><label style="font-size:.78rem">Auto-close at (optional)</label>
+              <input type="datetime-local" id="s-close" value="${f?.settings?.close_at ? new Date(f.settings.close_at).toISOString().slice(0, 16) : ''}"></div>
+            <div class="field" style="margin:0; flex:1; min-width:180px"><label style="font-size:.78rem">Confirmation message (optional)</label>
+              <input id="s-confirm" placeholder="Cảm ơn bạn! Thanks for filling this out. 🌸" value="${esc(f?.settings?.confirm_msg || '')}"></div>
+          </div>
           <div id="q-list">${questions.map(qCard).join('') || '<p style="color:var(--muted); font-size:.88rem">No questions yet.</p>'}</div>
           <button type="button" class="btn ghost small" id="q-add">+ Add question</button>
           <div class="row-btns">
@@ -180,9 +220,17 @@
         questions.forEach((q, i) => {
           q.type = back.querySelector(`[data-qtype="${i}"]`).value;
           q.label = back.querySelector(`[data-qlabel="${i}"]`).value;
-          q.required = back.querySelector(`[data-qreq="${i}"]`).checked;
+          q.required = back.querySelector(`[data-qreq="${i}"]`)?.checked ?? false;
+          q.desc = back.querySelector(`[data-qdesc="${i}"]`).value.trim();
+          q.other = back.querySelector(`[data-qother="${i}"]`)?.checked ?? false;
           const opts = back.querySelector(`[data-qopts="${i}"]`);
           q.options = opts ? opts.value.split('\n').map(o => o.trim()).filter(Boolean) : [];
+          if (q.type === 'scale') {
+            q.min = +back.querySelector(`[data-qmin="${i}"]`).value;
+            q.max = +back.querySelector(`[data-qmax="${i}"]`).value;
+            q.lo = back.querySelector(`[data-qlo="${i}"]`).value.trim();
+            q.hi = back.querySelector(`[data-qhi="${i}"]`).value.trim();
+          }
         });
       };
 
@@ -194,6 +242,13 @@
       };
       back.querySelectorAll('[data-qtype]').forEach(el => el.addEventListener('change', () => { sync(); draw(); }));
       back.querySelectorAll('[data-qdel]').forEach(el => el.onclick = () => { sync(); questions.splice(+el.dataset.qdel, 1); draw(); });
+      back.querySelectorAll('[data-qdup]').forEach(el => el.onclick = () => {
+        const i = +el.dataset.qdup;
+        sync();
+        questions.splice(i + 1, 0, { ...structuredClone(questions[i]),
+          id: 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) });
+        draw();
+      });
       back.querySelectorAll('[data-qup]').forEach(el => el.onclick = () => {
         const i = +el.dataset.qup; if (!i) return;
         sync(); [questions[i - 1], questions[i]] = [questions[i], questions[i - 1]]; draw();
@@ -209,16 +264,22 @@
         const title = back.querySelector('#f-title').value.trim();
         if (!title) { mSay('Give the form a title.'); return; }
         const qs = questions.filter(q => q.label.trim());
-        if (!qs.length) { mSay('Add at least one question (with text).'); return; }
+        if (!qs.some(q => q.type !== 'section')) { mSay('Add at least one question (with text).'); return; }
         for (const q of qs) {
           if (NEEDS_OPTIONS.includes(q.type) && !q.options.length) {
             mSay(`"${q.label}" needs at least one option.`); return;
           }
         }
+        const closeAt = back.querySelector('#s-close').value;
         const payload = {
           title,
           description: back.querySelector('#f-desc').value.trim() || null,
           questions: qs,
+          settings: {
+            limit_one: back.querySelector('#s-one').checked,
+            close_at: closeAt ? new Date(closeAt).toISOString() : null,
+            confirm_msg: back.querySelector('#s-confirm').value.trim() || null,
+          },
           updated_at: new Date().toISOString(),
         };
         const { data, error } = f
@@ -261,13 +322,32 @@
       : (r.submitter_name || 'Anonymous');
     const qs = f.questions || [];
 
-    // tallies for choice questions
-    const tallies = qs.filter(q => NEEDS_OPTIONS.includes(q.type)).map(q => {
+    // tallies: choice questions get bars, "Other: …" answers group into
+    // one bucket, linear scales get a distribution + average
+    const tallies = qs.filter(q => NEEDS_OPTIONS.includes(q.type) || q.type === 'scale').map(q => {
+      if (q.type === 'scale') {
+        const min = q.min ?? 1, max = q.max ?? 5;
+        const counts = new Map(Array.from({ length: max - min + 1 }, (_, k) => [min + k, 0]));
+        let sum = 0, n = 0;
+        resp.forEach(r => {
+          const v = +r.answers?.[q.id];
+          if (Number.isFinite(v) && counts.has(v)) { counts.set(v, counts.get(v) + 1); sum += v; n++; }
+        });
+        const top = Math.max(1, ...counts.values());
+        return `
+          <div class="resp-tally">
+            <strong>${esc(q.label)}</strong> <span style="color:var(--muted)">· average ${n ? (sum / n).toFixed(2) : '—'}</span>
+            ${[...counts].map(([val, c]) => `
+              <div style="margin:3px 0 0 14px"><span class="bar" style="width:${Math.round(120 * c / top)}px"></span>${val} — <strong>${c}</strong></div>`).join('')}
+          </div>`;
+      }
       const counts = new Map(q.options.map(o => [o, 0]));
+      if (q.other) counts.set('Other…', 0);
       resp.forEach(r => {
         const v = r.answers?.[q.id];
         (Array.isArray(v) ? v : v != null ? [v] : []).forEach(x => {
           if (counts.has(x)) counts.set(x, counts.get(x) + 1);
+          else if (q.other && String(x).startsWith('Other')) counts.set('Other…', counts.get('Other…') + 1);
         });
       });
       const max = Math.max(1, ...counts.values());
@@ -281,18 +361,51 @@
 
     body.style.color = '';
     body.innerHTML = `
-      <p style="color:var(--muted); font-size:.86rem; margin-bottom:10px"><strong>${resp.length}</strong> response${resp.length > 1 ? 's' : ''}</p>
+      <p style="color:var(--muted); font-size:.86rem; margin-bottom:10px">
+        <strong>${resp.length}</strong> response${resp.length > 1 ? 's' : ''}
+        <button class="btn ghost small" id="csv-btn" style="margin-left:10px">Export CSV</button></p>
       ${tallies}
       ${resp.map(r => `
         <div class="resp-one">
           <span class="who">${esc(who(r))}</span>
           <span style="color:var(--muted); font-size:.8rem"> · ${fmtWhen(r.created_at)}</span>
+          <button class="btn ghost small" data-rdel="${r.id}" style="float:right">Delete</button>
           ${qs.map(q => {
             const v = r.answers?.[q.id];
             const shown = Array.isArray(v) ? v.join(', ') : (v ?? '');
             return shown ? `<div class="resp-ans"><b>${esc(q.label)}:</b> ${esc(shown)}</div>` : '';
           }).join('')}
         </div>`).join('')}`;
+
+    // CSV export: one row per response, one column per question
+    back.querySelector('#csv-btn').onclick = () => {
+      const cols = qs.filter(q => q.type !== 'section');
+      const cell = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+      const lines = [
+        ['Timestamp', 'Name', ...cols.map(q => q.label)].map(cell).join(','),
+        ...resp.map(r => [
+          new Date(r.created_at).toISOString(), who(r),
+          ...cols.map(q => {
+            const v = r.answers?.[q.id];
+            return Array.isArray(v) ? v.join('; ') : (v ?? '');
+          }),
+        ].map(cell).join(',')),
+      ];
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }));
+      a.download = `${f.title.replace(/[^\w-]+/g, '_')}_responses.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    back.querySelectorAll('[data-rdel]').forEach(b => b.onclick = async () => {
+      if (!confirm('Delete this single response? This cannot be undone.')) return;
+      const { error: delErr } = await supabase.from('form_responses').delete().eq('id', b.dataset.rdel);
+      if (delErr) { alert(delErr.message); return; }
+      back.remove();
+      await load();
+      viewResponses(forms.find(x => x.id === f.id));
+    });
   }
 
   await load();
