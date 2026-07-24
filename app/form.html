@@ -85,21 +85,38 @@
     body.innerHTML = `<h1>${title}</h1><p class="sub">${msg}</p>`;
   };
 
-  if (!id) { dead('Hmm…', 'This form link is missing its ID — double-check the URL you were sent.'); }
-  else {
-    const [{ data: form, error }, { data: sess }] = await Promise.all([
-      supabase.rpc('get_form', { form: id }),
-      supabase.auth.getSession(),
-    ]);
-    const signedIn = !!sess?.session;
+  const isPreview = new URLSearchParams(location.search).has('preview');
 
-    const closedByDate = form?.settings?.close_at && Date.now() > new Date(form.settings.close_at).getTime();
+  if (!id && !isPreview) { dead('Hmm…', 'This form link is missing its ID — double-check the URL you were sent.'); }
+  else {
+    let form = null, error = null, signedIn = false;
+    if (isPreview) {
+      // draft handed over by the builder tab (same origin) — never saved
+      try { form = JSON.parse(localStorage.getItem('vsa-form-preview') || 'null'); } catch { form = null; }
+      if (form) {
+        form.accepting = true;
+        document.body.insertAdjacentHTML('afterbegin', `
+          <div style="position:sticky; top:0; z-index:50; text-align:center; font-size:.85rem; font-weight:600;
+              padding:8px 14px; background:rgba(224,180,92,.14); border-bottom:1px solid rgba(224,180,92,.4); color:#e0b45c">
+            👁️ Preview — this is what people will see. Responses are not recorded.</div>`);
+      }
+    } else {
+      const [f, sess] = await Promise.all([
+        supabase.rpc('get_form', { form: id }),
+        supabase.auth.getSession(),
+      ]);
+      form = f.data; error = f.error;
+      signedIn = !!sess.data?.session;
+    }
+
+    const closedByDate = !isPreview && form?.settings?.close_at && Date.now() > new Date(form.settings.close_at).getTime();
 
     if (error || !form) {
+      if (isPreview) { dead('Nothing to preview', 'Go back to the form builder and press Preview again.'); } else
       dead('Form not found', 'This link doesn\'t match any form — it may have been deleted, or the URL is incomplete.');
     } else if (!form.accepting || closedByDate) {
       dead(esc(form.title), 'This form is no longer accepting responses. 🙏');
-    } else if (form.settings?.limit_one && !signedIn) {
+    } else if (form.settings?.limit_one && !signedIn && !isPreview) {
       dead(esc(form.title), `This form is limited to one response per member, so you need to be
         signed in. <a href="/app/login" style="color:var(--gold, #c99b3f)">Log in</a> and then reopen this link.`);
     } else {
@@ -177,21 +194,24 @@
         }
         const btn = document.getElementById('submit');
         btn.disabled = true; btn.textContent = 'Submitting…';
-        const { error: subErr } = await supabase.rpc('submit_form', {
-          form: id,
-          answers,
-          submitter: signedIn ? null : (document.getElementById('f-name')?.value.trim() || null),
-        });
-        if (subErr) {
-          say(subErr.message, 'error');
-          btn.disabled = false; btn.textContent = 'Submit';
-          return;
+        if (!isPreview) {
+          const { error: subErr } = await supabase.rpc('submit_form', {
+            form: id,
+            answers,
+            submitter: signedIn ? null : (document.getElementById('f-name')?.value.trim() || null),
+          });
+          if (subErr) {
+            say(subErr.message, 'error');
+            btn.disabled = false; btn.textContent = 'Submit';
+            return;
+          }
         }
         body.innerHTML = `
           <div class="thanks">
-            <div class="big">🎉</div>
-            <h1>Response recorded!</h1>
+            <div class="big">${isPreview ? '👁️' : '🎉'}</div>
+            <h1>${isPreview ? 'Looks good!' : 'Response recorded!'}</h1>
             <p class="sub">${esc(form.settings?.confirm_msg || 'Cảm ơn bạn! Thanks for filling this out. 🌸')}</p>
+            ${isPreview ? '<p class="sub" style="color:#e0b45c">Preview only — nothing was saved. Close this tab to keep editing.</p>' : ''}
           </div>`;
       });
     }
