@@ -140,6 +140,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   const CURRENT_TERM = termOf(new Date().toLocaleDateString('en-CA'));
 
   let TX = [], FUNDRAISERS = [], SPONSORSHIPS = [], REQUESTS = [], REIMB = [], PLAN_ITEMS = [], PLAN_RECEIPTS = [], PEOPLE = [], EVENTS = [], SPONSOR_NAMES = [];
+  let SAFC_DONE = new Set();
   let TAB = 'overview';
   let TERM = CURRENT_TERM;
   let LEDGER_Q = '';
@@ -169,7 +170,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   const nameOf = (uid) => PEOPLE.find(p => p.id === uid)?.full_name || 'Member';
 
   async function load() {
-    const [tx, fr, sp, rq, rb, pi, pr, pp, ev, sn] = await Promise.all([
+    const [tx, fr, sp, rq, rb, pi, pr, pp, ev, sn, sc] = await Promise.all([
       supabase.from('finance_transactions').select('*').order('occurred_on', { ascending: false }).order('id', { ascending: false }),
       supabase.from('finance_fundraisers').select('*').order('created_at'),
       supabase.from('finance_sponsorships').select('*').order('created_at'),
@@ -180,10 +181,12 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       supabase.from('profiles').select('id, full_name').order('full_name'),
       supabase.from('events').select('id, name, event_date').order('event_date', { ascending: false }),
       supabase.from('sponsors').select('id, name'),
+      supabase.from('safc_deadline_checks').select('deadline'),
     ]);
     TX = tx.data || []; FUNDRAISERS = fr.data || []; SPONSORSHIPS = sp.data || [];
     REQUESTS = rq.data || []; REIMB = rb.data || []; PLAN_ITEMS = pi.data || []; PLAN_RECEIPTS = pr.data || [];
     PEOPLE = pp.data || []; EVENTS = ev.data || []; SPONSOR_NAMES = sn.data || [];
+    SAFC_DONE = new Set((sc.data || []).map(r => r.deadline));
     render();
   }
 
@@ -1107,9 +1110,11 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
     const nextIdx = SAFC_ROWS.findIndex(r => endOf(r[0]) >= Date.now());
     const daysLeft = nextIdx >= 0 ? Math.max(0, Math.floor((endOf(SAFC_ROWS[nextIdx][0]) - Date.now()) / 86400000)) : 0;
 
+    const doneCount = SAFC_ROWS.filter(r => SAFC_DONE.has(r[0])).length;
     body.innerHTML = `
       <div class="card">
-        <h3 style="margin-bottom:6px">SAFC Deadlines 26-27</h3>
+        <h3 style="margin-bottom:6px">SAFC Deadlines 26-27
+          <span style="color:var(--muted); font-size:.8rem; font-weight:400">· ${doneCount} of ${SAFC_ROWS.length} handled</span></h3>
         <p style="color:var(--muted); font-size:.86rem; margin-bottom:12px">
           Budget request timeline for all event-by-event and travel requests for 2026–2027.
           Events must occur <strong>2+ weeks</strong> after the SAFC review; travel <strong>5+ weeks</strong> after.</p>
@@ -1120,14 +1125,17 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
             ${daysLeft === 0 ? '— <strong style="color:var(--red, #c8202f)">today!</strong>' : `— ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}</p>`
           : '<p style="color:var(--muted); font-size:.88rem; margin-bottom:14px">All 26-27 deadlines have passed.</p>'}
         <div class="tbl-wrap"><table class="tbl">
-          <thead><tr><th>Submit request by (11:59 PM)</th><th>SAFC reviews on</th><th>Event on/after</th><th>Travel on/after</th><th>Notes</th></tr></thead>
+          <thead><tr><th></th><th>Submit request by (11:59 PM)</th><th>SAFC reviews on</th><th>Event on/after</th><th>Travel on/after</th><th>Notes</th></tr></thead>
           <tbody>
             ${SAFC_ROWS.map((r, i) => {
               const past = endOf(r[0]) < Date.now();
               const next = i === nextIdx;
+              const done = SAFC_DONE.has(r[0]);
               return `
-                <tr style="${past ? 'opacity:.45' : ''}${next ? 'background:rgba(201,155,63,.1)' : ''}">
-                  <td><strong>${fmt(r[0])}</strong>${next ? ' <span class="badge" style="background:rgba(201,155,63,.25); color:var(--gold, #c99b3f)">next</span>' : ''}</td>
+                <tr style="${past || done ? 'opacity:.45;' : ''}${next && !done ? 'background:rgba(201,155,63,.1);' : ''}${done ? 'background:rgba(47,158,99,.07);' : ''}">
+                  <td><label class="p-check" title="Mark this cycle handled">
+                    <input type="checkbox" data-safc="${r[0]}" ${done ? 'checked' : ''}><span class="box"></span></label></td>
+                  <td><strong style="${done ? 'text-decoration:line-through' : ''}">${fmt(r[0])}</strong>${next && !done ? ' <span class="badge" style="background:rgba(201,155,63,.25); color:var(--gold, #c99b3f)">next</span>' : ''}${done ? ' <span class="badge" style="background:rgba(47,158,99,.18); color:#2f9e63">done</span>' : ''}</td>
                   <td>${fmt(r[1])}</td>
                   <td>${fmt(r[2])}</td>
                   <td>${fmt(r[3])}</td>
@@ -1141,6 +1149,21 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
           Student Involvement to coordinate travel — travel budget requests can be made in advance
           so there is proper time to book.</p>
       </div>`;
+
+    // shared checks: every officer sees the same ticks
+    body.querySelectorAll('[data-safc]').forEach(cb => cb.onchange = async () => {
+      const d = cb.dataset.safc;
+      const on = cb.checked;
+      if (on) SAFC_DONE.add(d); else SAFC_DONE.delete(d);
+      const { error } = on
+        ? await supabase.from('safc_deadline_checks').insert({ deadline: d, checked_by: ctx.user.id })
+        : await supabase.from('safc_deadline_checks').delete().eq('deadline', d);
+      if (error) {
+        if (on) SAFC_DONE.delete(d); else SAFC_DONE.add(d);
+        toast(error.message);
+      }
+      renderSafc(body);
+    });
   }
 
   // ---------- FUNDING (fundraisers, sponsorships, school requests) ----------
