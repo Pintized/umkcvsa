@@ -26,7 +26,7 @@
       <h1>Link didn't work</h1>
       <p class="sub" id="fail-why">This link is invalid or has expired.</p>
       <p class="sub">Request a fresh one from the login page and try again.</p>
-      <a class="btn" href="/app/login.html" style="display:inline-block; text-decoration:none; margin-top:10px">
+      <a class="btn" href="/app/login" style="display:inline-block; text-decoration:none; margin-top:10px">
         Back to login
       </a>
     </div>
@@ -58,7 +58,7 @@
         ? 'This link is invalid or has already expired — they only last a little while.'
         : error.message);
     } else {
-      location.replace(type === 'recovery' ? '/app/reset.html' : '/app/verified.html');
+      location.replace(type === 'recovery' ? '/app/reset' : '/app/verified');
     }
   }
 </script>
