@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unsubscribe | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card" style="text-align:center">
+    <a class="brand" href="/" style="justify-content:center">
+      <img src="/assets/img/logo-128.png" alt="UMKC VSA logo">
+      <span>UMKC VSA</span>
+    </a>
+    <div id="working"><h1>One moment…</h1><p class="sub">Updating your email preferences.</p></div>
+    <div id="done" style="display:none">
+      <h1>You're unsubscribed</h1>
+      <p class="sub">You won't receive event reminders or club updates by email anymore.
+      Changed your mind? Turn them back on anytime in the portal under
+      <strong>Settings → Notifications</strong>.</p>
+      <a class="btn ghost" href="/" style="display:inline-block; text-decoration:none; margin-top:10px">Back to the site</a>
+    </div>
+    <div id="failed" style="display:none">
+      <h1>That didn't work</h1>
+      <p class="sub">This unsubscribe link looks incomplete. You can also opt out in the
+      portal under <strong>Settings → Notifications</strong>, or email support@umkcvsa.org.</p>
+    </div>
+  </div>
+</div>
+<script type="module">
+  // One-click, no sign-in needed — the link in every bulk email carries
+  // the member's id (?u=<uuid>). The RPC can only ever switch email OFF.
+  import { supabase } from '/app/shared/supabase.js';
+  const show = (id) => {
+    document.getElementById('working').style.display = 'none';
+    document.getElementById(id).style.display = 'block';
+  };
+  const uid = new URLSearchParams(location.search).get('u');
+  if (!uid || !/^[0-9a-f-]{36}$/i.test(uid)) {
+    show('failed');
+  } else {
+    const { error } = await supabase.rpc('email_unsubscribe', { uid });
+    show(error ? 'failed' : 'done');
+  }
+</script>
+</body>
+</html>

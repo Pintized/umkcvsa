@@ -34,6 +34,11 @@
   .match-hint { font-size: .76rem; margin-top: 4px; min-height: 1em; }
   .match-hint.ok { color: #2f9e63; }
   .match-hint.bad { color: #c8202f; }
+  .consent { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 16px; }
+  .consent label { display: flex; gap: 9px; align-items: flex-start; font-size: .82rem; line-height: 1.5; cursor: pointer; }
+  .consent input { margin-top: 3px; accent-color: #c99b3f; flex-shrink: 0; width: 15px; height: 15px; }
+  .consent a { color: #c99b3f; text-decoration: underline; }
+  .consent .req { color: #c8202f; }
 </style>
 </head>
 <body>
@@ -88,6 +93,18 @@
         <label for="password2">Confirm password</label>
         <input type="password" id="password2" autocomplete="new-password" required>
         <div class="match-hint" id="match-hint"></div>
+      </div>
+      <div class="consent">
+        <label>
+          <input type="checkbox" id="agree-tos" required>
+          <span>I agree to the <a href="/terms/" target="_blank" rel="noopener">Terms of Service</a>
+          and <a href="/privacy/" target="_blank" rel="noopener">Privacy Policy</a>. <span class="req">*</span></span>
+        </label>
+        <label>
+          <input type="checkbox" id="opt-email">
+          <span>Email me event reminders and club updates (optional — every email
+          includes an unsubscribe link, and you can change this anytime in Settings).</span>
+        </label>
       </div>
       <button class="btn" id="submit" type="submit">Create account</button>
     </form>
@@ -186,6 +203,10 @@
       say('That alias is already taken — pick another (or leave it blank for now).', 'error');
       return;
     }
+    if (!$('agree-tos').checked) {
+      say('You need to agree to the Terms of Service and Privacy Policy to create an account.', 'error');
+      return;
+    }
     const btn = $('submit');
     btn.disabled = true; btn.textContent = 'Creating account…';
     const first = $('first').value.trim();
@@ -195,7 +216,11 @@
       email: $('email').value.trim(),
       password: p,
       options: {
-        data: { first_name: first, last_name: last, ...(alias ? { alias } : {}) },
+        data: {
+          first_name: first, last_name: last, ...(alias ? { alias } : {}),
+          terms_accepted: true,
+          email_opt_in: $('opt-email').checked,
+        },
         emailRedirectTo: 'https://umkcvsa.org/app/verified.html',
       },
     });
