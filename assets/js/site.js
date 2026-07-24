@@ -14,6 +14,14 @@
       el.style.transitionDelay = (i % 3 * .08) + 's';
       obs.observe(el);
     });
+    // safety net: if the observer stalls (throttled/background tab,
+    // odd browsers), nothing on screen may stay invisible
+    setTimeout(function () {
+      document.querySelectorAll('.reveal[data-rv]:not(.visible)').forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.top < innerHeight && r.bottom > 0) el.classList.add('visible');
+      });
+    }, 1800);
   }
   revealScan();
   window.__revealScan = revealScan;
