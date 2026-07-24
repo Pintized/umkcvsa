@@ -29,6 +29,7 @@ const ICONS = {
   mail: SVG('<rect x="3.2" y="5.4" width="17.6" height="13.2" rx="1.8"/><path d="m4.4 7 7.6 5.6L19.6 7"/>'),
   form: SVG('<rect x="4.6" y="3.6" width="14.8" height="16.8" rx="2"/><path d="m7.6 8.2 1.1 1.1 2-2.1M13 8.6h3.6"/><path d="m7.6 13 1.1 1.1 2-2.1M13 13.4h3.6"/><path d="M8 17.6h8.6"/>'),
   bot: SVG('<rect x="5" y="8.6" width="14" height="9.8" rx="3"/><circle cx="9.4" cy="13.2" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.6" cy="13.2" r="1.3" fill="currentColor" stroke="none"/><path d="M12 8.6V5.6M12 4.2a1.3 1.3 0 1 0 0 .01M5 13.4H3.4M20.6 13.4H19"/>'),
+  eye: SVG('<path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="3"/>'),
 };
 
 const MEMBER_LINKS = [
@@ -96,15 +97,23 @@ const ADMIN_LINKS = [
   { href: '/app/officer/roles.html',   label: 'Roles',    icon: 'shield' },
   { href: '/app/officer/audit.html',   label: 'Audit Log', icon: 'scope' },
   { href: '/app/admin/bot.html',       label: 'VSA Bot',  icon: 'bot' },
+  { href: '/app/admin/pages.html',     label: 'Pages',    icon: 'eye' },
 ];
 
-function navLink({ href, label, icon, soon }, officerLink = false) {
+// pages an admin can hide from non-admins (Admin > Pages). Dashboard
+// stays out — it's the landing page blocked members get sent to.
+export const MANAGED_PAGES = [
+  ...MEMBER_LINKS.filter((l) => l.href !== '/app/').map((l) => ({ ...l, section: 'Member' })),
+  ...OFFICER_LINKS.map((l) => ({ ...l, section: 'Officer' })),
+];
+
+function navLink({ href, label, icon, soon, off }, officerLink = false) {
   const active = location.pathname === href
     || (href === '/app/' && location.pathname === '/app/index.html');
-  const cls = [active ? 'active' : '', soon ? 'disabled' : '', officerLink ? 'officer-link' : '']
+  const cls = [active ? 'active' : '', soon ? 'disabled' : '', officerLink ? 'officer-link' : '', off ? 'pg-off' : '']
     .filter(Boolean).join(' ');
   return `<a href="${href}" title="${label}" class="${cls}"
-    >${ICONS[icon] || ''} <span class="nav-lb">${label}${soon ? ' <small>(soon)</small>' : ''}</span></a>`;
+    >${ICONS[icon] || ''} <span class="nav-lb">${label}${soon ? ' <small>(soon)</small>' : ''}${off ? ' <small>(hidden)</small>' : ''}</span></a>`;
 }
 
 // Count-up animation for stat numerals as pages inject them
@@ -136,6 +145,12 @@ function animateStats(root) {
 export function renderShell(ctx, pageTitle) {
   const officer = isOfficer(ctx.roles);
   const lang = ctx.profile?.language || 'en';
+  const isAdmin = ctx.roles.includes('admin');
+  const pages = ctx.pages || {};
+  // non-admins don't see disabled pages at all; admins see them with
+  // a "(hidden)" tag so nothing under construction gets forgotten
+  const vis = (links) => links.filter((l) => isAdmin || pages[l.href] !== false);
+  const mk = (l) => ({ ...l, label: tr(lang, l.label), off: isAdmin && pages[l.href] === false });
   const displayName = ctx.profile?.full_name || ctx.user.email;
   const avatar = ctx.profile?.avatar_path
     ? `https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/${ctx.profile.avatar_path}`
@@ -150,8 +165,8 @@ export function renderShell(ctx, pageTitle) {
         </a>
         <nav>
           <div class="nav-label">${tr(lang, 'Member')}</div>
-          ${MEMBER_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) })).join('')}
-          ${officer ? `<div class="nav-label">${tr(lang, 'Officer')}</div>${OFFICER_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) }, true)).join('')}` : ''}
+          ${vis(MEMBER_LINKS).map(l => navLink(mk(l))).join('')}
+          ${officer ? `<div class="nav-label">${tr(lang, 'Officer')}</div>${vis(OFFICER_LINKS).map(l => navLink(mk(l), true)).join('')}` : ''}
           ${ctx.roles.includes('admin') ? `<div class="nav-label">${tr(lang, 'Admin')}</div>${ADMIN_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) }, true)).join('')}` : ''}
           <div class="nav-label">${tr(lang, 'Settings')}</div>
           ${SETTINGS_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) })).join('')}

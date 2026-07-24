@@ -11,12 +11,19 @@ export async function requireLogin() {
   }
   recordLogin(session);
   joinPresence(session);
-  const [profileRes, rolesRes] = await Promise.all([
+  const [profileRes, rolesRes, pagesRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', session.user.id).single(),
     supabase.from('user_roles').select('role').eq('user_id', session.user.id),
+    supabase.from('page_settings').select('path, enabled'),
   ]);
   const roles = (rolesRes.data || []).map(r => r.role);
-  return { session, user: session.user, profile: profileRes.data, roles };
+  const pages = Object.fromEntries((pagesRes.data || []).map(p => [p.path, p.enabled]));
+  // disabled pages are admin-only until re-enabled (Admin > Pages)
+  if (pages[location.pathname] === false && !roles.includes('admin')) {
+    location.replace('/app/');
+    return new Promise(() => {});
+  }
+  return { session, user: session.user, profile: profileRes.data, roles, pages };
 }
 
 // Every signed-in page joins the shared presence channel, so "online"
