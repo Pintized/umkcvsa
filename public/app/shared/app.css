@@ -1240,3 +1240,7 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover { background-color: rgba(201, 155
 }
 .link-pop .lp-row { display: flex; gap: 6px; justify-content: flex-end; }
 .rt-content blockquote { border-left: 3px solid var(--line, rgba(128,128,128,.45)); margin: 6px 0; padding-left: 10px; opacity: .85; }
+
+/* Admin > Pages: links an admin has hidden from everyone else */
+.sidebar a.pg-off { opacity: .55; }
+.sidebar a.pg-off .nav-lb small { font-size: .66rem; color: var(--muted); font-style: italic; }

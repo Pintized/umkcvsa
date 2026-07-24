@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pages | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+.pg-sec { margin-bottom:8px; }
+.pg-sec h3 {
+  font-family:var(--sans); font-size:.78rem; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--gold);
+  margin:18px 0 4px;
+}
+.pg-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 0; border-bottom:1px solid var(--line); }
+.pg-row:last-child { border-bottom:none; }
+.pg-row .txt strong { display:block; font-size:.92rem; }
+.pg-row .txt small { color:var(--muted); font-size:.78rem; }
+.pg-row.off .txt strong { color:var(--muted); }
+.sw { position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0; }
+.sw input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:1; }
+.sw .tr { position:absolute; inset:0; border-radius:999px; background:var(--surface-2); border:1px solid var(--line); transition:background .18s, border-color .18s; }
+.sw .tr::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--muted); transition:transform .18s, background .18s; }
+.sw input:checked + .tr { background:rgba(201, 155, 63, .25); border-color:var(--gold); }
+.sw input:checked + .tr::after { transform:translateX(18px); background:var(--gold); }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading pages…</div>
+<script type="module">
+  import { requireAdmin } from '/app/shared/guard.js';
+  import { renderShell, MANAGED_PAGES } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireAdmin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Pages');
+
+  let settings = {};
+  async function load() {
+    const { data } = await supabase.from('page_settings').select('path, enabled');
+    settings = Object.fromEntries((data || []).map(p => [p.path, p.enabled]));
+    render();
+  }
+
+  function render() {
+    const bySection = {};
+    MANAGED_PAGES.forEach(p => (bySection[p.section] ||= []).push(p));
+
+    page.innerHTML = `
+      <div class="card" style="max-width:720px">
+        <h2>Page visibility</h2>
+        <p style="color:var(--muted); font-size:.88rem; margin:6px 0 4px">
+          Switch a page off to hide it while you work on it — it vanishes from the
+          sidebar and direct links bounce to the dashboard. <strong>Admins always
+          see everything</strong>; hidden pages show a faded <em>(hidden)</em> tag
+          in your sidebar. Changes apply on each person's next page load.
+        </p>
+        <div class="notice" id="notice"></div>
+        ${Object.entries(bySection).map(([section, links]) => `
+          <div class="pg-sec">
+            <h3>${section} pages</h3>
+            ${links.map(l => {
+              const on = settings[l.href] !== false;
+              return `
+                <div class="pg-row ${on ? '' : 'off'}">
+                  <div class="txt"><strong>${l.label}</strong><small>${l.href}</small></div>
+                  <label class="sw"><input type="checkbox" data-path="${l.href}" ${on ? 'checked' : ''}><span class="tr"></span></label>
+                </div>`;
+            }).join('')}
+          </div>`).join('')}
+      </div>`;
+
+    const notice = page.querySelector('#notice');
+    page.querySelectorAll('[data-path]').forEach(cb => cb.onchange = async () => {
+      const { error } = await supabase.from('page_settings')
+        .upsert({ path: cb.dataset.path, enabled: cb.checked, updated_at: new Date().toISOString() });
+      if (error) {
+        notice.textContent = error.message;
+        notice.className = 'notice error';
+        cb.checked = !cb.checked;
+        return;
+      }
+      notice.textContent = `${cb.dataset.path} is now ${cb.checked ? 'visible' : 'hidden (admins still see it)'}.`;
+      notice.className = 'notice ok';
+      cb.closest('.pg-row').classList.toggle('off', !cb.checked);
+    });
+  }
+
+  await load();
+</script>
+</body>
+</html>
