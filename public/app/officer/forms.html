@@ -149,6 +149,15 @@
   // ---------- builder ----------
   function builder(f) {
     let questions = structuredClone(f?.questions || []);
+    // header fields survive redraws (adding a question re-renders the
+    // whole modal — without this, an unsaved title would be wiped)
+    const meta = {
+      title: f?.title || '',
+      desc: f?.description || '',
+      one: !!f?.settings?.limit_one,
+      close: f?.settings?.close_at ? new Date(f.settings.close_at).toISOString().slice(0, 16) : '',
+      confirm: f?.settings?.confirm_msg || '',
+    };
     const back = document.createElement('div');
     back.className = 'modal-back';
     document.body.appendChild(back);
@@ -196,17 +205,17 @@
         <div class="modal wide">
           <h2>${f ? 'Edit form' : 'New form'}</h2>
           <div class="notice" id="m-notice"></div>
-          <div class="field"><label>Title</label><input id="f-title" value="${esc(f?.title)}" placeholder="e.g. Tết 2026 Check-in"></div>
+          <div class="field"><label>Title</label><input id="f-title" value="${esc(meta.title)}" placeholder="e.g. Tết 2026 Check-in"></div>
           <div class="field"><label>Description <span style="opacity:.55; font-weight:400">(optional)</span></label>
-            <textarea id="f-desc" rows="2">${esc(f?.description)}</textarea></div>
+            <textarea id="f-desc" rows="2">${esc(meta.desc)}</textarea></div>
           <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-bottom:14px">
             <label style="display:flex; gap:6px; align-items:center; font-size:.84rem">
-              <input type="checkbox" id="s-one" style="width:15px; height:15px" ${f?.settings?.limit_one ? 'checked' : ''}>
+              <input type="checkbox" id="s-one" style="width:15px; height:15px" ${meta.one ? 'checked' : ''}>
               Limit to 1 response <span style="opacity:.55">(requires sign-in)</span></label>
             <div class="field" style="margin:0"><label style="font-size:.78rem">Auto-close at (optional)</label>
-              <input type="datetime-local" id="s-close" value="${f?.settings?.close_at ? new Date(f.settings.close_at).toISOString().slice(0, 16) : ''}"></div>
+              <input type="datetime-local" id="s-close" value="${meta.close}"></div>
             <div class="field" style="margin:0; flex:1; min-width:180px"><label style="font-size:.78rem">Confirmation message (optional)</label>
-              <input id="s-confirm" placeholder="Cảm ơn bạn! Thanks for filling this out. 🌸" value="${esc(f?.settings?.confirm_msg || '')}"></div>
+              <input id="s-confirm" placeholder="Cảm ơn bạn! Thanks for filling this out. 🌸" value="${esc(meta.confirm)}"></div>
           </div>
           <div id="q-list">${questions.map(qCard).join('') || '<p style="color:var(--muted); font-size:.88rem">No questions yet.</p>'}</div>
           <button type="button" class="btn ghost small" id="q-add">+ Add question</button>
@@ -217,6 +226,11 @@
         </div>`;
 
       const sync = () => {
+        meta.title = back.querySelector('#f-title')?.value ?? meta.title;
+        meta.desc = back.querySelector('#f-desc')?.value ?? meta.desc;
+        meta.one = back.querySelector('#s-one')?.checked ?? meta.one;
+        meta.close = back.querySelector('#s-close')?.value ?? meta.close;
+        meta.confirm = back.querySelector('#s-confirm')?.value ?? meta.confirm;
         questions.forEach((q, i) => {
           q.type = back.querySelector(`[data-qtype="${i}"]`).value;
           q.label = back.querySelector(`[data-qlabel="${i}"]`).value;
@@ -263,7 +277,7 @@
       back.querySelector('#m-save').onclick = async () => {
         sync();
         const mSay = (msg) => { const n = back.querySelector('#m-notice'); n.textContent = msg; n.className = 'notice error'; };
-        const title = back.querySelector('#f-title').value.trim();
+        const title = meta.title.trim();
         if (!title) { mSay('Give the form a title.'); return; }
         const qs = questions.filter(q => q.label.trim());
         if (!qs.some(q => q.type !== 'section')) { mSay('Add at least one question (with text).'); return; }
@@ -272,15 +286,14 @@
             mSay(`"${q.label}" needs at least one option.`); return;
           }
         }
-        const closeAt = back.querySelector('#s-close').value;
         const payload = {
           title,
-          description: back.querySelector('#f-desc').value.trim() || null,
+          description: meta.desc.trim() || null,
           questions: qs,
           settings: {
-            limit_one: back.querySelector('#s-one').checked,
-            close_at: closeAt ? new Date(closeAt).toISOString() : null,
-            confirm_msg: back.querySelector('#s-confirm').value.trim() || null,
+            limit_one: meta.one,
+            close_at: meta.close ? new Date(meta.close).toISOString() : null,
+            confirm_msg: meta.confirm.trim() || null,
           },
           updated_at: new Date().toISOString(),
         };
