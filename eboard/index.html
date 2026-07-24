@@ -58,7 +58,7 @@
 </header>
 
 <section class="section">
-  <div class="section-head reveal visible"><h2>Executive Board</h2><hr class="divider"></div>
+  <div class="section-head reveal"><h2>Executive Board</h2><hr class="divider"></div>
   <div class="team-grid leads" id="leads"></div>
   <div class="team-grid" id="team"></div>
 </section>
@@ -89,7 +89,7 @@ const { data } = await supabase.from('eboard_members')
   .order('is_lead', { ascending: false }).order('sort');
 
 const card = (m, withBio) => `
-  <div class="member">
+  <div class="member reveal">
     <div class="photo">${m.photo_path
       ? `<img src="${IMG + m.photo_path}" alt="${esc(m.full_name)}" style="width:100%; height:100%; object-fit:cover">`
       : '<div class="ph"><img class="ph-logo" src="/assets/img/logo.png" alt=""></div>'}</div>
@@ -104,6 +104,7 @@ const leads = (data || []).filter(m => m.is_lead);
 const team = (data || []).filter(m => !m.is_lead);
 document.getElementById('leads').innerHTML = leads.map(m => card(m, true)).join('');
 document.getElementById('team').innerHTML = team.map(m => card(m, false)).join('');
+window.__revealScan?.();
 </script>
 </body>
 </html>

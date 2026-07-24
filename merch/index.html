@@ -89,7 +89,7 @@ const { data } = await supabase.from('store_products')
 
 document.getElementById('products').innerHTML = (data && data.length)
   ? data.map(p => `
-      <div class="product">
+      <div class="product reveal">
         <div class="pimg">
           ${p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ''}
           ${p.photo_path
@@ -103,6 +103,7 @@ document.getElementById('products').innerHTML = (data && data.length)
         </div>
       </div>`).join('')
   : '<p style="grid-column:1/-1; text-align:center; color:var(--muted)">The merch is being restocked — check back soon!</p>';
+window.__revealScan?.();
 </script>
 </body>
 </html>
