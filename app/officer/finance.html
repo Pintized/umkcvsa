@@ -256,7 +256,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         </div>
       </div>
       <div class="mode-toggle fin-tabs" id="fin-tabs">
-        ${[['overview', 'Overview'], ['ledger', 'Ledger'], ['planner', 'Budget Planner'], ['reimburse', 'Reimburse'], ['funding', 'Funding']].map(([t, l]) =>
+        ${[['overview', 'Overview'], ['ledger', 'Ledger'], ['planner', 'Budget Planner'], ['reimburse', 'Reimburse'], ['funding', 'Funding'], ['safc', 'SAFC Deadlines 26-27']].map(([t, l]) =>
           `<button data-tab="${t}" class="${TAB === t ? 'on' : ''}">${l}</button>`).join('')}
       </div>
       <div id="fin-body"></div>`;
@@ -267,7 +267,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       if (b) { TAB = b.dataset.tab; render(); }
     });
     const body = document.getElementById('fin-body');
-    ({ overview: renderOverview, ledger: renderLedger, planner: renderPlanner, reimburse: renderReimb, funding: renderFunding })[TAB](body, { inc, exp });
+    ({ overview: renderOverview, ledger: renderLedger, planner: renderPlanner, reimburse: renderReimb, funding: renderFunding, safc: renderSafc })[TAB](body, { inc, exp });
   }
 
   // ---------- OVERVIEW ----------
@@ -1078,6 +1078,66 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
       back.remove();
       load();
     };
+  }
+
+  // ---------- SAFC DEADLINES 26-27 (from docs/SAFC_Guidelines_2026-2027.md) ----------
+  // [submit by 11:59 PM, SAFC reviews on, event on/after (+2 wks), travel on/after (+5 wks), note]
+  const SAFC_ROWS = [
+    ['2026-08-26', '2026-08-31', '2026-09-14', '2026-10-05', ''],
+    ['2026-09-16', '2026-09-21', '2026-10-05', '2026-10-26', ''],
+    ['2026-09-30', '2026-10-05', '2026-10-19', '2026-11-09', ''],
+    ['2026-10-14', '2026-10-19', '2026-11-02', '2026-11-23', ''],
+    ['2026-10-28', '2026-11-02', '2026-11-16', '2026-12-07', ''],
+    ['2026-11-11', '2026-11-16', '2026-11-30', '2026-12-21', ''],
+    ['2026-12-02', '2026-12-07', '2026-12-21', '2027-01-11', 'Last meeting of the semester'],
+    ['2027-01-27', '2027-02-01', '2027-02-15', '2027-03-08', ''],
+    ['2027-02-10', '2027-02-15', '2027-03-01', '2027-03-22', ''],
+    ['2027-02-24', '2027-03-01', '2027-03-15', '2027-04-05', ''],
+    ['2027-03-10', '2027-03-15', '2027-03-29', '2027-04-19', ''],
+    ['2027-03-24', '2027-04-05', '2027-04-19', '2027-05-10', ''],
+    ['2027-04-14', '2027-04-19', '2027-05-03', '2027-05-24', 'Last meeting of the semester'],
+  ];
+
+  function renderSafc(body) {
+    const fmt = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const endOf = (d) => new Date(d + 'T23:59:59').getTime();
+    const nextIdx = SAFC_ROWS.findIndex(r => endOf(r[0]) >= Date.now());
+    const daysLeft = nextIdx >= 0 ? Math.max(0, Math.floor((endOf(SAFC_ROWS[nextIdx][0]) - Date.now()) / 86400000)) : 0;
+
+    body.innerHTML = `
+      <div class="card">
+        <h3 style="margin-bottom:6px">SAFC Deadlines 26-27</h3>
+        <p style="color:var(--muted); font-size:.86rem; margin-bottom:12px">
+          Budget request timeline for all event-by-event and travel requests for 2026–2027.
+          Events must occur <strong>2+ weeks</strong> after the SAFC review; travel <strong>5+ weeks</strong> after.</p>
+        ${nextIdx >= 0 ? `
+          <p style="font-size:.9rem; background:rgba(201,155,63,.12); border:1px solid rgba(201,155,63,.4);
+              border-radius:10px; padding:9px 13px; margin-bottom:14px">
+            ⏰ Next deadline: <strong>${fmt(SAFC_ROWS[nextIdx][0])} at 11:59 PM</strong>
+            ${daysLeft === 0 ? '— <strong style="color:var(--red, #c8202f)">today!</strong>' : `— ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}</p>`
+          : '<p style="color:var(--muted); font-size:.88rem; margin-bottom:14px">All 26-27 deadlines have passed.</p>'}
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Submit request by (11:59 PM)</th><th>SAFC reviews on</th><th>Event on/after</th><th>Travel on/after</th><th>Notes</th></tr></thead>
+          <tbody>
+            ${SAFC_ROWS.map((r, i) => {
+              const past = endOf(r[0]) < Date.now();
+              const next = i === nextIdx;
+              return `
+                <tr style="${past ? 'opacity:.45' : ''}${next ? 'background:rgba(201,155,63,.1)' : ''}">
+                  <td><strong>${fmt(r[0])}</strong>${next ? ' <span class="badge" style="background:rgba(201,155,63,.25); color:var(--gold, #c99b3f)">next</span>' : ''}</td>
+                  <td>${fmt(r[1])}</td>
+                  <td>${fmt(r[2])}</td>
+                  <td>${fmt(r[3])}</td>
+                  <td style="color:var(--muted); font-size:.84rem">${r[4]}</td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table></div>
+        <p style="color:var(--muted); font-size:.82rem; margin-top:12px; line-height:1.5">
+          ✈️ Traveling? SAFC encourages giving <strong>6–8 weeks</strong> to work with the Office of
+          Student Involvement to coordinate travel — travel budget requests can be made in advance
+          so there is proper time to book.</p>
+      </div>`;
   }
 
   // ---------- FUNDING (fundraisers, sponsorships, school requests) ----------
