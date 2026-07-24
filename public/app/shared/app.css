@@ -5,6 +5,7 @@
    Light: warm cream. Dark: rich ink. html.dark-mode ('vsa-theme')
    ============================================================ */
 :root {
+  color-scheme: light;
   --bg: #f6f2e9;
   --surface: #ffffff;
   --surface-2: #fbf8f1;
@@ -28,6 +29,8 @@
   --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 1L43 22L22 43L1 22Z' fill='none' stroke='%23c99b3f' stroke-opacity='.16'/%3E%3C/svg%3E");
 }
 html.dark-mode {
+  /* native widgets (select popups, date/time pickers) render dark */
+  color-scheme: dark;
   --bg: #0a1420;
   --surface: #121f2e;
   --surface-2: #16273a;

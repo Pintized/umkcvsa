@@ -94,6 +94,75 @@
     cursor: pointer; transition: border-color .15s, background .15s;
   }
   .q-addbig:hover { border-color: var(--gold, #c99b3f); background: rgba(201, 155, 63, .06); }
+  /* themed native controls inside the builder */
+  .modal.fb select, .modal.fb input[type="datetime-local"] {
+    appearance: none; -webkit-appearance: none;
+    background-color: var(--surface);
+    border: 1px solid var(--line); border-radius: 9px;
+    color: var(--text); font: inherit; font-size: .86rem;
+    padding: 7px 12px; cursor: pointer; outline: none;
+    transition: border-color .15s;
+  }
+  .modal.fb select {
+    padding-right: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c99b3f' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .modal.fb select:hover, .modal.fb select:focus,
+  .modal.fb input[type="datetime-local"]:hover, .modal.fb input[type="datetime-local"]:focus {
+    border-color: var(--gold, #c99b3f);
+  }
+  /* two-column layout: builder left, settings card right */
+  .fb-cols { display: flex; flex: 1; min-height: 0; }
+  .fb-main { flex: 1; min-width: 0; overflow-y: auto; padding: 14px 22px 6px 26px; }
+  .fb-side { width: 264px; flex: none; overflow-y: auto; padding: 14px 20px 14px 0; }
+  .side-card {
+    border: 1px solid var(--line); border-top: 3px solid var(--gold, #c99b3f);
+    border-radius: 12px; padding: 14px 16px; background: var(--surface-2);
+  }
+  .side-card h3 {
+    font-family: var(--sans); font-size: .74rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--gold, #c99b3f);
+    margin: 0 0 12px;
+  }
+  .side-card .s-row { margin-bottom: 14px; }
+  .side-card .s-row:last-child { margin-bottom: 2px; }
+  .side-card label.s-tog { display: flex; gap: 8px; align-items: center; font-size: .84rem; cursor: pointer; }
+  .side-card .s-sub { color: var(--muted); font-size: .74rem; margin: 3px 0 0 44px; }
+  .side-card .field label { font-size: .76rem; }
+  @media (max-width: 900px) {
+    .fb-cols { flex-direction: column; overflow-y: auto; }
+    .fb-main { overflow: visible; padding-right: 26px; }
+    .fb-side { width: auto; padding: 0 26px 14px; }
+  }
+  /* rich text mini-toolbar */
+  .rich-wrap { position: relative; }
+  .rt-bar {
+    display: none; position: absolute; top: -34px; left: 0; z-index: 5;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+    box-shadow: var(--shadow-lg, 0 8px 22px rgba(0,0,0,.3)); padding: 2px 4px; gap: 1px;
+  }
+  .rich-wrap:focus-within .rt-bar { display: inline-flex; }
+  .rt-bar button {
+    border: none; background: none; color: var(--text); cursor: pointer;
+    font-size: .82rem; width: 26px; height: 26px; border-radius: 6px;
+  }
+  .rt-bar button:hover { background: rgba(201, 155, 63, .16); color: var(--gold, #c99b3f); }
+  .rich {
+    min-height: 38px; padding: 8px 12px; border: 1px solid var(--line);
+    border-radius: 9px; background: var(--surface); font-size: .92rem;
+    outline: none; transition: border-color .15s;
+  }
+  .rich:focus { border-color: var(--gold, #c99b3f); }
+  .rich:empty::before { content: attr(data-ph); color: var(--muted); pointer-events: none; }
+  .rich a { color: var(--gold, #c99b3f); text-decoration: underline; }
+  .q-label-in .rich { font-weight: 600; }
+  .q-desc-in .rich { font-size: .84rem; min-height: 34px; }
+  .fb-desc .rich {
+    border: none; border-bottom: 1px dashed var(--line); border-radius: 0;
+    background: transparent; color: var(--muted); font-size: .88rem; padding: 6px 2px; min-height: 30px;
+  }
+  .fb-desc .rich:focus { border-bottom-color: var(--gold, #c99b3f); color: var(--text); }
   .resp-tally { margin: 4px 0 10px; font-size: .86rem; }
   .resp-tally .bar { display: inline-block; height: 9px; background: linear-gradient(90deg, var(--gold-bright, #f0cf7a), var(--gold, #e0b45c)); border-radius: 5px; vertical-align: middle; margin-right: 7px; }
   .resp-one { border-top: 1px solid var(--line); padding: 10px 0; font-size: .88rem; }
@@ -114,6 +183,47 @@
   const page = renderShell(ctx, 'Forms');
 
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  // rich-text hygiene: only b/strong/i/em/u/br and http(s) links survive;
+  // block elements collapse to <br>. Runs on save AND wherever stored
+  // labels are rendered.
+  const RICH_ALLOW = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'A']);
+  function sanitizeRich(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(html ?? '');
+    const walk = (node) => [...node.childNodes].map((n) => {
+      if (n.nodeType === 3) return esc(n.nodeValue);
+      if (n.nodeType !== 1) return '';
+      const inner = walk(n);
+      if (n.tagName === 'BR') return '<br>';
+      if (n.tagName === 'A') {
+        const href = n.getAttribute('href') || '';
+        return /^https?:\/\//i.test(href) ? `<a href="${esc(href)}">${inner}</a>` : inner;
+      }
+      if (RICH_ALLOW.has(n.tagName)) {
+        const t = n.tagName.toLowerCase();
+        return `<${t}>${inner}</${t}>`;
+      }
+      return inner + (/^(DIV|P|LI|H[1-6])$/.test(n.tagName) ? '<br>' : '');
+    }).join('');
+    return walk(tmp).replace(/(<br>)+$/, '').trim();
+  }
+  function stripRich(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(html ?? '');
+    return tmp.textContent.trim();
+  }
+  const richField = (cls, attr, html, ph) => `
+    <div class="rich-wrap ${cls}" style="margin-bottom:6px">
+      <span class="rt-bar">
+        <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button type="button" data-cmd="link" title="Insert link">🔗</button>
+        <button type="button" data-cmd="clear" title="Remove formatting">⌫</button>
+      </span>
+      <div class="rich" contenteditable="true" ${attr} data-ph="${esc(ph)}">${sanitizeRich(html)}</div>
+    </div>`;
   const fmtWhen = (d) => new Date(d).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const Q_TYPES = [
     ['short', 'Short answer'], ['para', 'Paragraph'],
@@ -154,7 +264,7 @@
             <tbody>
               ${forms.map(f => `
                 <tr>
-                  <td><strong>📋 ${esc(f.title)}</strong>${f.description ? `<div style="color:var(--muted); font-size:.8rem; max-width:300px">${esc(f.description)}</div>` : ''}</td>
+                  <td><strong>📋 ${esc(f.title)}</strong>${f.description ? `<div style="color:var(--muted); font-size:.8rem; max-width:300px">${esc(stripRich(f.description))}</div>` : ''}</td>
                   <td>${(f.questions || []).length}</td>
                   <td><strong>${respCounts.get(f.id) || 0}</strong></td>
                   <td><span class="status-pill ${f.accepting ? 'live' : 'off'}">${f.accepting ? 'open' : 'closed'}</span></td>
@@ -247,12 +357,9 @@
             <button type="button" data-qdel="${i}" title="Remove">✕</button>
           </span>
         </div>
-        <div class="field q-label-in" style="margin-bottom:6px">
-          <input data-qlabel="${i}" placeholder="${q.type === 'section' ? 'Section title…' : 'Question…'}" value="${esc(q.label)}">
-        </div>
-        <div class="field q-desc-in" style="margin-bottom:${NEEDS_OPTIONS.includes(q.type) || q.type === 'scale' ? '12px' : '0'}">
-          <input data-qdesc="${i}" placeholder="Help text (optional)…" value="${esc(q.desc || '')}">
-        </div>
+        ${richField('q-label-in', `data-qlabel="${i}"`, q.label, q.type === 'section' ? 'Section title…' : 'Question…')}
+        ${richField('q-desc-in', `data-qdesc="${i}"`, q.desc || '', 'Help text (optional)…')}
+        ${NEEDS_OPTIONS.includes(q.type) || q.type === 'scale' ? '<div style="height:6px"></div>' : ''}
         ${NEEDS_OPTIONS.includes(q.type) ? `
           <div data-optlist="${i}">
             ${(q.options.length ? q.options : ['']).map((o, j) => `
@@ -290,25 +397,43 @@
             <h2>${f ? 'Edit form' : 'New form'}</h2>
             <div class="notice" id="m-notice"></div>
             <div class="field fb-title" style="margin-bottom:2px"><input id="f-title" value="${esc(meta.title)}" placeholder="Form title — e.g. Tết 2026 Check-in"></div>
-            <div class="field fb-desc" style="margin-bottom:10px"><input id="f-desc" value="${esc(meta.desc)}" placeholder="Description (optional)"></div>
+            <div class="fb-desc rich-wrap" style="margin-bottom:8px">
+              <span class="rt-bar">
+                <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+                <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+                <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+                <button type="button" data-cmd="link" title="Insert link">🔗</button>
+                <button type="button" data-cmd="clear" title="Remove formatting">⌫</button>
+              </span>
+              <div class="rich" contenteditable="true" id="f-desc" data-ph="Description (optional)">${sanitizeRich(meta.desc)}</div>
+            </div>
           </div>
-          <div class="fb-body">
-            <details class="fb-set" ${meta.one || meta.close || meta.confirm ? 'open' : ''}>
-              <summary>Form settings</summary>
-              <div class="set-inner">
-                <label style="display:flex; gap:7px; align-items:center; font-size:.84rem; cursor:pointer">
-                  <span class="sw"><input type="checkbox" id="s-one" ${meta.one ? 'checked' : ''}><span class="tr"></span></span>
-                  Limit to 1 response <span style="opacity:.55">(requires sign-in)</span></label>
-                <div class="field" style="margin:0"><label style="font-size:.78rem">Auto-close at (optional)</label>
-                  <input type="datetime-local" id="s-close" value="${meta.close}"></div>
-                <div class="field" style="margin:0; flex:1; min-width:180px"><label style="font-size:.78rem">Confirmation message (optional)</label>
-                  <input id="s-confirm" placeholder="Cảm ơn bạn! Thanks for filling this out. 🌸" value="${esc(meta.confirm)}"></div>
+          <div class="fb-cols">
+            <div class="fb-main">
+              <div id="q-list">${questions.map(qCard).join('')
+                || '<div class="q-empty">No questions yet — add your first one below.</div>'}</div>
+              <button type="button" class="q-addbig" id="q-add">+ Add question</button>
+              <div style="height:14px"></div>
+            </div>
+            <aside class="fb-side">
+              <div class="side-card">
+                <h3>Form settings</h3>
+                <div class="s-row">
+                  <label class="s-tog">
+                    <span class="sw"><input type="checkbox" id="s-one" ${meta.one ? 'checked' : ''}><span class="tr"></span></span>
+                    Limit to 1 response</label>
+                  <div class="s-sub">Members must sign in; one submission each.</div>
+                </div>
+                <div class="s-row field" style="margin:0">
+                  <label>Auto-close at (optional)</label>
+                  <input type="datetime-local" id="s-close" value="${meta.close}" style="width:100%">
+                </div>
+                <div class="s-row field" style="margin:0">
+                  <label>Confirmation message (optional)</label>
+                  <input id="s-confirm" placeholder="Cảm ơn bạn! 🌸" value="${esc(meta.confirm)}">
+                </div>
               </div>
-            </details>
-            <div id="q-list">${questions.map(qCard).join('')
-              || '<div class="q-empty">No questions yet — add your first one below.</div>'}</div>
-            <button type="button" class="q-addbig" id="q-add">+ Add question</button>
-            <div style="height:14px"></div>
+            </aside>
           </div>
           <div class="fb-foot">
             <span class="count">${nQ} question${nQ === 1 ? '' : 's'}</span>
@@ -317,17 +442,35 @@
           </div>
         </div>`;
 
+      // rich-text toolbar: mousedown keeps the selection alive
+      back.querySelectorAll('.rt-bar button').forEach(btn => {
+        btn.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          const cmd = btn.dataset.cmd;
+          if (cmd === 'link') {
+            const url = prompt('Link URL (https://…):');
+            if (url && /^https?:\/\//i.test(url.trim())) document.execCommand('createLink', false, url.trim());
+            else if (url) alert('Links must start with http:// or https://');
+          } else if (cmd === 'clear') {
+            document.execCommand('removeFormat');
+            document.execCommand('unlink');
+          } else {
+            document.execCommand(cmd);
+          }
+        });
+      });
+
       const sync = () => {
         meta.title = back.querySelector('#f-title')?.value ?? meta.title;
-        meta.desc = back.querySelector('#f-desc')?.value ?? meta.desc;
+        meta.desc = sanitizeRich(back.querySelector('#f-desc')?.innerHTML ?? meta.desc);
         meta.one = back.querySelector('#s-one')?.checked ?? meta.one;
         meta.close = back.querySelector('#s-close')?.value ?? meta.close;
         meta.confirm = back.querySelector('#s-confirm')?.value ?? meta.confirm;
         questions.forEach((q, i) => {
           q.type = back.querySelector(`[data-qtype="${i}"]`).value;
-          q.label = back.querySelector(`[data-qlabel="${i}"]`).value;
+          q.label = sanitizeRich(back.querySelector(`[data-qlabel="${i}"]`).innerHTML);
           q.required = back.querySelector(`[data-qreq="${i}"]`)?.checked ?? false;
-          q.desc = back.querySelector(`[data-qdesc="${i}"]`).value.trim();
+          q.desc = sanitizeRich(back.querySelector(`[data-qdesc="${i}"]`).innerHTML);
           q.other = back.querySelector(`[data-qother="${i}"]`)?.checked ?? false;
           const optIns = [...back.querySelectorAll(`[data-qopt="${i}"]`)];
           // keep blanks while editing (a just-added empty row must survive
@@ -384,12 +527,12 @@
         const mSay = (msg) => { const n = back.querySelector('#m-notice'); n.textContent = msg; n.className = 'notice error'; };
         const title = meta.title.trim();
         if (!title) { mSay('Give the form a title.'); return; }
-        const qs = structuredClone(questions.filter(q => q.label.trim()));
+        const qs = structuredClone(questions.filter(q => stripRich(q.label)));
         qs.forEach(q => { q.options = (q.options || []).map(o => o.trim()).filter(Boolean); });
         if (!qs.some(q => q.type !== 'section')) { mSay('Add at least one question (with text).'); return; }
         for (const q of qs) {
           if (NEEDS_OPTIONS.includes(q.type) && !q.options.length) {
-            mSay(`"${q.label}" needs at least one option.`); return;
+            mSay(`"${stripRich(q.label)}" needs at least one option.`); return;
           }
         }
         const payload = {
@@ -457,7 +600,7 @@
         const top = Math.max(1, ...counts.values());
         return `
           <div class="resp-tally">
-            <strong>${esc(q.label)}</strong> <span style="color:var(--muted)">· average ${n ? (sum / n).toFixed(2) : '—'}</span>
+            <strong>${esc(stripRich(q.label))}</strong> <span style="color:var(--muted)">· average ${n ? (sum / n).toFixed(2) : '—'}</span>
             ${[...counts].map(([val, c]) => `
               <div style="margin:3px 0 0 14px"><span class="bar" style="width:${Math.round(120 * c / top)}px"></span>${val} — <strong>${c}</strong></div>`).join('')}
           </div>`;
@@ -474,7 +617,7 @@
       const max = Math.max(1, ...counts.values());
       return `
         <div class="resp-tally">
-          <strong>${esc(q.label)}</strong>
+          <strong>${esc(stripRich(q.label))}</strong>
           ${[...counts].map(([opt, n]) => `
             <div style="margin:3px 0 0 14px"><span class="bar" style="width:${Math.round(120 * n / max)}px"></span>${esc(opt)} — <strong>${n}</strong></div>`).join('')}
         </div>`;
@@ -494,7 +637,7 @@
           ${qs.map(q => {
             const v = r.answers?.[q.id];
             const shown = Array.isArray(v) ? v.join(', ') : (v ?? '');
-            return shown ? `<div class="resp-ans"><b>${esc(q.label)}:</b> ${esc(shown)}</div>` : '';
+            return shown ? `<div class="resp-ans"><b>${esc(stripRich(q.label))}:</b> ${esc(shown)}</div>` : '';
           }).join('')}
         </div>`).join('')}`;
 
@@ -503,7 +646,7 @@
       const cols = qs.filter(q => q.type !== 'section');
       const cell = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
       const lines = [
-        ['Timestamp', 'Name', ...cols.map(q => q.label)].map(cell).join(','),
+        ['Timestamp', 'Name', ...cols.map(q => stripRich(q.label))].map(cell).join(','),
         ...resp.map(r => [
           new Date(r.created_at).toISOString(), who(r),
           ...cols.map(q => {

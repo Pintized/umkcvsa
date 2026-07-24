@@ -46,6 +46,39 @@
 
   const body = document.getElementById('form-body');
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  // labels/descriptions may carry officer formatting — allow only
+  // b/strong/i/em/u/br and http(s) links (forced into new tabs),
+  // everything else is flattened. Defense in depth: stored values are
+  // sanitized at save too, but never trust stored HTML blindly.
+  const RICH_ALLOW = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'A']);
+  function rich(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(html ?? '');
+    const walk = (node) => [...node.childNodes].map((n) => {
+      if (n.nodeType === 3) return esc(n.nodeValue);
+      if (n.nodeType !== 1) return '';
+      const inner = walk(n);
+      if (n.tagName === 'BR') return '<br>';
+      if (n.tagName === 'A') {
+        const href = n.getAttribute('href') || '';
+        return /^https?:\/\//i.test(href)
+          ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${inner}</a>`
+          : inner;
+      }
+      if (RICH_ALLOW.has(n.tagName)) {
+        const t = n.tagName.toLowerCase();
+        return `<${t}>${inner}</${t}>`;
+      }
+      return inner + (/^(DIV|P|LI|H[1-6])$/.test(n.tagName) ? '<br>' : '');
+    }).join('');
+    return walk(tmp).replace(/(<br>)+$/, '').trim();
+  }
+  const plain = (html) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(html ?? '');
+    return tmp.textContent.trim();
+  };
   const id = new URLSearchParams(location.search).get('id');
 
   const dead = (title, msg) => {
@@ -73,9 +106,9 @@
       const qs = form.questions || [];
       const qHtml = (q) => {
         const req = q.required ? ' <span class="req">*</span>' : '';
-        const desc = q.desc ? `<div class="q-desc">${esc(q.desc)}</div>` : '';
-        const label = `<label class="q-label">${esc(q.label)}${req}</label>${desc}`;
-        if (q.type === 'section') return `<div class="f-sec"><h2>${esc(q.label)}</h2>${q.desc ? `<div class="q-desc">${esc(q.desc)}</div>` : ''}</div>`;
+        const desc = q.desc ? `<div class="q-desc">${rich(q.desc)}</div>` : '';
+        const label = `<label class="q-label">${rich(q.label)}${req}</label>${desc}`;
+        if (q.type === 'section') return `<div class="f-sec"><h2>${rich(q.label)}</h2>${q.desc ? `<div class="q-desc">${rich(q.desc)}</div>` : ''}</div>`;
         if (q.type === 'short') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><input data-in="${q.id}"></div></div>`;
         if (q.type === 'para') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><textarea data-in="${q.id}" rows="3"></textarea></div></div>`;
         if (q.type === 'date') return `<div class="fq" data-q="${q.id}">${label}<div class="field" style="margin:0"><input type="date" data-in="${q.id}"></div></div>`;
@@ -99,7 +132,7 @@
 
       body.innerHTML = `
         <h1>${esc(form.title)}</h1>
-        ${form.description ? `<div class="form-desc">${esc(form.description)}</div>` : '<div style="margin-bottom:14px"></div>'}
+        ${form.description ? `<div class="form-desc">${rich(form.description)}</div>` : '<div style="margin-bottom:14px"></div>'}
         <div class="notice" id="notice"></div>
         <form id="the-form">
           ${signedIn ? '' : `
@@ -137,7 +170,7 @@
             v = body.querySelector(`[data-in="${q.id}"]`)?.value.trim() || null;
           }
           if (q.required && (v == null || v === '')) {
-            say(`Please answer: "${q.label}"`, 'error');
+            say(`Please answer: "${plain(q.label)}"`, 'error');
             return;
           }
           if (v != null) answers[q.id] = v;
