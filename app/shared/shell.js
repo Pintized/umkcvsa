@@ -34,16 +34,16 @@ const ICONS = {
 
 const MEMBER_LINKS = [
   { href: '/app/',                  label: 'Dashboard',    icon: 'dashboard' },
-  { href: '/app/calendar.html',     label: 'Calendar',     icon: 'calendar' },
-  { href: '/app/achievements.html', label: 'Achievements', icon: 'trophy' },
-  { href: '/app/rewards.html',      label: 'Rewards',      icon: 'gift' },
-  { href: '/app/members.html',      label: 'Members',      icon: 'users' },
+  { href: '/app/calendar',     label: 'Calendar',     icon: 'calendar' },
+  { href: '/app/achievements', label: 'Achievements', icon: 'trophy' },
+  { href: '/app/rewards',      label: 'Rewards',      icon: 'gift' },
+  { href: '/app/members',      label: 'Members',      icon: 'users' },
 ];
 
 // personal configuration pages, separate from day-to-day functions
 const SETTINGS_LINKS = [
-  { href: '/app/profile.html',      label: 'My Profile',   icon: 'user' },
-  { href: '/app/settings.html',     label: 'Settings',     icon: 'gear' },
+  { href: '/app/profile',      label: 'My Profile',   icon: 'user' },
+  { href: '/app/settings',     label: 'Settings',     icon: 'gear' },
 ];
 
 // portal chrome translations (sidebar, sections, log out).
@@ -77,27 +77,27 @@ const I18N = {
 const tr = (lang, s) => (I18N[lang] && I18N[lang][s]) || s;
 
 const OFFICER_LINKS = [
-  { href: '/app/officer/events.html',    label: 'Events',    icon: 'pin' },
-  { href: '/app/officer/tasks.html',     label: 'Tasks',     icon: 'board' },
-  { href: '/app/officer/inventory.html', label: 'Inventory', icon: 'box' },
-  { href: '/app/officer/finance.html',   label: 'Finance',   icon: 'coin' },
-  { href: '/app/officer/notes.html',     label: 'Notes',     icon: 'note' },
-  { href: '/app/officer/inbox.html',     label: 'Inbox',     icon: 'mail' },
-  { href: '/app/officer/directory.html', label: 'Member Directory', icon: 'users' },
-  { href: '/app/officer/engagement.html', label: 'Engagement Settings', icon: 'trophy' },
-  { href: '/app/officer/forms.html', label: 'Forms', icon: 'form' },
+  { href: '/app/officer/events',    label: 'Events',    icon: 'pin' },
+  { href: '/app/officer/tasks',     label: 'Tasks',     icon: 'board' },
+  { href: '/app/officer/inventory', label: 'Inventory', icon: 'box' },
+  { href: '/app/officer/finance',   label: 'Finance',   icon: 'coin' },
+  { href: '/app/officer/notes',     label: 'Notes',     icon: 'note' },
+  { href: '/app/officer/inbox',     label: 'Inbox',     icon: 'mail' },
+  { href: '/app/officer/directory', label: 'Member Directory', icon: 'users' },
+  { href: '/app/officer/engagement', label: 'Engagement Settings', icon: 'trophy' },
+  { href: '/app/officer/forms', label: 'Forms', icon: 'form' },
 ];
 
 // site content managers — admins only
 const ADMIN_LINKS = [
-  { href: '/app/admin/home.html',      label: 'Home Page', icon: 'megaphone' },
-  { href: '/app/admin/eboard.html',    label: 'E-Board',  icon: 'crown' },
-  { href: '/app/admin/store.html',     label: 'Store',    icon: 'tag' },
-  { href: '/app/officer/gallery.html', label: 'Gallery',  icon: 'camera' },
-  { href: '/app/officer/roles.html',   label: 'Roles',    icon: 'shield' },
-  { href: '/app/officer/audit.html',   label: 'Audit Log', icon: 'scope' },
-  { href: '/app/admin/bot.html',       label: 'VSA Bot',  icon: 'bot' },
-  { href: '/app/admin/pages.html',     label: 'Pages',    icon: 'eye' },
+  { href: '/app/admin/home',      label: 'Home Page', icon: 'megaphone' },
+  { href: '/app/admin/eboard',    label: 'E-Board',  icon: 'crown' },
+  { href: '/app/admin/store',     label: 'Store',    icon: 'tag' },
+  { href: '/app/officer/gallery', label: 'Gallery',  icon: 'camera' },
+  { href: '/app/officer/roles',   label: 'Roles',    icon: 'shield' },
+  { href: '/app/officer/audit',   label: 'Audit Log', icon: 'scope' },
+  { href: '/app/admin/bot',       label: 'VSA Bot',  icon: 'bot' },
+  { href: '/app/admin/pages',     label: 'Pages',    icon: 'eye' },
 ];
 
 // pages an admin can hide from non-admins (Admin > Pages). Dashboard
@@ -108,8 +108,9 @@ export const MANAGED_PAGES = [
 ];
 
 function navLink({ href, label, icon, soon, off }, officerLink = false) {
-  const active = location.pathname === href
-    || (href === '/app/' && location.pathname === '/app/index.html');
+  const cur = location.pathname.replace(/\.html$/, '');
+  const active = cur === href
+    || (href === '/app/' && (cur === '/app/index' || cur === '/app/'));
   const cls = [active ? 'active' : '', soon ? 'disabled' : '', officerLink ? 'officer-link' : '', off ? 'pg-off' : '']
     .filter(Boolean).join(' ');
   return `<a href="${href}" title="${label}" class="${cls}"

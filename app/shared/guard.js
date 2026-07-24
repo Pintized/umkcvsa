@@ -6,7 +6,7 @@ import { supabase } from './supabase.js';
 export async function requireLogin() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    location.replace('/app/login.html');
+    location.replace('/app/login');
     return new Promise(() => {}); // halt caller while redirecting
   }
   recordLogin(session);
@@ -18,8 +18,11 @@ export async function requireLogin() {
   ]);
   const roles = (rolesRes.data || []).map(r => r.role);
   const pages = Object.fromEntries((pagesRes.data || []).map(p => [p.path, p.enabled]));
-  // disabled pages are admin-only until re-enabled (Admin > Pages)
-  if (pages[location.pathname] === false && !roles.includes('admin')) {
+  // disabled pages are admin-only until re-enabled (Admin > Pages).
+  // paths are stored extensionless; normalize so old .html bookmarks
+  // can't slip past
+  const canonPath = location.pathname.replace(/\.html$/, '');
+  if (pages[canonPath] === false && !roles.includes('admin')) {
     location.replace('/app/');
     return new Promise(() => {});
   }
@@ -113,5 +116,5 @@ export async function requireAdmin() {
 
 export async function logout() {
   await supabase.auth.signOut();
-  location.replace('/app/login.html');
+  location.replace('/app/login');
 }

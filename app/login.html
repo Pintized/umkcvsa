@@ -33,7 +33,7 @@
       <button class="btn" id="submit" type="submit">Log in</button>
     </form>
     <p class="auth-alt">
-      New here? <a href="/app/signup.html">Create an account</a><br>
+      New here? <a href="/app/signup">Create an account</a><br>
       <a href="#" id="forgot">Forgot your password?</a>
     </p>
   </div>
@@ -74,7 +74,7 @@
     const email = document.getElementById('email').value.trim();
     if (!email) { say('Type your email above first, then click "Forgot your password?" again.', 'error'); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://umkcvsa.org/app/reset.html',
+      redirectTo: 'https://umkcvsa.org/app/reset',
     });
     say(error ? error.message : 'Password reset email sent — check your inbox.', error ? 'error' : 'ok');
   });
