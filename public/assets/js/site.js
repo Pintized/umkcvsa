@@ -1,15 +1,22 @@
 // UMKC VSA public site — shared behavior
 (function () {
-  // reveal-on-scroll
+  // reveal-on-scroll. Pages that inject content with JS call
+  // window.__revealScan() afterwards to register the new elements —
+  // without it they'd pop in with no animation.
   var obs = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
     });
   }, { threshold: .12 });
-  document.querySelectorAll('.reveal').forEach(function (el, i) {
-    el.style.transitionDelay = (i % 3 * .08) + 's';
-    obs.observe(el);
-  });
+  function revealScan() {
+    document.querySelectorAll('.reveal:not(.visible):not([data-rv])').forEach(function (el, i) {
+      el.setAttribute('data-rv', '1');
+      el.style.transitionDelay = (i % 3 * .08) + 's';
+      obs.observe(el);
+    });
+  }
+  revealScan();
+  window.__revealScan = revealScan;
 
   // mobile nav
   var burger = document.querySelector('.nav-burger');
