@@ -139,6 +139,10 @@
       <section class="set-sec">
         <h3>Notifications</h3>
         <div class="soon-note">Email delivery isn't switched on yet — your choices are saved and take effect the moment it goes live.</div>
+        <div class="set-row">
+          <div class="txt"><strong>Email me event reminders &amp; club updates</strong><small>The master switch — when off, no reminder or update emails at all. Every such email also has an unsubscribe link.</small></div>
+          <label class="sw"><input type="checkbox" id="email-opt" ${P.email_opt_in ? 'checked' : ''}><span class="tr"></span></label>
+        </div>
         ${[
           ['event_reminders', 'Event reminders', 'An email the day before an event you RSVP’d to.'],
           ['task_assigned', 'Task assignments', 'When an officer assigns a task to you.'],
@@ -246,6 +250,11 @@
   };
 
   // ---------- notifications ----------
+  document.getElementById('email-opt').onchange = async (e) => {
+    if (await saveProfile({ email_opt_in: e.target.checked })) {
+      toast(e.target.checked ? 'You’re opted in to club emails.' : 'You’re opted out of club emails.');
+    }
+  };
   page.querySelectorAll('[data-notif]').forEach(cb => cb.onchange = async () => {
     const prefs = { ...(P.notif_prefs || {}) };
     prefs[cb.dataset.notif] = cb.checked;
