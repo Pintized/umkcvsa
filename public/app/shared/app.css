@@ -918,6 +918,22 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 }
 .rt-content:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201, 155, 63, .18); }
 .rt-content[contenteditable="false"] { border-color: transparent; background: transparent; padding: 14px 2px; }
+/* Text pasted from Google Docs / Word arrives carrying hardcoded colours —
+   near-black text and white backgrounds — which disappear against the dark
+   theme (and would disappear in light mode if flipped the other way). The
+   editor has no colour control, so no note is ever meant to set one: force
+   pasted colours to inherit so body text always follows the active theme.
+   Scoped to the note/compose body, never to received email HTML. */
+.rt-content [style*="color"],
+.rt-content [style*="background"] {
+  color: inherit !important;
+  background-color: transparent !important;
+}
+/* table headers keep their own themed colours */
+.rt-content th[style*="color"], .rt-content th[style*="background"] {
+  color: var(--gold) !important;
+  background-color: var(--surface-2) !important;
+}
 .rt-content h2 { font-size: 1.15rem; margin: 14px 0 6px; }
 .rt-content ul, .rt-content ol { padding-left: 24px; margin: 8px 0; }
 .rt-content img { max-width: 100%; border-radius: 10px; margin: 8px 0; }
