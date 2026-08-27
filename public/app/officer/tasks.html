@@ -327,6 +327,183 @@ body.list-mode .listview { display:block; }
 .tcard .status-badge:hover { filter:brightness(1.15); }
 .tl-meta.overdue { color:var(--red); font-weight:600; }
 
+/* ---- modal: meta row (due/status/priority) sits above the title ---- */
+.modal-meta-row { margin-bottom:4px; }
+.modal-title-sep { height:1px; background:var(--line); border:0; margin:14px 0 16px; }
+
+/* ---- assignee dropdown (replaces the tall scrolling checkbox list) ---- */
+.assignee-select { position:relative; }
+.assignee-trigger {
+  display:flex; align-items:center; gap:8px; width:100%; min-height:42px;
+  padding:8px 12px; border:1px solid var(--line); border-radius:10px;
+  background:var(--surface); color:var(--text); font:inherit; font-size:.86rem;
+  text-align:left; cursor:pointer; transition:border-color .14s ease, box-shadow .14s ease;
+}
+.assignee-trigger:hover { border-color:var(--gold); }
+.assignee-select.open .assignee-trigger {
+  border-color:var(--gold); box-shadow:0 0 0 3px rgba(201, 155, 63, .16);
+}
+.assignee-trigger .chev {
+  margin-left:auto; flex:none; color:var(--muted); font-size:.7rem; transition:transform .18s ease;
+}
+.assignee-select.open .assignee-trigger .chev { transform:rotate(180deg); }
+.assignee-chips { display:flex; flex-wrap:wrap; gap:5px; align-items:center; min-width:0; }
+.assignee-chip {
+  display:inline-flex; align-items:center; gap:5px; max-width:190px;
+  padding:3px 8px; border-radius:999px; font-size:.76rem; font-weight:700;
+  background:rgba(201, 155, 63, .16); color:var(--text);
+  border:1px solid rgba(201, 155, 63, .45);
+}
+.assignee-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.assignee-chip .rm { cursor:pointer; opacity:.65; font-size:.72rem; flex:none; }
+.assignee-chip .rm:hover { opacity:1; color:var(--red); }
+.assignee-placeholder { color:var(--muted); }
+.assignee-panel {
+  position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:60;
+  background:var(--surface); border:1px solid rgba(201, 155, 63, .5);
+  border-radius:12px; box-shadow:var(--shadow-lg); padding:8px; display:none;
+}
+.assignee-select.open .assignee-panel { display:block; animation:apop .14s ease-out; }
+@keyframes apop { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+.assignee-search {
+  width:100%; padding:8px 10px; margin-bottom:6px; font:inherit; font-size:.83rem;
+  border:1px solid var(--line); border-radius:8px; background:var(--surface-2); color:var(--text);
+}
+.assignee-search:focus { outline:none; border-color:var(--gold); }
+.assignee-options { display:flex; flex-direction:column; gap:2px; max-height:190px; overflow-y:auto; }
+.assignee-panel-foot {
+  display:flex; justify-content:space-between; align-items:center; gap:8px;
+  margin-top:6px; padding-top:6px; border-top:1px solid var(--line);
+}
+.assignee-panel-foot button {
+  background:none; border:0; padding:2px 4px; font:inherit; font-size:.76rem; font-weight:700;
+  color:var(--gold); cursor:pointer; border-radius:5px;
+}
+.assignee-panel-foot button:hover { text-decoration:underline; }
+.assignee-count { font-size:.74rem; color:var(--muted); font-weight:600; }
+
+/* ---- assigned event chips (board, kanban, list, details) ---- */
+.event-chips { display:flex; flex-wrap:wrap; gap:4px; }
+.event-chip {
+  display:inline-flex; align-items:center; gap:5px; max-width:100%;
+  padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:700;
+  background:rgba(22, 49, 77, .10); border:1px solid rgba(22, 49, 77, .28); color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html.dark-mode .event-chip { background:rgba(201, 155, 63, .10); border-color:rgba(201, 155, 63, .34); }
+.event-chip b { font-weight:700; color:var(--muted); font-size:.68rem; }
+.listview .event-chips { margin-top:4px; }
+/* date hint on an option row in the dropdown */
+.modal-assignee-name .opt-date { color:var(--muted); font-weight:600; font-size:.74rem; margin-left:8px; }
+
+/* ---- duties / responsibilities editor ---- */
+.duties-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.duties-progress { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+.duties-bar {
+  flex:1; height:6px; min-width:60px; border-radius:999px;
+  background:var(--surface-2); overflow:hidden; border:1px solid var(--line);
+}
+.duties-bar > i {
+  display:block; height:100%; width:0; border-radius:999px;
+  background:linear-gradient(90deg, var(--gold), #e0c074); transition:width .28s ease;
+}
+.duties-count { font-size:.75rem; font-weight:700; color:var(--muted); flex:none; }
+.duties-count.complete { color:var(--gold); }
+.duties-list {
+  display:flex; flex-direction:column; gap:4px;
+  border:1px solid var(--line); border-radius:10px; background:var(--surface);
+  padding:6px; max-height:230px; overflow-y:auto;
+}
+.duty-row {
+  display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:start;
+  gap:10px; padding:6px 8px; border-radius:8px; transition:background .14s ease;
+}
+.duty-row:hover { background:var(--surface-2); }
+.duty-row.done .duty-text { color:var(--muted); text-decoration:line-through; }
+.duty-check {
+  position:relative; width:18px; height:18px; flex:none; cursor:pointer;
+  border:1.5px solid var(--muted); border-radius:5px; background:var(--surface);
+  transition:background .14s ease, border-color .14s ease, transform .14s ease;
+}
+.duty-check::after {
+  content:""; position:absolute; left:5px; top:2px; width:5px; height:9px;
+  border:solid #fff; border-width:0 2px 2px 0;
+  transform:rotate(45deg) scale(.7); opacity:0; transition:opacity .12s ease, transform .12s ease;
+}
+.duty-check:hover { border-color:var(--gold); }
+.duty-row.done .duty-check { background:var(--gold); border-color:var(--gold); }
+.duty-row.done .duty-check::after { opacity:1; transform:rotate(45deg) scale(1); }
+.duty-check:active { transform:scale(.94); }
+.duty-text {
+  width:100%; border:0; background:none; font:inherit; font-size:.85rem; color:var(--text);
+  padding:3px 2px; border-bottom:1px solid transparent; border-radius:0;
+  resize:none; overflow:hidden; line-height:1.45; min-height:24px; display:block;
+}
+.duty-text:focus { outline:none; border-bottom-color:var(--gold); }
+.duty-tools { display:flex; align-items:center; gap:2px; opacity:0; transition:opacity .14s ease; padding-top:2px; }
+.duty-row:hover .duty-tools, .duty-row:focus-within .duty-tools { opacity:1; }
+.duty-tools button {
+  background:none; border:0; cursor:pointer; color:var(--muted);
+  font-size:.75rem; line-height:1; padding:4px 5px; border-radius:5px;
+}
+.duty-tools button:hover { background:var(--surface); color:var(--gold); }
+.duty-tools button.rm:hover { color:var(--red); }
+.duty-tools button[disabled] { opacity:.25; cursor:default; }
+.duty-tools button[disabled]:hover { background:none; color:var(--muted); }
+.duties-empty { color:var(--muted); font-size:.8rem; padding:12px; text-align:center; }
+.duty-add {
+  margin-top:8px; width:100%; padding:9px; border:1px dashed var(--line); border-radius:9px;
+  background:none; color:var(--gold); font:inherit; font-size:.82rem; font-weight:700; cursor:pointer;
+  transition:border-color .14s ease, background .14s ease;
+}
+.duty-add:hover { border-color:var(--gold); background:rgba(201, 155, 63, .08); }
+
+/* ---- duty roll-up shown on cards / rows in every view ---- */
+.duty-chip {
+  display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:999px;
+  font-size:.7rem; font-weight:700; white-space:nowrap;
+  background:var(--surface-2); border:1px solid var(--line); color:var(--muted);
+}
+.duty-chip.complete { color:var(--gold); border-color:rgba(201, 155, 63, .5); background:rgba(201, 155, 63, .12); }
+.tcard .duty-list-mini { display:flex; flex-direction:column; gap:3px; margin-top:8px; }
+.tcard .duty-mini { display:flex; align-items:flex-start; gap:6px; font-size:.76rem; color:var(--text); }
+.tcard .duty-mini > span:last-child { white-space:pre-wrap; word-break:break-word; }
+.tcard .duty-mini.done { color:var(--muted); text-decoration:line-through; }
+.tcard .duty-mini .box {
+  width:11px; height:11px; flex:none; border:1.5px solid var(--muted); border-radius:3px;
+  margin-top:3px;
+}
+/* keep a long multi-line duty from stretching the card */
+.tcard .duty-mini > span:last-child {
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.tcard .duty-mini.done .box { background:var(--gold); border-color:var(--gold); }
+.tcard .duty-more { font-size:.72rem; color:var(--muted); padding-left:17px; }
+
+/* duties inside the read-only details popup */
+.detpop-duties { margin-top:14px; }
+.detpop-duties h3 {
+  font-family:var(--serif); font-size:.9rem; margin:0 0 8px;
+  display:flex; align-items:center; gap:8px;
+}
+.detpop-duty {
+  display:flex; align-items:flex-start; gap:8px; padding:5px 2px; font-size:.85rem;
+  border-bottom:1px solid var(--line); cursor:pointer;
+}
+.detpop-duty > span:last-child { white-space:pre-wrap; word-break:break-word; }
+.detpop-duty:last-child { border-bottom:0; }
+.detpop-duty:hover { color:var(--gold); }
+.detpop-duty.done { color:var(--muted); text-decoration:line-through; }
+.detpop-duty .box {
+  position:relative; width:15px; height:15px; flex:none; margin-top:2px;
+  border:1.5px solid var(--muted); border-radius:4px;
+}
+.detpop-duty.done .box { background:var(--gold); border-color:var(--gold); }
+.detpop-duty.done .box::after {
+  content:""; position:absolute; left:4px; top:1px; width:4px; height:8px;
+  border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);
+}
+
 /* toast */
 .tb-toast {
   position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
@@ -350,7 +527,10 @@ body.list-mode .listview { display:block; }
   const page = renderShell(ctx, 'Tasks');
 
   const STATUSES = ['open', 'in-progress', 'done'];
-  let TASKS = [], EDGES = [], ASSIGNEES = [], OFFICERS = [];
+  // OFFICERS = who can be assigned (officer/admin only); PEOPLE = every profile,
+  // kept so someone already assigned still resolves by name after losing the role.
+  let TASKS = [], EDGES = [], ASSIGNEES = [], OFFICERS = [], PEOPLE = [], DUTIES = [];
+  let EVENTS = [], TASK_EVENTS = [];
   let HIDE_DONE = false;
   try { HIDE_DONE = localStorage.getItem('vsa-tasks-hide-done') === '1'; } catch (e) {}
   const esc = (s) => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -360,7 +540,42 @@ body.list-mode .listview { display:block; }
   const isOverdue = (t) => !!t.due_date && t.status !== 'done' && t.due_date < new Date().toLocaleDateString('en-CA');
   const visibleTasks = () => HIDE_DONE ? TASKS.filter(t => t.status !== 'done') : TASKS;
   const assigneesOf = (taskId) => ASSIGNEES.filter(a => a.task_id === taskId)
-    .map(a => ({ user_id: a.user_id, name: OFFICERS.find(o => o.id === a.user_id)?.full_name || 'Member' }));
+    .map(a => ({ user_id: a.user_id, name: PEOPLE.find(o => o.id === a.user_id)?.full_name || 'Member' }));
+
+  // ---------- assigned events (shared by every view) ----------
+  const eventsOf = (taskId) => TASK_EVENTS
+    .filter(te => te.task_id === taskId)
+    .map(te => EVENTS.find(e => e.id === te.event_id))
+    .filter(Boolean)
+    .sort((a, b) => (a.event_date < b.event_date ? 1 : a.event_date > b.event_date ? -1 : 0));
+  const eventDateLabel = (d) => d
+    ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : '';
+  // One chip per event, rendered identically wherever a task is shown.
+  function eventChipsHTML(taskId) {
+    const list = eventsOf(taskId);
+    if (!list.length) return '';
+    return `<span class="event-chips">${list.map(e =>
+      `<span class="event-chip" title="${esc(e.name)} — ${esc(e.event_date)}">🎋 ${esc(e.name)}<b>${esc(eventDateLabel(e.event_date))}</b></span>`
+    ).join('')}</span>`;
+  }
+
+  // ---------- duties roll-up (shared by every view) ----------
+  const dutiesOf = (taskId) => DUTIES.filter(d => d.task_id === taskId)
+    .sort((a, b) => (a.position - b.position) || (a.id - b.id));
+  function dutyStats(taskId) {
+    const list = dutiesOf(taskId);
+    if (!list.length) return null;
+    return { done: list.filter(d => d.done).length, total: list.length };
+  }
+  // One chip, rendered identically on board cards, kanban cards and list rows.
+  function dutyChipHTML(taskId) {
+    const s = dutyStats(taskId);
+    if (!s) return '';
+    const complete = s.done === s.total;
+    return `<span class="duty-chip${complete ? ' complete' : ''}" title="${s.done} of ${s.total} duties done">${
+      complete ? '✓' : '☑'} ${s.done}/${s.total}</span>`;
+  }
 
   function toast(msg) {
     const t = document.createElement('div');
@@ -451,6 +666,7 @@ body.list-mode .listview { display:block; }
             <th data-sort="status">Status<span class="dir"></span></th>
             <th data-sort="priority">Priority<span class="dir"></span></th>
             <th data-sort="due">Due<span class="dir"></span></th>
+            <th data-sort="duties">Duties<span class="dir"></span></th>
             <th>Assignees</th>
             <th></th>
           </tr></thead>
@@ -467,6 +683,7 @@ body.list-mode .listview { display:block; }
         </div>
         <div class="detpop-meta" id="detpopMeta"></div>
         <div class="detpop-desc" id="detpopDesc"></div>
+        <div class="detpop-duties" id="detpopDuties"></div>
       </div>
     </div>
 
@@ -476,8 +693,24 @@ body.list-mode .listview { display:block; }
         <div class="notice" id="formErr"></div>
         <input type="hidden" id="taskId">
         <div class="field"><label>Title</label><input id="fTitle" maxlength="255" placeholder="Task title"></div>
-        <div class="field"><label>Description</label><textarea id="fDesc" placeholder="Optional details"></textarea></div>
-        <div class="field-row">
+        <div class="field"><label>Assigned officers</label>
+          <div class="assignee-select" id="fAssigneeSelect">
+            <button type="button" class="assignee-trigger" id="fAssigneeTrigger" aria-haspopup="listbox" aria-expanded="false">
+              <span class="assignee-chips" id="fAssigneeChips"></span>
+              <span class="chev" aria-hidden="true">▼</span>
+            </button>
+            <div class="assignee-panel" id="fAssigneePanel">
+              <input type="text" class="assignee-search" id="fAssigneeSearch" placeholder="Search officers…" autocomplete="off">
+              <div class="assignee-options" id="fAssignees"></div>
+              <div class="assignee-panel-foot">
+                <span class="assignee-count" id="fAssigneeCount">None selected</span>
+                <button type="button" id="fAssigneeClear">Clear all</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr class="modal-title-sep">
+        <div class="field-row modal-meta-row">
           <div class="field"><label>Due date</label><input type="date" id="fDue"></div>
           <div class="field"><label>Status</label>
             <select id="fStatus"><option value="open">Open</option><option value="in-progress">In progress</option><option value="done">Done</option></select>
@@ -486,8 +719,32 @@ body.list-mode .listview { display:block; }
             <select id="fPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
           </div>
         </div>
-        <div class="field"><label>Assigned officers</label>
-          <div class="modal-assignee-box" id="fAssignees"><div class="modal-assignee-empty">No officers available.</div></div>
+        <div class="field"><label>Assigned event(s)</label>
+          <div class="assignee-select" id="fEventSelect">
+            <button type="button" class="assignee-trigger" id="fEventTrigger" aria-haspopup="listbox" aria-expanded="false">
+              <span class="assignee-chips" id="fEventChips"></span>
+              <span class="chev" aria-hidden="true">▼</span>
+            </button>
+            <div class="assignee-panel" id="fEventPanel">
+              <input type="text" class="assignee-search" id="fEventSearch" placeholder="Search events…" autocomplete="off">
+              <div class="assignee-options" id="fEvents"></div>
+              <div class="assignee-panel-foot">
+                <span class="assignee-count" id="fEventCount">None selected</span>
+                <button type="button" id="fEventClear">Clear all</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="duties-head">
+            <label style="margin:0">Duties / responsibilities</label>
+            <div class="duties-progress">
+              <span class="duties-bar"><i id="fDutyBar"></i></span>
+              <span class="duties-count" id="fDutyCount">0 of 0</span>
+            </div>
+          </div>
+          <div class="duties-list" id="fDuties"></div>
+          <button type="button" class="duty-add" id="fDutyAdd">+ Add duty</button>
         </div>
         <div class="row-btns">
           <button class="btn ghost" id="cancelBtn" type="button">Cancel</button>
@@ -502,18 +759,31 @@ body.list-mode .listview { display:block; }
 
   // ---------- data ----------
   async function fetchAll() {
-    const [t, e, a, p] = await Promise.all([
+    const [t, e, a, p, du, ur, ev, te] = await Promise.all([
       supabase.from('tasks').select('*').order('created_at'),
       supabase.from('task_edges').select('*'),
       supabase.from('task_assignees').select('*'),
       supabase.from('profiles').select('id, full_name').order('full_name'),
+      supabase.from('task_duties').select('*').order('position'),
+      // only these roles can reach the board at all (mirrors public.is_officer)
+      supabase.from('user_roles').select('user_id, role').in('role', ['officer', 'admin']),
+      supabase.from('events').select('id, name, event_date').order('event_date', { ascending: false }),
+      supabase.from('task_events').select('*'),
     ]);
-    return { tasks: t.data || [], edges: e.data || [], assignees: a.data || [], officers: p.data || [] };
+    const people = p.data || [];
+    const officerIds = new Set((ur.data || []).map(r => r.user_id));
+    return {
+      tasks: t.data || [], edges: e.data || [], assignees: a.data || [],
+      people, officers: people.filter(o => officerIds.has(o.id)), duties: du.data || [],
+      events: ev.data || [], taskEvents: te.data || [],
+    };
   }
   let didInitialFit = false;
   async function load() {
     const d = await fetchAll();
-    TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
+    TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees;
+    OFFICERS = d.officers; PEOPLE = d.people; DUTIES = d.duties;
+    EVENTS = d.events; TASK_EVENTS = d.taskEvents;
     renderBoard(); renderTaskList(); renderKanban(); renderListView();
     // frame the cards on arrival instead of restoring a stale camera
     if (!didInitialFit && !document.body.classList.contains('kanban-mode') && !document.body.classList.contains('list-mode')) {
@@ -657,6 +927,15 @@ body.list-mode .listview { display:block; }
         <circle class="ring-fg" cx="12" cy="12" r="${R}" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 12 12)"></circle>
       </svg><span class="rollup-label">${p.done}/${p.total}</span></span>`;
   }
+  // first few duties inline on an expanded board card
+  function dutyMiniListHTML(taskId) {
+    const list = dutiesOf(taskId);
+    if (!list.length) return '';
+    const shown = list.slice(0, 4);
+    return `<div class="duty-list-mini">${
+      shown.map(d => `<div class="duty-mini${d.done ? ' done' : ''}"><span class="box"></span><span>${esc(d.title)}</span></div>`).join('')
+    }${list.length > shown.length ? `<div class="duty-more">+${list.length - shown.length} more</div>` : ''}</div>`;
+  }
   function officerOptions(task) {
     const assignedIds = new Set(assigneesOf(task.id).map(a => a.user_id));
     const avail = OFFICERS.filter(o => !assignedIds.has(o.id));
@@ -682,6 +961,7 @@ body.list-mode .listview { display:block; }
           <span class="ttl">${esc(task.title)}</span>
           <span class="status-badge ${statusClass(task.status)}" data-cycle="${task.id}" title="Click to change status">${esc(statusLabel(task.status))}</span>
           ${progressRingHTML(taskProgress(task.id))}
+          ${dutyChipHTML(task.id)}
         </div>
         <button class="card-menu-btn" data-menu="${task.id}" title="More" aria-label="More">⋮</button>
         <div class="card-menu" data-menufor="${task.id}">
@@ -692,7 +972,8 @@ body.list-mode .listview { display:block; }
       <div class="card-date">${due}</div>
       <button class="card-toggle" data-toggle="${task.id}">▸ Show details</button>
       <div class="card-body">
-        ${task.description ? `<div class="desc">${esc(task.description)}</div>` : '<div class="desc muted-due">No description</div>'}
+        ${eventChipsHTML(task.id) || '<div class="desc muted-due">No event assigned</div>'}
+        ${dutyMiniListHTML(task.id)}
         <details class="assignees"><summary><span class="chev">▸</span> Assigned (${who.length})</summary>
           <div class="assignee-list">${aRows}</div>${officerOptions(task)}
         </details>
@@ -717,10 +998,12 @@ body.list-mode .listview { display:block; }
       const who = assigneesOf(t.id).map(a => a.name).join(', ') || 'Unassigned';
       const late = isOverdue(t);
       const due = t.due_date ? ` · due ${esc(t.due_date)}${late ? ' (overdue)' : ''}` : '';
+      const ds = dutyStats(t.id);
       return `<div class="tl-item" data-fly="${t.id}">
         <span class="tl-dot ${(t.status || 'open') !== 'done' ? 'open' : 'closed'}"></span>
         <div class="tl-body"><div class="tl-title">${esc(t.title || '(untitled)')}</div>
-        <div class="tl-meta${late ? ' overdue' : ''}">${statusLabel(t.status)}${due} · ${esc(who)}</div></div></div>`;
+        <div class="tl-meta${late ? ' overdue' : ''}">${statusLabel(t.status)}${due} · ${esc(who)}${
+          ds ? ` · ☑ ${ds.done}/${ds.total}` : ''}</div></div></div>`;
     };
     body.innerHTML =
       `<div class="tl-group-title">Active (${active.length})</div>` +
@@ -948,26 +1231,215 @@ body.list-mode .listview { display:block; }
 
   // ---------- modals ----------
   let pendingPos = null; // canvas spot for a double-click-created task
+  // Both the assignee picks and the duty rows are staged in memory while the
+  // modal is open and only written on Save, so Cancel discards cleanly and a
+  // brand-new task (which has no id yet) can collect duties before it exists.
+  let MODAL_PICKS = new Set();
+  let MODAL_EVENTS = new Set();
+  let MODAL_DUTIES = [];
+  let DUTIES_BASELINE = [];
+  let growAll = () => {};   // set by the duties wiring below; resizes every textarea
+
+  function renderAssigneeControl() {
+    const chips = document.getElementById('fAssigneeChips');
+    const box = document.getElementById('fAssignees');
+    const countEl = document.getElementById('fAssigneeCount');
+    const q = document.getElementById('fAssigneeSearch').value.trim().toLowerCase();
+
+    // chips come from PEOPLE, not OFFICERS: someone assigned before losing the
+    // role still shows up (and stays removable) instead of vanishing silently
+    const picked = PEOPLE.filter(o => MODAL_PICKS.has(o.id));
+    chips.innerHTML = picked.length
+      ? picked.map(o => `<span class="assignee-chip"><span>${esc(o.full_name)}</span><span class="rm" data-unpick="${o.id}" title="Remove">✕</span></span>`).join('')
+      : '<span class="assignee-placeholder">Select officers…</span>';
+
+    const shown = OFFICERS.filter(o => !q || (o.full_name || '').toLowerCase().includes(q));
+    box.innerHTML = shown.length ? shown.map(o =>
+      `<label class="modal-assignee-option">
+        <input type="checkbox" value="${o.id}" ${MODAL_PICKS.has(o.id) ? 'checked' : ''}>
+        <span class="modal-assignee-check" aria-hidden="true"></span>
+        <span class="modal-assignee-name">${esc(o.full_name)}</span>
+      </label>`).join('')
+      : `<div class="modal-assignee-empty">${OFFICERS.length ? 'No officers match that search.' : 'No officers available.'}</div>`;
+
+    countEl.textContent = MODAL_PICKS.size
+      ? `${MODAL_PICKS.size} selected` : 'None selected';
+  }
+
+  function renderEventControl() {
+    const chips = document.getElementById('fEventChips');
+    const box = document.getElementById('fEvents');
+    const countEl = document.getElementById('fEventCount');
+    const q = document.getElementById('fEventSearch').value.trim().toLowerCase();
+
+    const picked = EVENTS.filter(e => MODAL_EVENTS.has(e.id));
+    chips.innerHTML = picked.length
+      ? picked.map(e => `<span class="assignee-chip"><span>${esc(e.name)}</span><span class="rm" data-unevent="${e.id}" title="Remove">✕</span></span>`).join('')
+      : '<span class="assignee-placeholder">Select events…</span>';
+
+    const shown = EVENTS.filter(e => !q || (e.name || '').toLowerCase().includes(q) || (e.event_date || '').includes(q));
+    box.innerHTML = shown.length ? shown.map(e =>
+      `<label class="modal-assignee-option">
+        <input type="checkbox" value="${e.id}" ${MODAL_EVENTS.has(e.id) ? 'checked' : ''}>
+        <span class="modal-assignee-check" aria-hidden="true"></span>
+        <span class="modal-assignee-name">${esc(e.name)}<small class="opt-date">${esc(eventDateLabel(e.event_date))}</small></span>
+      </label>`).join('')
+      : `<div class="modal-assignee-empty">${EVENTS.length ? 'No events match that search.' : 'No events created yet.'}</div>`;
+
+    countEl.textContent = MODAL_EVENTS.size ? `${MODAL_EVENTS.size} selected` : 'None selected';
+  }
+
+  function renderDuties() {
+    const list = document.getElementById('fDuties');
+    const bar = document.getElementById('fDutyBar');
+    const count = document.getElementById('fDutyCount');
+    const total = MODAL_DUTIES.length;
+    const done = MODAL_DUTIES.filter(d => d.done).length;
+
+    list.innerHTML = total ? MODAL_DUTIES.map((d, i) => `
+      <div class="duty-row${d.done ? ' done' : ''}" data-i="${i}">
+        <span class="duty-check" data-dtoggle="${i}" role="checkbox" tabindex="0"
+              aria-checked="${d.done}" title="Mark ${d.done ? 'not done' : 'done'}"></span>
+        <textarea class="duty-text" data-dtext="${i}" rows="1" placeholder="Describe the duty…" maxlength="255">${esc(d.title)}</textarea>
+        <span class="duty-tools">
+          <button type="button" data-dup="${i}" title="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button type="button" data-ddown="${i}" title="Move down" ${i === total - 1 ? 'disabled' : ''}>▼</button>
+          <button type="button" class="rm" data-drm="${i}" title="Remove duty">✕</button>
+        </span>
+      </div>`).join('')
+      : '<div class="duties-empty">No duties yet — break this task into the steps it takes.</div>';
+
+    bar.style.width = total ? `${Math.round((done / total) * 100)}%` : '0%';
+    count.textContent = `${done} of ${total}`;
+    count.classList.toggle('complete', total > 0 && done === total);
+    growAll();
+  }
+
   function openModal(task, atPos) {
     pendingPos = (!task && atPos) ? atPos : null;
     document.getElementById('formErr').className = 'notice';
     document.getElementById('formErr').textContent = '';
     document.getElementById('taskId').value = task ? task.id : '';
     document.getElementById('fTitle').value = task ? task.title : '';
-    document.getElementById('fDesc').value = task ? (task.description || '') : '';
     document.getElementById('fDue').value = task?.due_date || '';
     document.getElementById('fStatus').value = task ? (task.status || 'open') : 'open';
     document.getElementById('fPriority').value = task ? (task.priority || 'medium') : 'medium';
-    const assigned = new Set(task ? assigneesOf(task.id).map(a => a.user_id) : []);
-    document.getElementById('fAssignees').innerHTML = OFFICERS.length ? OFFICERS.map(o =>
-      `<label class="modal-assignee-option">
-        <input type="checkbox" value="${o.id}" ${assigned.has(o.id) ? 'checked' : ''}>
-        <span class="modal-assignee-check" aria-hidden="true"></span>
-        <span class="modal-assignee-name">${esc(o.full_name)}</span>
-      </label>`).join('') : '<div class="modal-assignee-empty">No officers available.</div>';
+
+    MODAL_PICKS = new Set(task ? assigneesOf(task.id).map(a => a.user_id) : []);
+    document.getElementById('fAssigneeSearch').value = '';
+    document.getElementById('fAssigneeSelect').classList.remove('open');
+    document.getElementById('fAssigneeTrigger').setAttribute('aria-expanded', 'false');
+    renderAssigneeControl();
+
+    MODAL_EVENTS = new Set(task ? eventsOf(task.id).map(e => e.id) : []);
+    document.getElementById('fEventSearch').value = '';
+    document.getElementById('fEventSelect').classList.remove('open');
+    document.getElementById('fEventTrigger').setAttribute('aria-expanded', 'false');
+    renderEventControl();
+
+    DUTIES_BASELINE = task ? dutiesOf(task.id) : [];
+    MODAL_DUTIES = DUTIES_BASELINE.map(d => ({ id: d.id, title: d.title, done: !!d.done }));
+    renderDuties();
+
     document.getElementById('modalTitle').textContent = task ? 'Edit task' : 'New task';
     overlay.style.display = 'flex';
   }
+
+  // ----- multi-select dropdown, shared by the officer and event pickers -----
+  // getSet() returns the live Set of chosen ids; cast maps a checkbox value to
+  // the type stored in that Set (officers keep uuid strings, events use numbers).
+  function wireMultiSelect({ root, options, clear, chipAttr, getSet, rerender, cast = (v) => v }) {
+    const sel = document.getElementById(root);
+    const trigger = sel.querySelector('.assignee-trigger');
+    const search = sel.querySelector('.assignee-search');
+
+    trigger.addEventListener('click', (e) => {
+      // the ✕ on a chip removes that entry instead of toggling the panel
+      const rm = e.target.closest(`[${chipAttr}]`);
+      if (rm) { e.stopPropagation(); getSet().delete(cast(rm.getAttribute(chipAttr))); rerender(); return; }
+      const open = sel.classList.toggle('open');
+      trigger.setAttribute('aria-expanded', String(open));
+      if (open) search.focus();
+    });
+    document.getElementById(options).addEventListener('change', (e) => {
+      const cb = e.target.closest('input[type="checkbox"]');
+      if (!cb) return;
+      if (cb.checked) getSet().add(cast(cb.value)); else getSet().delete(cast(cb.value));
+      rerender();
+      search.focus();
+    });
+    search.addEventListener('input', rerender);
+    document.getElementById(clear).addEventListener('click', () => {
+      getSet().clear(); rerender(); search.focus();
+    });
+    // clicking anywhere outside closes the panel
+    document.addEventListener('click', (e) => {
+      if (!sel.contains(e.target)) {
+        sel.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  wireMultiSelect({
+    root: 'fAssigneeSelect', options: 'fAssignees', clear: 'fAssigneeClear',
+    chipAttr: 'data-unpick', getSet: () => MODAL_PICKS, rerender: renderAssigneeControl,
+  });
+  wireMultiSelect({
+    root: 'fEventSelect', options: 'fEvents', clear: 'fEventClear',
+    chipAttr: 'data-unevent', getSet: () => MODAL_EVENTS, rerender: renderEventControl,
+    cast: Number,
+  });
+
+  // ----- duties editor wiring -----
+  (function () {
+    const list = document.getElementById('fDuties');
+    const swap = (i, j) => {
+      if (j < 0 || j >= MODAL_DUTIES.length) return;
+      [MODAL_DUTIES[i], MODAL_DUTIES[j]] = [MODAL_DUTIES[j], MODAL_DUTIES[i]];
+      renderDuties();
+    };
+    const toggle = (i) => { MODAL_DUTIES[i].done = !MODAL_DUTIES[i].done; renderDuties(); };
+
+    list.addEventListener('click', (e) => {
+      const tg = e.target.closest('[data-dtoggle]');
+      const up = e.target.closest('[data-dup]');
+      const dn = e.target.closest('[data-ddown]');
+      const rm = e.target.closest('[data-drm]');
+      if (tg) toggle(+tg.dataset.dtoggle);
+      else if (up) swap(+up.dataset.dup, +up.dataset.dup - 1);
+      else if (dn) swap(+dn.dataset.ddown, +dn.dataset.ddown + 1);
+      else if (rm) { MODAL_DUTIES.splice(+rm.dataset.drm, 1); renderDuties(); }
+    });
+    list.addEventListener('keydown', (e) => {
+      const tg = e.target.closest('[data-dtoggle]');
+      if (tg && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); toggle(+tg.dataset.dtoggle); return; }
+      // Enter inserts a line break inside the duty; use the button to add one.
+    });
+    // keep the model in step without a redraw, so the caret doesn't jump
+    list.addEventListener('input', (e) => {
+      const tx = e.target.closest('[data-dtext]');
+      if (!tx) return;
+      MODAL_DUTIES[+tx.dataset.dtext].title = tx.value;
+      autoGrow(tx);
+    });
+
+    // textareas start at one row and grow with their content
+    function autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+    growAll = () => list.querySelectorAll('[data-dtext]').forEach(autoGrow);
+
+    function addDuty() {
+      MODAL_DUTIES.push({ id: null, title: '', done: false });
+      renderDuties();
+      const inputs = list.querySelectorAll('[data-dtext]');
+      const last = inputs[inputs.length - 1];
+      if (last) { last.focus(); autoGrow(last); }
+    }
+    document.getElementById('fDutyAdd').addEventListener('click', addDuty);
+  })();
   const closeModal = () => { overlay.style.display = 'none'; };
   function openDetails(t) {
     document.getElementById('detpopTitle').textContent = t.title || 'Task';
@@ -978,10 +1450,37 @@ body.list-mode .listview { display:block; }
     if (who) parts.push(`<span>👤 ${esc(who)}</span>`);
     document.getElementById('detpopMeta').innerHTML = parts.join('');
     const d = document.getElementById('detpopDesc');
-    if (t.description && String(t.description).trim()) { d.classList.remove('empty'); d.textContent = t.description; }
-    else { d.classList.add('empty'); d.textContent = 'No description provided.'; }
+    const evHTML = eventChipsHTML(t.id);
+    d.classList.toggle('empty', !evHTML);
+    d.innerHTML = evHTML || 'No event assigned.';
+    renderDetailDuties(t.id);
     detpop.style.display = 'flex';
   }
+  // Read-mostly view of the checklist: rows toggle done straight to the DB so
+  // an officer can tick things off without opening the full edit form.
+  function renderDetailDuties(taskId) {
+    const wrap = document.getElementById('detpopDuties');
+    const list = dutiesOf(taskId);
+    if (!list.length) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = `<h3>Duties ${dutyChipHTML(taskId)}</h3>${
+      list.map(d => `<div class="detpop-duty${d.done ? ' done' : ''}" data-ddone="${d.id}" title="Click to toggle">
+        <span class="box"></span><span>${esc(d.title)}</span></div>`).join('')}`;
+  }
+  document.getElementById('detpopDuties').addEventListener('click', async (e) => {
+    const row = e.target.closest('[data-ddone]');
+    if (!row) return;
+    const id = +row.dataset.ddone;
+    const duty = DUTIES.find(x => x.id === id);
+    if (!duty) return;
+    const next = !duty.done;
+    duty.done = next;                       // optimistic
+    row.classList.toggle('done', next);
+    const { error } = await supabase.from('task_duties')
+      .update({ done: next, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { duty.done = !next; row.classList.toggle('done', !next); toast(error.message); return; }
+    renderDetailDuties(duty.task_id);
+    renderBoard(); renderTaskList(); renderKanban(); renderListView();
+  });
   const closeDetails = () => { detpop.style.display = 'none'; };
   document.getElementById('detpopClose').onclick = closeDetails;
   detpop.addEventListener('click', (e) => { if (e.target === detpop) closeDetails(); });
@@ -1002,7 +1501,6 @@ body.list-mode .listview { display:block; }
     if (!title) return say('Title is required.');
     const payload = {
       title,
-      description: document.getElementById('fDesc').value.trim() || null,
       due_date: document.getElementById('fDue').value || null,
       status: document.getElementById('fStatus').value,
       priority: document.getElementById('fPriority').value,
@@ -1020,9 +1518,46 @@ body.list-mode .listview { display:block; }
       if (error) return say(error.message);
       taskId = data.id;
     }
-    const picks = [...document.querySelectorAll('#fAssignees input:checked')].map(cb => cb.value);
+    const picks = [...MODAL_PICKS];
     await supabase.from('task_assignees').delete().eq('task_id', taskId);
     if (picks.length) await supabase.from('task_assignees').insert(picks.map(u => ({ task_id: taskId, user_id: u })));
+
+    const evs = [...MODAL_EVENTS];
+    await supabase.from('task_events').delete().eq('task_id', taskId);
+    if (evs.length) {
+      const { error } = await supabase.from('task_events')
+        .insert(evs.map(ev => ({ task_id: taskId, event_id: ev })));
+      if (error) return say(error.message);
+    }
+
+    // duties: blank rows are dropped, then diff the staged list against what
+    // was loaded — delete what's gone, update what moved or changed, insert new
+    const staged = MODAL_DUTIES.filter(d => d.title.trim());
+    const keptIds = new Set(staged.filter(d => d.id).map(d => d.id));
+    const removed = DUTIES_BASELINE.filter(d => !keptIds.has(d.id)).map(d => d.id);
+    if (removed.length) {
+      const { error } = await supabase.from('task_duties').delete().in('id', removed);
+      if (error) return say(error.message);
+    }
+    const updates = staged
+      .map((d, i) => ({ d, i }))
+      .filter(({ d, i }) => {
+        const was = DUTIES_BASELINE.find(b => b.id === d.id);
+        return was && (was.title !== d.title.trim() || !!was.done !== d.done || was.position !== i);
+      });
+    for (const { d, i } of updates) {
+      const { error } = await supabase.from('task_duties')
+        .update({ title: d.title.trim(), done: d.done, position: i, updated_at: new Date().toISOString() })
+        .eq('id', d.id);
+      if (error) return say(error.message);
+    }
+    const added = staged.map((d, i) => ({ d, i })).filter(({ d }) => !d.id);
+    if (added.length) {
+      const { error } = await supabase.from('task_duties').insert(added.map(({ d, i }) => ({
+        task_id: taskId, title: d.title.trim(), done: d.done, position: i, created_by: ctx.user.id,
+      })));
+      if (error) return say(error.message);
+    }
     closeModal();
     load();
   };
@@ -1244,6 +1779,11 @@ body.list-mode .listview { display:block; }
       status: (a, b) => statusRank[a.status] - statusRank[b.status],
       priority: (a, b) => prioRank[a.priority] - prioRank[b.priority],
       due: (a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : (a.due_date || '9999') > (b.due_date || '9999') ? 1 : 0,
+      // least-complete first, so what still needs work floats to the top
+      duties: (a, b) => {
+        const frac = (t) => { const s = dutyStats(t.id); return s ? s.done / s.total : -1; };
+        return frac(a) - frac(b);
+      },
     }[LV_SORT.key];
     const sorted = TASKS.slice().sort((a, b) => LV_SORT.dir * cmp(a, b));
     document.querySelectorAll('.listview th[data-sort]').forEach(th => {
@@ -1254,19 +1794,20 @@ body.list-mode .listview { display:block; }
       const who = assigneesOf(t.id).map(a => a.name).join(', ');
       return `<tr>
         <td><strong class="lv-title" data-details="${t.id}">${esc(t.title)}</strong>${
-          t.description ? `<br><small style="color:var(--muted)">${esc(t.description.length > 90 ? t.description.slice(0, 90) + '…' : t.description)}</small>` : ''}</td>
+          eventChipsHTML(t.id) ? `<br>${eventChipsHTML(t.id)}` : ''}</td>
         <td><button class="status-badge ${statusClass(t.status)}" data-lcycle="${t.id}" title="Click to change status">${esc(statusLabel(t.status))}</button></td>
         <td style="text-transform:capitalize">${esc(t.priority)}</td>
         <td class="${late ? 'due-overdue' : ''}">${t.due_date
           ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + (late ? ' (overdue)' : '')
           : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${dutyChipHTML(t.id) || '<span style="color:var(--muted)">—</span>'}</td>
         <td>${esc(who) || '<span style="color:var(--muted)">—</span>'}</td>
         <td class="actions">
           <button class="btn sm secondary" data-ledit="${t.id}">Edit</button>
           <button class="btn sm ghost" data-ldel="${t.id}">Delete</button>
         </td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" style="color:var(--muted)">No tasks yet.</td></tr>';
+    }).join('') || '<tr><td colspan="7" style="color:var(--muted)">No tasks yet.</td></tr>';
   }
   document.querySelectorAll('.listview th[data-sort]').forEach(th => th.addEventListener('click', () => {
     const key = th.dataset.sort;
@@ -1330,11 +1871,11 @@ body.list-mode .listview { display:block; }
       <div class="kcard-head"><div class="kcard-title-row">${root ? '<span class="kcard-parent-badge">PARENT</span>' : ''}<div class="kcard-title">${esc(t.title || '#' + t.id)}</div></div>
       <div class="kcard-actions">
         <button type="button" class="kcard-edit" data-kedit="${t.id}" draggable="false" title="Edit task"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.2L19.6 8.6a2 2 0 0 0 0-2.8l-1.4-1.4a2 2 0 0 0-2.8 0L4 15.8V20Zm3.4-2H6v-1.4L14.8 7.8l1.4 1.4L7.4 18Zm8.8-11.6 1.4-1.4 1.4 1.4-1.4 1.4-1.4-1.4Z" fill="currentColor"/></svg></button>
-        <button type="button" class="kcard-toggle" data-ktoggle="${t.id}" draggable="false" title="Show description">▸</button>
+        <button type="button" class="kcard-toggle" data-ktoggle="${t.id}" draggable="false" title="Show assigned events">▸</button>
       </div></div>
-      <div class="kcard-meta"><span class="kcard-chip${dueClass}">📅 ${dueLabel}</span><span class="kcard-chip priority">● ${esc(priority)}</span></div>
+      <div class="kcard-meta"><span class="kcard-chip${dueClass}">📅 ${dueLabel}</span><span class="kcard-chip priority">● ${esc(priority)}</span>${dutyChipHTML(t.id)}</div>
       ${parent ? `<div class="kcard-parent" title="Parent: ${esc(parent.title)}">↳ <span>${esc(parent.title)}</span></div>` : ''}
-      <div class="kcard-desc">${t.description ? esc(String(t.description)) : 'No description provided.'}</div>
+      <div class="kcard-desc">${eventChipsHTML(t.id) || 'No event assigned.'}</div>
       <div class="kcard-footer">${people.length ? `<div class="kcard-assignees">${avatars}</div>` : '<span class="kcard-unassigned">Unassigned</span>'}<span class="kcard-id">#${t.id}</span></div>
     </article>`;
   }
@@ -1366,7 +1907,7 @@ body.list-mode .listview { display:block; }
       if (!desc) return;
       const open = desc.classList.toggle('open');
       btn.classList.toggle('open', open);
-      btn.title = open ? 'Hide description' : 'Show description';
+      btn.title = open ? 'Hide assigned events' : 'Show assigned events';
     }
   });
   let kanbanDragId = null;
@@ -1449,9 +1990,14 @@ body.list-mode .listview { display:block; }
         const changed = JSON.stringify(d.tasks) !== JSON.stringify(TASKS)
           || JSON.stringify(d.edges) !== JSON.stringify(EDGES)
           || JSON.stringify(d.assignees) !== JSON.stringify(ASSIGNEES)
-          || JSON.stringify(d.officers) !== JSON.stringify(OFFICERS);
+          || JSON.stringify(d.officers) !== JSON.stringify(OFFICERS)
+          || JSON.stringify(d.people) !== JSON.stringify(PEOPLE)
+          || JSON.stringify(d.duties) !== JSON.stringify(DUTIES)
+          || JSON.stringify(d.events) !== JSON.stringify(EVENTS)
+          || JSON.stringify(d.taskEvents) !== JSON.stringify(TASK_EVENTS);
         if (!changed || busy()) return;
-        TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees; OFFICERS = d.officers;
+        TASKS = d.tasks; EDGES = d.edges; ASSIGNEES = d.assignees;
+        OFFICERS = d.officers; PEOPLE = d.people; DUTIES = d.duties;
         renderBoard(); renderTaskList(); renderKanban(); renderListView();
       } catch (e) {}
     }
@@ -1467,6 +2013,9 @@ body.list-mode .listview { display:block; }
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => scheduleRefresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_edges' }, () => scheduleRefresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, () => scheduleRefresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_duties' }, () => scheduleRefresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_events' }, () => scheduleRefresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => scheduleRefresh())
       .subscribe();
     setInterval(() => { if (!document.hidden) scheduleRefresh(); }, 60000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh(); });
