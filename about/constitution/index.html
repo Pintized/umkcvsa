@@ -11,6 +11,129 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/site.css">
+<style>
+/* ===== Constitution document ===== */
+.c-hero-meta {
+  display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:22px;
+}
+.c-pill {
+  display:inline-flex; align-items:center; gap:7px; padding:6px 14px; border-radius:999px;
+  font-size:13px; font-weight:600; letter-spacing:.02em;
+  background:rgba(255,255,255,.07); border:1px solid rgba(224,180,92,.4);
+  color:rgba(228,237,246,.92);
+}
+.c-pill b { color:var(--gold-bright); font-weight:700; }
+
+.c-wrap {
+  max-width:1180px; margin:0 auto; padding:64px 24px 90px;
+  display:grid; grid-template-columns:250px minmax(0,1fr); gap:52px; align-items:start;
+}
+
+/* ---- sticky contents rail ---- */
+/* the grid item itself must be sticky: align-items:start makes it only as tall
+   as its content, so a sticky child would have no room to travel */
+.c-toc { position:sticky; top:96px; align-self:start; max-height:calc(100vh - 120px); overflow-y:auto; }
+.c-toc::-webkit-scrollbar { width:6px; }
+.c-toc::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
+.c-toc h2 {
+  font-size:13px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--gold); margin-bottom:14px;
+}
+.c-toc nav { display:flex; flex-direction:column; border-left:2px solid var(--line); }
+.c-toc nav a {
+  padding:8px 0 8px 16px; margin-left:-2px; font-size:13.5px; line-height:1.35;
+  color:var(--muted); text-decoration:none; border-left:2px solid transparent;
+  transition:color .18s, border-color .18s;
+}
+.c-toc nav a span {
+  display:block; font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+  color:rgba(146,164,183,.7); margin-bottom:2px;
+}
+.c-toc nav a:hover { color:var(--text); border-left-color:rgba(201,155,63,.55); }
+.c-toc nav a.on { color:var(--gold-bright); border-left-color:var(--gold); }
+.c-toc nav a.on span { color:var(--gold); }
+.c-top { margin-top:22px; width:100%; text-align:center; font-size:13px; padding:9px 0; }
+
+/* ---- article blocks ---- */
+.c-article {
+  background:var(--surface); border:1px solid var(--line); border-radius:18px;
+  padding:34px 36px; margin-bottom:26px; scroll-margin-top:96px;
+  transition:border-color .3s, box-shadow .3s;
+}
+.c-article:hover { border-color:rgba(201,155,63,.34); box-shadow:0 14px 40px rgba(0,0,0,.32); }
+.c-article-head {
+  display:flex; align-items:center; gap:18px;
+  padding-bottom:18px; margin-bottom:22px; border-bottom:1px solid var(--line);
+}
+.c-num {
+  flex:none; width:56px; height:56px; border-radius:50%;
+  display:grid; place-items:center; font-family:var(--serif); font-size:20px; font-weight:700;
+  color:var(--gold-bright); background:rgba(201,155,63,.12);
+  border:1px solid rgba(201,155,63,.45);
+}
+.c-kicker {
+  display:block; font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--gold); font-weight:700; margin-bottom:4px;
+}
+.c-article-head h2 { font-family:var(--serif); font-size:25px; color:#fff; line-height:1.25; margin:0; }
+.c-article-body > *:first-child { margin-top:0; }
+.c-article-body p { color:rgba(228,237,246,.86); line-height:1.75; margin:0 0 14px; }
+
+/* ---- sections & clauses ---- */
+.c-section {
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:10px;
+  font-family:var(--serif); font-size:18px; color:#fff;
+  margin:30px 0 12px; padding-left:14px; border-left:3px solid var(--gold);
+}
+.c-section > span {
+  font-family:var(--sans); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--gold); font-weight:700;
+}
+.c-clause {
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:9px;
+  font-size:15px; font-weight:700; color:rgba(228,237,246,.95); margin:22px 0 10px;
+}
+.c-clause > span {
+  font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--red); font-weight:700;
+  padding:3px 8px; border-radius:5px; background:rgba(200,32,47,.12);
+}
+
+/* ---- nested lists: 1. / a. / i. / 1. ---- */
+.c-list { margin:10px 0 14px; padding-left:26px; }
+.c-list li {
+  color:rgba(228,237,246,.86); line-height:1.7; margin-bottom:8px; padding-left:6px;
+}
+.c-list li::marker { color:var(--gold); font-weight:700; }
+.c-list.lvl-0 { list-style:decimal; }
+.c-list.lvl-1 { list-style:lower-alpha; }
+.c-list.lvl-2 { list-style:lower-roman; }
+.c-list.lvl-3 { list-style:decimal; }
+.c-list .c-list { margin-top:10px; }
+.c-list.lvl-1 li::marker { color:var(--gold-bright); }
+.c-list.lvl-2 li::marker { color:var(--muted); }
+
+@media (max-width:900px) {
+  .c-wrap { grid-template-columns:minmax(0,1fr); gap:0; padding-top:44px; }
+  .c-toc { position:static; margin-bottom:36px; max-height:none; overflow:visible; }
+  .c-toc nav { max-height:210px; overflow-y:auto; }
+  .c-article { padding:26px 22px; }
+  .c-article-head { gap:13px; }
+  .c-num { width:46px; height:46px; font-size:17px; }
+  .c-article-head h2 { font-size:21px; }
+}
+
+/* readable on paper — officers print this for OSI */
+@media print {
+  .topbar, .site-nav, footer, .c-toc, .scroll-progress, .ambient { display:none !important; }
+  body { background:#fff; color:#111; }
+  .page-hero { background:none; padding:0 0 18px; }
+  .page-hero h1, .c-article-head h2 { color:#111; }
+  .c-wrap { display:block; padding:0; max-width:none; }
+  .c-article { border:0; border-bottom:1px solid #ccc; border-radius:0; padding:0 0 14px; margin-bottom:18px; break-inside:avoid; }
+  .c-article-body p, .c-list li { color:#222; }
+}
+</style>
 </head>
 <body>
 
@@ -57,29 +180,28 @@
   <button class="nav-burger" aria-label="Menu">☰</button>
 </nav>
 
-<header class="page-hero">
+<header class="page-hero" id="top">
   <h1>Constitution</h1>
   <hr class="hero-rule">
-  <p style="margin-top:16px">The governing document of the UMKC Vietnamese Student Association.</p>
+  <p style="margin-top:16px">The governing document of the Vietnamese Student Association at the University of Missouri&#8211;Kansas City.</p>
+  <div class="c-hero-meta">
+    <span class="c-pill">Last revised <b class="c-revised">June 05, 2026</b></span>
+    <span class="c-pill">Academic year <b>2026&#8211;2027</b></span>
+  </div>
 </header>
 
-<section class="section" style="max-width:820px">
-  <div class="reveal">
-    <h2>How we govern ourselves</h2>
-    <hr class="divider">
-    <p class="lead">Our constitution defines the association's purpose, membership, executive board structure, elections, and amendment process. It keeps VSA accountable to its members and to the University of Missouri-Kansas City's standards for registered student organizations.</p>
-  </div>
-  <div class="card-grid" style="margin-top:40px">
-    <div class="vcard reveal"><div class="ic">📜</div><h3>Purpose &amp; Membership</h3><p>Who we are, what we exist to do, and how any UMKC student can become a member.</p></div>
-    <div class="vcard reveal"><div class="ic">🗳️</div><h3>E-Board &amp; Elections</h3><p>Officer positions, their duties, and how leadership is elected each year.</p></div>
-    <div class="vcard reveal"><div class="ic">⚖️</div><h3>Operations &amp; Amendments</h3><p>Meetings, finances, and the process for amending this constitution.</p></div>
-  </div>
-  <div class="reveal" style="text-align:center; margin-top:48px; padding:28px; border:1px dashed var(--line); border-radius:14px">
-    <p style="color:var(--muted)">The full constitution document is being prepared for publication here.<br>
-    Members can request a copy in the meantime.</p>
-    <a class="btn ghost" href="/contact/" style="margin-top:16px">Request a Copy</a>
-  </div>
+<!-- CONSTITUTION:START (generated from the .docx by build_constitution.py) -->
+<section class="c-wrap">
+  <aside class="c-toc">
+    <div class="c-toc-inner">
+      <h2>Contents</h2>
+      <nav><a href="#preamble"><span>Preamble</span></a><a href="#article-i"><span>ARTICLE I</span>NAME</a><a href="#article-ii"><span>ARTICLE II</span>STATEMENT OF PURPOSE</a><a href="#article-iii"><span>ARTICLE III</span>STATEMENT OF COMPLIANCE</a><a href="#article-iv"><span>ARTICLE IV</span>NOTICE OF NON-DISCRIMINATION</a><a href="#article-v"><span>ARTICLE V</span>MEMBERSHIP REQUIREMENTS</a><a href="#article-vi"><span>ARTICLE VI</span>HAZING STATEMENT</a><a href="#article-vii"><span>ARTICLE VII</span>ADVISOR</a><a href="#article-viii"><span>ARTICLE VIII</span>GENERAL ASSEMBLY</a><a href="#article-ix"><span>ARTICLE IX</span>VSA OFFICERS</a><a href="#article-x"><span>ARTICLE X</span>BY-LAWS</a><a href="#article-xi"><span>ARTICLE XI</span>CONSTITUTIONAL AMENDMENTS</a></nav>
+      <a class="btn ghost c-top" href="#top">Back to top</a>
+    </div>
+  </aside>
+  <div class="c-doc"><article class="c-article reveal" id="preamble"><header class="c-article-head"><span class="c-num">§</span><div><span class="c-kicker">Preamble</span></div></header><div class="c-article-body"><p>In order to represent Vietnamese students at UMKC, to create a safe and nurturing community for Vietnamese students at UMKC to gather and network, to develop and implement programs which aid and further the interests of UMKC students, and to provide authentic experience of and foster an understanding of the Vietnamese culture with UMKC and other communities in Kansas City, the UMKC VSA is hereby established.</p></div></article><article class="c-article reveal" id="article-i"><header class="c-article-head"><span class="c-num">I</span><div><span class="c-kicker">ARTICLE I</span><h2>NAME</h2></div></header><div class="c-article-body"><h3 class="c-section"><span>Section A</span>UMKC VSA</h3><p>Part 1. The official name for this organization is Vietnamese Student Association of University of Missouri – Kansas City</p><p>Part 2. This organization will use the name or its acronym, (UMKC VSA), in all publicity materials and correspondence.</p></div></article><article class="c-article reveal" id="article-ii"><header class="c-article-head"><span class="c-num">II</span><div><span class="c-kicker">ARTICLE II</span><h2>STATEMENT OF PURPOSE</h2></div></header><div class="c-article-body"><p>The purpose of the Vietnamese Student Association at the University of Missouri-Kansas City is to unite Vietnamese students and students of all cultural backgrounds through educational, cultural, social, and community-service activities.</p><p>The organization shall promote awareness and appreciation of Vietnamese culture, history, traditions, and contemporary experiences throughout the University and the greater Kansas City community.</p><p>The organization shall also provide students with opportunities to build friendships, develop leadership skills, participate in volunteer service, network with other students and community members, and receive academic, professional, and social support.</p><p>The organization may accomplish these purposes by hosting cultural celebrations, educational programs, social events, volunteer activities, fundraising initiatives, collaborative programs, and other activities consistent with the mission of the organization and the policies of the University.</p></div></article><article class="c-article reveal" id="article-iii"><header class="c-article-head"><span class="c-num">III</span><div><span class="c-kicker">ARTICLE III</span><h2>STATEMENT OF COMPLIANCE</h2></div></header><div class="c-article-body"><p>We agree to abide by all regulations described in the Standards of Practice for Student Organizations and all University policies, in addition to all local, state, and federal laws.</p></div></article><article class="c-article reveal" id="article-iv"><header class="c-article-head"><span class="c-num">IV</span><div><span class="c-kicker">ARTICLE IV</span><h2>NOTICE OF NON-DISCRIMINATION</h2></div></header><div class="c-article-body"><p>This organization shall not discriminate on the basis of race, color, national origin, ancestry, religion, sex, pregnancy, sexual orientation, gender identity, gender expression, age, disability, protected veteran status, and/or any other status protected by applicable state or federal law.</p></div></article><article class="c-article reveal" id="article-v"><header class="c-article-head"><span class="c-num">V</span><div><span class="c-kicker">ARTICLE V</span><h2>MEMBERSHIP REQUIREMENTS</h2></div></header><div class="c-article-body"><h3 class="c-section"><span>Section A</span>Membership Eligibility Statement</h3><p>This organization shall ensure that at least 75% of its members are currently enrolled UMKC students. Membership shall remain open to all currently enrolled students and current UMKC employees.</p><h3 class="c-section"><span>Section B</span>Officer Eligibility Requirements</h3><p>This organization shall ensure that all officers meet minimum eligibility requirements including a cumulative GPA of 2.5 and six credit hours of current enrollment, and not be under student conduct disciplinary or honor code probation. The requirement to be enrolled in six credit hours will be waived for doctoral students who have completed their formal degree coursework, have passed their comprehensive or matriculation examination, and are continuously enrolled in at least one hour of research in both Fall and Spring semesters.</p><h3 class="c-section"><span>Section C</span>Officer Selection Process</h3><p>Officers of this organization must be chosen in an election that is open to all current members. Every effort will be made to modify members of said election and further, to accommodate the needs of all members desiring to participate.</p><h4 class="c-clause"><span>Clause I</span>PROCESS</h4><ol class="c-list lvl-0"><li>Voting Eligibility<ol class="c-list lvl-1"><li>All active VSA members must meet all of the requirements of Article V, and while active alumni members may not run for President or Vice-President, all UMKC students are eligible to vote. However, students must utilize their UMKC-provided email to fulfill form entries in order for the vote to be valid.</li></ol></li><li>Applications<ol class="c-list lvl-1"><li>Applicants must answer all questions provided in the forms at the time of election process.</li></ol></li><li>Election Process<ol class="c-list lvl-1"><li>Scoring<ol class="c-list lvl-2"><li>UMKC VSA election will be broken down into a scoring system that includes and is not limited to proportional vote share and officer interviewing process.</li><li>The proportional vote share will account for 20% of the overall score, which will be held by the general members and UMKC students.</li><li>The remaining 80% will be scored based on the interviewing process at the time of election process.</li><li>The perfect scoring will be 100% and shall be impossible to achieve.</li></ol></li><li>General Body Voting<ol class="c-list lvl-2"><li>Votes from the general body including all of UMKC Students/Staff account for 20% of their overall score.</li><li>All of the scoring will be calculated as {(applicant number of votes) / (total number of votes)} for that specific officer role.</li><li>Voting will take place in a form submission with their provided UMKC dedicated email.</li></ol></li><li>Interviewing Process<ol class="c-list lvl-2"><li>The interviewing process will account for 80% of the applicant’s score.</li><li>All candidates must deliver a speech and go through a subsequent Q&amp;A session. Eligible voters are given time to discuss and vote on each individual candidate after their presentation.</li><li>Candidate scores will be shared with the eligible voters during the election.</li><li>Use of electronics, such as laptops and cellphones, will not be permitted in the election room unless stated below (exempt from this rule):<ol class="c-list lvl-3"><li>Candidates using electronics to aid them in their presentations. (Powerpoint slides, Canva slides, etc).</li><li>Hearing aids, translation devices, any device needed to aid themselves in voicing their speech.</li></ol></li><li>All candidates will be provided with a maximum total of 15 minutes for their interviewing process with the provided breakdown:<ol class="c-list lvl-3"><li>Approximately 10 minutes will be utilized for speeches and providing responses for questions that the interviewer may ask.</li><li>Approximately 5 minutes will be dedicated towards any questions that the candidate may have.<ol class="c-list lvl-3"><li>Interviewers have the authority to not answer all questions in regards to the election process to remain fair for the other candidates.</li></ol></li></ol></li></ol></li><li>Procedures<ol class="c-list lvl-2"><li>All candidates running for a position must leave the room for the entire voting process for that position unless they are presenting.</li><li>There will be no absentee voting.</li><li>Each candidate may be individually discussed after their presentation</li></ol></li></ol></li></ol><h4 class="c-clause"><span>Clause II</span>Credit-Hour Requirement</h4><ol class="c-list lvl-0"><li>Potential candidates must have accumulated twelve (12) credit hours at UMKC before filing for office.</li></ol><h3 class="c-section"><span>Section D</span>Officer Removal Process</h3><h4 class="c-clause"><span>Clause I</span>Grounds and Procedures</h4><p>A VSA at UMKC officer may be removed under the following circumstances:</p><ol class="c-list lvl-0"><li>Failure to perform constitutionally required duties.</li><li>Deliberate misuse of organization funds.</li><li>Deliberately misleading the organization or its membership.</li><li>Substantial violation of University policies.</li><li>Substantial violation of local, state, or federal laws.</li></ol><p>An officer may also voluntarily resign from office by submitting notice to the Executive Board.</p><h4 class="c-clause"><span>Clause II</span>Removal Required Statement</h4><p>Grounds for removal include the inadequate fulfillment of duties or the violation of regulations described in the Standards of Practice for Recognized Student Organizations, University policies, or any local, state, or federal laws.</p><h3 class="c-section"><span>Section E</span>Membership Dues</h3><p>Paying dues is not a mandatory requirement to be considered a member of this organization.</p><h3 class="c-section"><span>Section F</span>Rights</h3><p>Members shall have the right to propose amendments to this Constitution in accordance with Article X.</p><p>Members shall have the right to express concerns regarding decisions made by the Executive Board and may propose alternative actions for consideration by the organization.</p><p>Members shall have the right to participate in organization meetings, elections, events, and activities, subject to the eligibility requirements and procedures established in this Constitution and the organization’s bylaws.</p><p>Members shall have the right to review organization financial records, including records concerning financial contributions, expenditures, and fundraising activities, subject to applicable University policies and privacy requirements.</p><p>Members shall have the right to receive reasonable notice of elections, meetings, proposed constitutional amendments, and other matters requiring a membership vote.</p><h3 class="c-section"><span>Section G</span>Removal of General Members</h3><p>A member may be subject to disciplinary action or removal from the organization for:</p><ol class="c-list lvl-0"><li>Violating the rights, safety, or privileges of another member.</li><li>Engaging in conduct that violates this Constitution, University policies, the Standards of Practice for Recognized Student Organizations, or any local, state, or federal law.</li><li>Engaging in harassment, discrimination, hazing, threats, violence, or other conduct that creates an unsafe environment.</li><li>Repeatedly disrupting organization meetings, events, programs, or operations.</li><li>Failing to meet the membership eligibility requirements established in Article V, Section A.</li><li>Misusing organization funds, property, records, accounts, or other resources.</li></ol><p>Except in situations involving an immediate safety concern, the following progressive disciplinary process shall apply:</p><ol class="c-list lvl-0"><li>A first offense may result in a written warning.</li><li>A second offense may result in a disciplinary meeting with the Executive Board.</li><li>A third offense may result in removal from the organization.</li></ol><p>Before removal, the member shall receive written notice of the alleged violation and a reasonable opportunity to respond. Removal of a member shall require a two-thirds (2/3) vote of the Executive Board. A member may voluntarily withdraw from the organization at any time by notifying the Executive Board. Nothing in this section limits the University’s authority to take action under applicable University policies.</p></div></article><article class="c-article reveal" id="article-vi"><header class="c-article-head"><span class="c-num">VI</span><div><span class="c-kicker">ARTICLE VI</span><h2>HAZING STATEMENT</h2></div></header><div class="c-article-body"><p>Hazing is strictly prohibited in the State of Missouri and by the University. Hazing is defined as any willful act, occurring on or off the campus of an educational institution, directed against a student or a prospective member of an organization operating under the sanction of an educational institution, that recklessly endangers the mental or physical health or safety of a student or prospective member for the purpose of initiation or admission into or continued membership in any such organization.</p><p>Acts of hazing include, but are not limited to: whipping, beating, striking, electronic shocking, placing of a harmful substance on someone's body or similar activity; causing, coercing, or otherwise inducing sleep deprivation, exposure to the elements, confinement in a small space, extreme calisthenics, or other similar activity; causing, coercing or otherwise inducing another person to consume food, liquid, alcohol, drugs, or other substances; causing, coercing, or otherwise inducing another person to perform sexual acts; any activity that places another person in reasonable fear of bodily harm through the use of threatening words or conduct; any activity against another person that includes a criminal violation of local, state, tribal, or federal law; and any activity that induces, causes, or requires another person to perform a duty or task that involved a criminal violation of local, state, tribal, or federal law. Failure by a group's or organization's executive officers to intervene to prevent, discourage, and/or report hazing of which they are aware or reasonably should be aware also will be deemed a violation of this policy.</p></div></article><article class="c-article reveal" id="article-vii"><header class="c-article-head"><span class="c-num">VII</span><div><span class="c-kicker">ARTICLE VII</span><h2>ADVISOR</h2></div></header><div class="c-article-body"><h3 class="c-section"><span>Section A</span>Advisor Eligibility and Selection</h3><p>Advisors must be UMKC faculty or staff that are at least 75% FTE and must be selected by organizational membership.</p><p>The advisor shall be selected by a majority vote of the members present at a properly announced organization meeting, provided that quorum is met.</p><h3 class="c-section"><span>Section B</span>Advisor Responsibilities</h3><p>The advisor shall:</p><ol class="c-list lvl-0"><li>Provide guidance regarding University policies, organization procedures, event planning, risk management, and financial practices.</li><li>Assist the organization in maintaining compliance with the Standards of Practice for Student Organizations and all applicable University policies.</li><li>Support the Executive Board and general membership in pursuing the organization’s mission and goals.</li><li>Attend organization meetings and events when reasonably available or when attendance is required by University policy.</li><li>Provide continuity and institutional knowledge as officers and members change.</li><li>Advise the organization without assuming control of its student-led decision-making processes.</li><li>Review organization plans, activities, and financial practices when requested or required.</li><li>Communicate relevant University information to the organization.</li></ol><h3 class="c-section"><span>Section C</span>Removal of Advisor</h3><p>Grounds for removal include the inadequate fulfillment of duties or the violation of regulations described in the Standards of Practice for Recognized Student Organizations, University policies, or any local, state, or federal laws.</p><ol class="c-list lvl-0"><li>An advisor may be removed by a two-thirds (2/3) vote of the members present at a properly announced organization meeting, provided that quorum is met.</li><li>The advisor shall receive written notice of the proposed removal and a reasonable opportunity to respond before the vote is held.</li><li>Following removal, the organization shall select a replacement advisor who satisfies all University eligibility requirements.</li></ol></div></article><article class="c-article reveal" id="article-viii"><header class="c-article-head"><span class="c-num">VIII</span><div><span class="c-kicker">ARTICLE VIII</span><h2>GENERAL ASSEMBLY</h2></div></header><div class="c-article-body"><p>The legislative powers of this Organization are vested in the Representatives of the General Assembly. The General Assembly is charged with giving equitable consideration to all matters brought before it and to promptly enact all legislation necessary for the proper functioning of the Organization.</p><ol class="c-list lvl-0"><li>Standing Committees:<ol class="c-list lvl-1"><li>A permanently standing Appropriations Committee will have the authority to consider and decide on action to take for all requests to disburse funds allocated to the Organization.<ol class="c-list lvl-2"><li>The equivalent of a Treasurer or Comptroller of the Organization and of each subordinate organization under the Organization shall serve as an Ex Officio member of the Appropriations Committee.</li><li>The Appropriations Committee shall conduct all proceedings in accordance with the Funding Procedures established in the By-laws of the Organization.</li><li>The Appropriations Committee shall establish its own chairperson by a majority vote.</li></ol></li><li>A permanently standing Audit Committee will have the purpose of reviewing the budgets and allocations of student organizations falling under the Organization.<ol class="c-list lvl-2"><li>The Audit Committee will consist of the Auditor and two additional members. The additional members shall be appointed by the President and approved by the Office of Student Involvement.</li><li>Any student organization receiving money from the Organization will be subject to the authority of the Auditor and must submit materials for review upon request of the Auditor.</li><li>The Audit Committee will be independent of the Appropriations Committee and will not be involved in the allocations process. No member of the Audit Committee may serve concurrently on the Appropriations Committee.</li><li>The Auditor shall serve as the chairperson of the Audit Committee.</li></ol></li></ol></li><li>Ad Hoc Committees:<ol class="c-list lvl-1"><li>The General Assembly may establish by resolution any additional temporary committees it may deem necessary. Such Ad Hoc Committees shall be chartered with a specific purpose and a definite dissolution date.</li></ol></li><li>Meetings:<ol class="c-list lvl-1"><li>The General Assembly and Standing Committees thereof shall have at least two Regular meetings in each of the Fall and Spring semesters.</li><li>The day, time, and place of all Regular meetings shall be specified in the By-laws of the Organization.</li><li>Special meetings of the General Assembly may be called by the Vice President or by one-fourth (1/4) of the Representatives. Special meetings shall only be called for a specific purpose, and only business germane to the specific purpose can be legitimately transacted. Notice shall be disseminated to all Representatives at least five (5) days prior to the Special meeting.</li><li>Special meetings of the Standing Committees may be called by the chairperson or a majority of the Standing Committee members. Notice shall be disseminated to all members of the respective Standing Committee at least five (5) days prior to the Special meeting.</li><li>Meeting expectations for Ad Hoc Committees shall be defined at the time the committee is chartered.</li></ol></li><li>Quorum:<ol class="c-list lvl-1"><li>A majority of the Department Representatives shall be present to constitute a quorum for the transaction of business at Regular or Special meetings of the General Assembly.</li><li>A majority of the Committee members shall be present to constitute a quorum for the transaction of business at any meeting of a Standing or Ad Hoc Committee of the Organization.</li><li>Vacant positions and absent Ex Officio members shall not be considered when determining quorum or evaluating the results of any vote.</li></ol></li></ol></div></article><article class="c-article reveal" id="article-ix"><header class="c-article-head"><span class="c-num">IX</span><div><span class="c-kicker">ARTICLE IX</span><h2>VSA OFFICERS</h2></div></header><div class="c-article-body"><ol class="c-list lvl-0"><li>President<ol class="c-list lvl-1"><li>The President has the responsibility to:<ol class="c-list lvl-2"><li>Preside at all meetings of the Executive Board.</li><li>Preside at meetings of the General Assembly in the absence of the Vice President.</li><li>Execute the decisions of the General Assembly and Membership.</li><li>Distribute a meeting agenda at least 24 hours prior to each Executive Board meeting; and</li><li>Execute the elections of the UMKC VSA as provided for herein.</li></ol></li><li>The President has the power to:<ol class="c-list lvl-2"><li>Serve as the Executive Authority to carry out the business of the UMKC VSA.</li><li>Call Special meetings of the Executive Board as provided for herein;</li><li>Set the agenda for meetings of the Executive Board;</li><li>Appoint eligible students to committee positions; and</li><li>Appoint eligible students to vacant offices as provided herein.</li></ol></li></ol></li><li>Vice President:<ol class="c-list lvl-1"><li>The Vice President has the responsibility to:<ol class="c-list lvl-2"><li>Assume the duties and powers of the President in the event of a vacancy thereof, and serve as such until the next regularly scheduled General Assembly meeting.</li><li>Preside at all meetings of the General Assembly.</li><li>Preside at meetings of the Executive Board in the absence of the President.</li><li>Distribute a meeting agenda at least 24 hours prior to each General Assembly meeting; and</li><li>Provide copies of proposed legislation to appropriate authorities as required herein.</li></ol></li><li>The Vice President has the power to:<ol class="c-list lvl-2"><li>Declare any position of the General Assembly as vacant in accordance with the provisions herein.</li><li>Call Special meetings of the General Assembly as provided for herein; and</li><li>Set the agenda for meetings of the General Assembly.</li></ol></li></ol></li><li>Treasurer<ol class="c-list lvl-1"><li>Responsibilities<ol class="c-list lvl-2"><li>Be responsible for UMKC VSA's financial account.</li><li>Monitor and report UMKC VSA's financial status to the board before and after each event.</li><li>Process payments of UMKC VSA's liabilities and expenses in a timely manner.</li><li>Monitor and report any money raised by fundraising activities.</li><li>Be responsible for grant writing.</li><li>Coordinate fundraising and sponsorship initiatives for the organization.</li><li>Maintain good relations with UMKC VSA sponsors.</li><li>Ensure UMKC VSA is operating within budgetary constraints.</li><li>The books of account shall be kept up-to-date and open to the inspection of the University auditor.</li></ol></li><li>The Treasurer has the power to:<ol class="c-list lvl-2"><li>Freeze any account of the UMKC VSA or of any recognized student organizations subordinate to the UMKC VSA;</li><li>Allocate, transfer, and disburse funds in accordance with the recorded decisions of the Appropriations Committee; and</li><li>Call special meetings of the Appropriations Committee.</li></ol></li></ol></li><li>Secretary<ol class="c-list lvl-1"><li>Responsibilities<ol class="c-list lvl-2"><li>Maintain and archive records and documents of UMKC VSA activities, programs, and events organized.</li><li>Document and record meeting minutes and ensure that they are accessible to the board.</li><li>Update the UMKC VSA Constitution when needed.</li><li>Keep records of UMKC VSA members and be responsible for communicating to members.</li><li>Maintain the organization’s email and report important information received.</li><li>Responsible for writing out and sending out the monthly newsletter to general members.</li><li>Reserve rooms for Board meetings.</li><li>Retrieve and deliver mail.</li><li>Update the Master UMKC VSA calendar with UMKC VSA events and activities.</li></ol></li><li>Power:<ol class="c-list lvl-2"><li>Access to all UMKC VSA documents.</li><li>Send correspondence on behalf of the UMKC VSA.</li><li>Call out the Board meeting when there are any discrepancies.</li></ol></li></ol></li><li>Marketing Chair<ol class="c-list lvl-1"><li>Responsibilities:<ol class="c-list lvl-2"><li>Promote UMKC VSA and UMKC VSA events to prospective members and to the community through social media marketing campaigns and other forms of communication.</li><li>Create and oversee all marketing plans to promote UMKC VSA events and activities.</li><li>Promote maintenance of a positive UMKC VSA brand and image.</li><li>Responsible for contacting the marketing committee members and organizing committee meetings.</li><li>Produce press releases for events to announce before or after an event.</li><li>Work with the UMKC VSA Outreach Chair to promote UMKC VSA events to a broader audience of potential members, volunteers, families, and sponsors.</li><li>Continuously update UMKC VSA’s social media sites to assist in promoting events and UMKC VSA as an organization.</li><li>Register the SGA meeting room for the General Assembly.</li></ol></li><li>Power:<ol class="c-list lvl-2"><li>Request funding from the Treasurer.</li><li>Editorial power.</li></ol></li></ol></li><li>Social Media Coordinator<ol class="c-list lvl-1"><li>Responsibilities:<ol class="c-list lvl-2"><li>In charge of the organization website</li><li>Archive past UMKC VSA websites.</li><li>Utilize the website to provide an informational resource to UMKC VSA members and potential members about UMKC VSA history, past and upcoming events, and how to get involved in the organization.</li><li>Responsible for ensuring pictures are taken at each UMKC VSA event and are uploaded to the website.</li><li>Assist the UMKC VSA Marketing Chair in social media campaigns and in updating UMKC VSA’s social media sites.</li><li>Incorporate the website in marketing campaigns to direct more traffic to the website.</li></ol></li><li>Power:<ol class="c-list lvl-2"><li>Distribute all of the meeting minutes within the organization.</li><li>Monitoring social media activities.</li><li>Filtering all of the contents from UMKC VSA social media.</li></ol></li></ol></li><li>Event Coordinator<ol class="c-list lvl-1"><li>Responsibility:<ol class="c-list lvl-2"><li>In charge of planning for events.</li><li>Monitor events on the day of.</li><li>Request rooms or locations for the events.</li><li>Sign up for events on RooGroups.</li><li>Work with Treasurer, President, Secretary, Marketing Chair, and Webmaster.</li><li>Delegate or remind tasks of the events to other E-board and members as well.</li><li>Check and remind E-board of rules and regulations at UMKC’s buildings.</li></ol></li><li>Power:<ol class="c-list lvl-2"><li>Access to all UMKC VSA documents.</li><li>Send correspondence on behalf of the UMKC VSA.</li><li>Call out the Board meeting when there are any discrepancies.</li><li>Request funding from Treasurer</li></ol></li></ol></li><li>Volunteer Coordinator:<ol class="c-list lvl-1"><li>Responsibility:<ol class="c-list lvl-2"><li>Find/create volunteer events for members.</li><li>Create/report volunteer events and hours on RooGroups.</li><li>Respond to emails related to volunteer events.</li><li>Create forms and strategy to recruit volunteers for events if needed.</li><li>Make and maintain connections with other organizations.</li><li>Work with Event Coordinator, Marketing team and President.</li></ol></li><li>Power:<ol class="c-list lvl-2"><li>Access to all UMKC VSA documents.</li><li>Send correspondence on behalf of the UMKC VSA.</li><li>Call out the Board meeting when there are any discrepancies.</li></ol></li></ol></li></ol></div></article><article class="c-article reveal" id="article-x"><header class="c-article-head"><span class="c-num">X</span><div><span class="c-kicker">ARTICLE X</span><h2>BY-LAWS</h2></div></header><div class="c-article-body"><ol class="c-list lvl-0"><li>The Organization shall enact By-laws. Enactment of and amendments to the By-laws shall be passed by a two-thirds (2/3) majority vote of quorum in the General Assembly. The By-laws shall contain:<ol class="c-list lvl-1"><li>The meeting days, times, and locations of the Regular meetings for the Executive Board, General Assembly, and Standing Committees of the Organization;</li><li>Funding Procedures for managing and distributing allocated funds to subordinate organizations;</li><li>Elections Procedures for conducting the annual election of Officers for the Organization; and other Procedures and Directives deemed necessary for the proper functioning of the Organization.</li></ol></li></ol></div></article><article class="c-article reveal" id="article-xi"><header class="c-article-head"><span class="c-num">XI</span><div><span class="c-kicker">ARTICLE XI</span><h2>CONSTITUTIONAL AMENDMENTS</h2></div></header><div class="c-article-body"><h3 class="c-section"><span>Section A</span>Future Amendment Statement</h3><p>It is understood that if this organization desires at any time in the future to change in any way the provisions of this constitution, the organization must submit the amended constitution for approval to the Office of Student Involvement before they may become effective.</p><h3 class="c-section"><span>Section B</span>Amendment Proposal</h3><p>Any active member may propose an amendment to this Constitution. The proposed amendment must be submitted in writing to the Executive Board.</p><h3 class="c-section"><span>Section C</span>Notice</h3><p>The proposed amendment shall be distributed to the membership at least seven (7) calendar days before the meeting at which it will be considered.</p><h3 class="c-section"><span>Section D</span>Approval</h3><p>An amendment must receive a three-fourths (3/4) vote of the members present at a properly announced meeting, provided that quorum is met.</p><h3 class="c-section"><span>Section E</span>Effective Date</h3><p>No amendment shall become effective until it has been approved by the Office of Student Involvement.</p></div></article></div>
 </section>
+<!-- CONSTITUTION:END -->
 
 <footer>
   <div class="footer-cols">
@@ -95,5 +217,38 @@
 </footer>
 
 <script src="/assets/js/site.js"></script>
+<script>
+// Highlight the contents entry for whichever article is currently in view.
+(function () {
+  var links = [].slice.call(document.querySelectorAll('.c-toc nav a'));
+  var arts = links.map(function (a) { return document.getElementById(a.hash.slice(1)); });
+  if (!links.length) return;
+
+  function sync() {
+    var best = 0;
+    for (var i = 0; i < arts.length; i++) {
+      if (arts[i] && arts[i].getBoundingClientRect().top <= 140) best = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle('on', i === best); });
+  }
+  // Time-throttled rather than rAF-gated: Chrome suspends rAF in background
+  // tabs, which would freeze the highlight until the tab regains focus.
+  // The trailing timer matters — without it the last event of a fast scroll is
+  // swallowed by the throttle and the highlight settles on the wrong article.
+  var last = 0, trail = null;
+  addEventListener('scroll', function () {
+    var now = Date.now();
+    clearTimeout(trail);
+    trail = setTimeout(sync, 90);
+    if (now - last < 80) return;
+    last = now;
+    sync();
+  }, { passive: true });
+  sync();
+
+  // keep the active entry visible in the rail's own scroller on mobile
+  addEventListener('hashchange', sync);
+})();
+</script>
 </body>
 </html>
