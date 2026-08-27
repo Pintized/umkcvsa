@@ -246,6 +246,8 @@ Order: shared shell first, then member pages, then officer pages.
 ---
 
 ## 8. Session log convention (standing rule)
-Every working session gets a changelog file in
-`C:\Users\Kalvin\Desktop\Heo\Heo\Projects\Claude Code Chats\UMKC VSA\changelogs\`
-named `YYYY-MM-DD-session-NN.md`, covering: what changed, decisions made, and next steps. This plan document gets updated (phases checked off, decisions appended) as work proceeds.
+Work is logged to a changelog kept in the maintainer's private working folder
+outside this repo — one file per day, `YYYY-MM-DD.md`, with each round of work
+appended as `## Round N — title` plus terse bullets. Days with no changes get no
+file. This plan document gets updated (phases checked off, decisions appended) as
+work proceeds.
