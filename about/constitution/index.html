@@ -80,8 +80,10 @@
 .c-article-body p { color:rgba(228,237,246,.86); line-height:1.75; margin:0 0 14px; }
 
 /* ---- sections & clauses ---- */
+/* centre-aligned, not baseline: the 11px label would otherwise sit on the
+   18px title's baseline and hang low against the full-height gold rule */
 .c-section {
-  display:flex; flex-wrap:wrap; align-items:baseline; gap:10px;
+  display:flex; flex-wrap:wrap; align-items:center; gap:10px;
   font-family:var(--serif); font-size:18px; color:#fff;
   margin:30px 0 12px; padding-left:14px; border-left:3px solid var(--gold);
 }
@@ -90,7 +92,7 @@
   color:var(--gold); font-weight:700;
 }
 .c-clause {
-  display:flex; flex-wrap:wrap; align-items:baseline; gap:9px;
+  display:flex; flex-wrap:wrap; align-items:center; gap:9px;
   font-size:15px; font-weight:700; color:rgba(228,237,246,.95); margin:22px 0 10px;
 }
 .c-clause > span {
@@ -182,7 +184,6 @@
 
 <header class="page-hero" id="top">
   <h1>Constitution</h1>
-  <hr class="hero-rule">
   <p style="margin-top:16px">The governing document of the Vietnamese Student Association at the University of Missouri&#8211;Kansas City.</p>
   <div class="c-hero-meta">
     <span class="c-pill">Last revised <b class="c-revised">June 05, 2026</b></span>
