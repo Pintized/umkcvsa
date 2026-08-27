@@ -712,8 +712,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .task-card .edit-hit:hover { opacity: 1; color: var(--gold); }
 
 /* ---------- notes ---------- */
-.notes-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; min-height: 480px; }
-.pane { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-y: auto; }
+/* fills the viewport and scrolls internally, like a real notes app, instead of
+   a short fixed-height card leaving a dead band of page beneath it */
+.notes-layout {
+  display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 16px;
+  height: calc(100vh - 268px); min-height: 420px;
+}
+.pane { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-y: auto; min-height: 0; }
 .pane .item {
   padding: 9px 11px;
   border-radius: 9px;
@@ -731,7 +736,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 }
 .pane .item .del { opacity: .45; cursor: pointer; }
 .pane .item .del:hover { opacity: 1; }
-.note-editor { display: flex; flex-direction: column; gap: 10px; }
+.note-editor { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
 .note-editor input {
   font-family: var(--serif);
   font-size: 1.15rem; font-weight: 700;
@@ -758,11 +763,35 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   line-height: 1.6;
   resize: vertical;
 }
-@media (max-width: 900px) { .notes-layout { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  /* stacked: let each pane size to its content rather than splitting a fixed height */
+  .notes-layout { grid-template-columns: 1fr; height: auto; }
+  .pane { max-height: 320px; }
+  .note-editor { overflow: visible; }
+}
 
 /* ---------- notes: meeting-minutes system ---------- */
-.notes-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.notes-head .grp { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.notes-head {
+  display: flex; gap: 12px 16px; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; margin-bottom: 16px;
+}
+.notes-head .grp { display: flex; gap: 8px; align-items: center; }
+/* the controls travel together as one unit and never wrap mid-group — a
+   ragged half-row of buttons was what made this header look cluttered */
+.notes-head .grp.tools { flex: 1 1 460px; justify-content: flex-end; flex-wrap: nowrap; }
+.notes-head .grp.tools > .btn, .notes-head .grp.tools > select { flex: none; white-space: nowrap; }
+/* .searchbar is width:100% by default — that greed is what pushed "+ Note"
+   onto a second row. Basis from content instead, and let it shrink. */
+.notes-head .grp.tools .searchbar { flex: 1 1 180px; width: auto; min-width: 120px; max-width: 260px; margin: 0; }
+/* below this the toolbar gets its own full-width row instead of squeezing */
+@media (max-width: 1180px) {
+  .notes-head .grp.tools { flex-basis: 100%; justify-content: flex-start; }
+  .notes-head .grp.tools .searchbar { max-width: none; }
+}
+@media (max-width: 620px) {
+  .notes-head .grp.tools { flex-wrap: wrap; }
+  .notes-head .grp.tools .searchbar { flex-basis: 100%; }
+}
 
 .pane .item .ic { margin-right: 2px; }
 .pane .item .acts { display: none; gap: 4px; }
@@ -972,6 +1001,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   transform: rotate(45deg);
 }
 .empty-state { color: var(--muted); text-align: center; padding: 48px 20px; font-size: .92rem; }
+/* the editor pane is full-height now, so its placeholder centres in it */
+.note-editor > .empty-state {
+  margin: 0; flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  border: 1px dashed var(--line); border-radius: 12px;
+}
 .empty-state .big { font-size: 2rem; display: block; margin-bottom: 10px; }
 
 /* ---------- filter bar ---------- */
