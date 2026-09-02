@@ -38,10 +38,69 @@
   import { requireOfficer } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
+  import { compressImage, outExt } from '/app/shared/img.js';
 
   const ctx = await requireOfficer();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Engagement Settings');
+
+  // ---------- artwork shared by the achievement and reward modals ----------
+  // The emoji stays as the fallback, so a row with no upload still reads.
+  const BADGE_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/badge-images/';
+  const badgeUrl = (p) => (p ? BADGE_BASE + p : null);
+
+  function imageFieldHTML(row, emoji) {
+    const url = badgeUrl(row?.image_path);
+    return `
+      <div class="field">
+        <label>Image ${row?.image_path ? '— picking a new one replaces it' : '(optional)'}</label>
+        <div class="badge-pick">
+          <div class="badge-prev" id="f-img-prev">${url
+            ? `<img src="${url}" alt="">`
+            : `<span>${emoji}</span>`}</div>
+          <div class="badge-pick-ctl">
+            <input type="file" id="f-img" accept="image/png,image/jpeg,image/webp">
+            ${row?.image_path ? '<button type="button" class="btn ghost sm" id="f-img-clear">Remove image</button>' : ''}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // live preview + a flag the save path reads
+  function wireImageField(back) {
+    let cleared = false;
+    const input = back.querySelector('#f-img');
+    const prev = back.querySelector('#f-img-prev');
+    input.addEventListener('change', () => {
+      const f = input.files[0];
+      if (!f) return;
+      cleared = false;
+      prev.innerHTML = `<img src="${URL.createObjectURL(f)}" alt="">`;
+    });
+    back.querySelector('#f-img-clear')?.addEventListener('click', () => {
+      cleared = true; input.value = '';
+      prev.innerHTML = '<span>—</span>';
+    });
+    return { input, wasCleared: () => cleared };
+  }
+
+  // returns the value for image_path, or undefined to leave it alone
+  async function resolveImage(row, ctl) {
+    if (ctl.wasCleared()) {
+      if (row?.image_path) await supabase.storage.from('badge-images').remove([row.image_path]);
+      return null;
+    }
+    const file = ctl.input.files[0];
+    if (!file) return undefined;
+    if (file.size > 11 * 1024 * 1024) throw new Error('Image is larger than 11 MB.');
+    const up = await compressImage(file, 900, .85);
+    const path = `${crypto.randomUUID()}.${outExt(up, file)}`;
+    const { error } = await supabase.storage.from('badge-images')
+      .upload(path, up, { contentType: up.type || file.type });
+    if (error) throw error;
+    if (row?.image_path) await supabase.storage.from('badge-images').remove([row.image_path]);
+    return path;
+  }
 
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const vnd = (n) => (n ?? 0).toLocaleString('vi-VN');
@@ -152,6 +211,7 @@
             <div class="field" style="flex:0 0 90px"><label>Icon (emoji)</label><input id="f-icon" maxlength="8" placeholder="🏆" value="${esc(a?.icon || '')}"></div>
             <div class="field"><label>Name</label><input id="f-name" required value="${esc(a?.name)}"></div>
           </div>
+          ${imageFieldHTML(a, a?.icon || '🏆')}
           <div class="field"><label>Description</label><textarea id="f-desc">${esc(a?.description)}</textarea></div>
           <div class="field"><label>VND granted when awarded</label><input type="number" id="f-pts" min="0" value="${a?.points ?? 10}"></div>
           <label style="display:flex; gap:8px; align-items:center; font-size:.9rem; margin-bottom:6px">
@@ -165,8 +225,10 @@
     document.body.appendChild(back);
     back.querySelector('#m-cancel').onclick = () => back.remove();
     back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+    const imgCtl = wireImageField(back);
     back.querySelector('#m-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const n = back.querySelector('#m-notice');
       const payload = {
         icon: back.querySelector('#f-icon').value.trim() || null,
         name: back.querySelector('#f-name').value.trim(),
@@ -174,11 +236,17 @@
         points: Math.max(0, Math.floor(+back.querySelector('#f-pts').value || 0)),
         active: back.querySelector('#f-active').checked,
       };
+      try {
+        const img = await resolveImage(a, imgCtl);
+        if (img !== undefined) payload.image_path = img;
+      } catch (err) {
+        n.textContent = err.message; n.className = 'notice error'; return;
+      }
       const { error } = a
         ? await supabase.from('achievements').update(payload).eq('id', a.id)
         : await supabase.from('achievements').insert({ ...payload, created_by: ctx.user.id });
       if (error) {
-        const n = back.querySelector('#m-notice'); n.textContent = error.message; n.className = 'notice error';
+        n.textContent = error.message; n.className = 'notice error';
         return;
       }
       back.remove();
@@ -239,7 +307,11 @@
         <h2>${r ? 'Edit reward' : 'New reward'}</h2>
         <div class="notice" id="m-notice"></div>
         <form id="m-form">
-          <div class="field"><label>Name</label><input id="f-name" required value="${esc(r?.name)}"></div>
+          <div class="field-row">
+            <div class="field" style="flex:0 0 90px"><label>Icon (emoji)</label><input id="f-icon" maxlength="8" placeholder="🎁" value="${esc(r?.icon || '')}"></div>
+            <div class="field"><label>Name</label><input id="f-name" required value="${esc(r?.name)}"></div>
+          </div>
+          ${imageFieldHTML(r, r?.icon || '🎁')}
           <div class="field"><label>Description</label><textarea id="f-desc">${esc(r?.description)}</textarea></div>
           <div class="field-row">
             <div class="field"><label>Cost (VND)</label><input type="number" id="f-cost" min="0" value="${r?.point_cost ?? 50}"></div>
@@ -274,6 +346,7 @@
       back.querySelector('#sizes-field').style.display =
         back.querySelector('#f-cat').value === 'clothing' ? '' : 'none';
     });
+    const imgCtl = wireImageField(back);
     back.querySelector('#m-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const category = back.querySelector('#f-cat').value || null;
@@ -286,6 +359,7 @@
         return;
       }
       const payload = {
+        icon: back.querySelector('#f-icon').value.trim() || null,
         name: back.querySelector('#f-name').value.trim(),
         description: back.querySelector('#f-desc').value.trim() || null,
         point_cost: Math.max(0, Math.floor(+back.querySelector('#f-cost').value || 0)),
@@ -293,11 +367,18 @@
         stock: stockRaw === '' ? null : Math.max(0, Math.floor(+stockRaw || 0)),
         active: back.querySelector('#f-active').checked,
       };
+      const n2 = back.querySelector('#m-notice');
+      try {
+        const img = await resolveImage(r, imgCtl);
+        if (img !== undefined) payload.image_path = img;
+      } catch (err) {
+        n2.textContent = err.message; n2.className = 'notice error'; return;
+      }
       const { error } = r
         ? await supabase.from('rewards').update(payload).eq('id', r.id)
         : await supabase.from('rewards').insert({ ...payload, created_by: ctx.user.id });
       if (error) {
-        const n = back.querySelector('#m-notice'); n.textContent = error.message; n.className = 'notice error';
+        n2.textContent = error.message; n2.className = 'notice error';
         return;
       }
       back.remove();
