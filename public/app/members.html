@@ -119,7 +119,7 @@
       <section class="m-sec">
         <h2>Member directory</h2>
         <input class="searchbar" id="search" type="search" placeholder="Search members…">
-        ${error ? `<p style="color:var(--red)">${error.message}</p>` : `
+        ${error ? `<p style="color:var(--ink-red)">${error.message}</p>` : `
           <div class="member-list" id="list">${(members || []).map(card).join('')}</div>
           <p style="color:var(--muted); font-size:.85rem; margin-top:14px">${(members || []).length} member${members?.length === 1 ? '' : 's'}</p>
         `}
