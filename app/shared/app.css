@@ -721,6 +721,38 @@ button.avatar-lg::after { font-size: .78rem; }
   border-radius: 50%;
   outline: 2px solid rgba(224, 180, 92, .85);
 }
+/* ---- admin About-page photo preview ---- */
+.ab-prev {
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);
+  overflow: hidden; display: grid; place-items: center; min-height: 120px;
+}
+.ab-prev img { width: 100%; height: auto; display: block; object-fit: cover; }
+.ab-empty { color: var(--muted); font-size: .86rem; padding: 30px 18px; text-align: center; }
+
+/* ---- shared pan/zoom cropper (image-cropper.js) ---- */
+.cr-stage {
+  position: relative; margin: 4px auto 14px; border-radius: 14px;
+  overflow: hidden; background: var(--surface-2); touch-action: none;
+}
+.cr-stage canvas { display: block; cursor: grab; }
+.cr-stage canvas:active { cursor: grabbing; }
+/* the frame dims everything outside it with one huge spread shadow */
+.cr-frame {
+  position: absolute; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(10, 20, 32, .58);
+  outline: 2px solid rgba(224, 180, 92, .9);
+}
+.cr-frame.is-round { border-radius: 50%; }
+/* corner handles are the only interactive part of the frame */
+.cr-h {
+  position: absolute; width: 16px; height: 16px; pointer-events: auto;
+  background: var(--gold); border-radius: 3px; box-shadow: 0 0 0 2px rgba(10, 20, 32, .5);
+}
+.cr-h.nw { left: -8px; top: -8px; cursor: nwse-resize; }
+.cr-h.ne { right: -8px; top: -8px; cursor: nesw-resize; }
+.cr-h.sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+.cr-h.se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+
 .av-zoom { display: flex; align-items: center; gap: 12px; margin: 0 auto 4px; max-width: 300px; }
 .av-zoom > span {
   font-size: .72rem; font-weight: 700; letter-spacing: .08em;
