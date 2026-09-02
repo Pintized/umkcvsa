@@ -480,6 +480,47 @@ html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--li
 .notif-empty { padding: 22px 14px; text-align: center; color: var(--muted); font-size: .84rem; }
 @media (max-width: 560px) { .notif-panel { width: 290px; } }
 
+/* ---------- achievement / reward artwork ----------
+   Banner across the top of a tile. Falls back to the emoji on a tinted
+   ground when no image has been uploaded, so nothing reads as broken. */
+.tile-art {
+  margin: -18px -18px 14px;              /* cancel .tile's padding to bleed */
+  height: 132px; overflow: hidden;
+  border-radius: 13px 13px 0 0;
+  background: var(--surface-2);
+  /* minmax(0,1fr) pins the row to the band. Implicit (or plain 1fr, whose
+     automatic minimum is min-content) the row grows to the image's intrinsic
+     height, so height:100% resolved against that and the picture overflowed —
+     the same 1fr trap as the calendar's week columns. */
+  display: grid; grid-template-rows: minmax(0, 1fr); place-items: center;
+}
+/* stretch past place-items:center (which is there to centre the emoji),
+   otherwise the image overflows the band instead of filling it */
+.tile-art img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  grid-area: 1 / 1; align-self: stretch; justify-self: stretch;
+}
+.tile-art.is-emoji {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(201, 155, 63, .18), transparent 62%),
+    var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.tile-art.is-emoji span { font-size: 2.6rem; line-height: 1; }
+/* the corner ribbons sit above the artwork */
+.tile .earned-tag, .tile .left-badge { z-index: 2; }
+
+/* officer picker: preview beside the file input */
+.badge-pick { display: flex; gap: 14px; align-items: flex-start; }
+.badge-prev {
+  width: 96px; height: 72px; flex: none; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--surface-2);
+  display: grid; place-items: center;
+}
+.badge-prev img { width: 100%; height: 100%; object-fit: cover; }
+.badge-prev span { font-size: 1.8rem; }
+.badge-pick-ctl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
 /* ---------- support tickets (member Support + officer Tickets) ---------- */
 .tk-pill {
   flex: none; display: inline-block; padding: 2px 9px; border-radius: 999px;

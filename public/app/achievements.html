@@ -34,12 +34,19 @@
   (myAwards || []).forEach(a => { if (!earnedIds.has(a.achievement_id)) earnedIds.set(a.achievement_id, a.created_at); });
   const totalEarned = (myAwards || []).reduce((s, a) => s + a.points_awarded, 0);
 
+  const BADGE_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/badge-images/';
+
   const tile = (a) => {
     const when = earnedIds.get(a.id);
     return `
       <div class="tile ${when ? 'earned' : ''}">
         ${when ? `<span class="earned-tag">Earned</span>` : ''}
-        <h3>${a.icon ? a.icon + ' ' : '🏆 '}${a.name}</h3>
+        <div class="tile-art${a.image_path ? '' : ' is-emoji'}">
+          ${a.image_path
+            ? `<img src="${BADGE_BASE}${a.image_path}" alt="" loading="lazy">`
+            : `<span>${a.icon || '🏆'}</span>`}
+        </div>
+        <h3>${a.name}</h3>
         <p>${a.description || ''}</p>
         <span class="pts">+${a.points.toLocaleString('vi-VN')} VND</span>
         ${when ? `<p style="margin:8px 0 0; font-size:.78rem">Earned ${new Date(when).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>` : ''}

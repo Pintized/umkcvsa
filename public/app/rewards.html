@@ -52,6 +52,7 @@
 
   const vnd = (n) => (n ?? 0).toLocaleString('vi-VN');
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const BADGE_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/badge-images/';
   const fmtWhen = (d) => new Date(d).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const CANCEL_WINDOW_MS = 4 * 60 * 60 * 1000;
 
@@ -95,7 +96,12 @@
             ? '<span class="left-badge out">Sold out</span>'
             : `<span class="left-badge">🔥 ${r.stock} Left!</span>`) : ''}
           ${canAfford ? '<span class="earned-tag">Affordable</span>' : ''}
-          <h3>🎁 ${esc(r.name)}</h3>
+          <div class="tile-art${r.image_path ? '' : ' is-emoji'}">
+            ${r.image_path
+              ? `<img src="${BADGE_BASE}${esc(r.image_path)}" alt="" loading="lazy">`
+              : `<span>${esc(r.icon || '🎁')}</span>`}
+          </div>
+          <h3>${esc(r.name)}</h3>
           <p>${esc(r.description || '')}</p>
           <span class="pts">${vnd(r.point_cost)} VND</span>
           ${r.category === 'clothing' ? `<div style="color:var(--muted); font-size:.78rem; margin-top:4px">Sizes: ${(r.sizes?.length ? r.sizes : ['XS','S','M','L','XL','XXL']).join(' · ')}</div>` : ''}
