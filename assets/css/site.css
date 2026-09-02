@@ -779,6 +779,39 @@ footer {
   color: var(--gold-bright);
   margin-bottom: 16px;
 }
+/* ---------- Instagram feed cards (News) ---------- */
+.ig-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.ig-card {
+  display: block; text-decoration: none; color: inherit;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  overflow: hidden; transition: transform .25s, border-color .25s, box-shadow .25s;
+}
+.ig-card:hover {
+  transform: translateY(-6px); border-color: rgba(201, 155, 63, .5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .38);
+}
+.ig-media {
+  position: relative; aspect-ratio: 1; background: var(--surface-2);
+  display: grid; grid-template-rows: minmax(0, 1fr); place-items: center;
+}
+.ig-media img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  grid-area: 1 / 1; align-self: stretch; justify-self: stretch;
+}
+.ig-noimg { font-size: 2rem; opacity: .5; }
+/* video / carousel marker, mirroring Instagram's own affordance */
+.ig-badge {
+  position: absolute; top: 10px; right: 10px; z-index: 1;
+  background: rgba(10, 20, 32, .62); color: #fff;
+  border-radius: 8px; padding: 3px 8px; font-size: .8rem; line-height: 1.2;
+}
+.ig-body { padding: 14px 16px 16px; }
+.ig-date {
+  color: var(--gold-bright); font-size: .72rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px;
+}
+.ig-body p { font-size: .88rem; line-height: 1.55; color: var(--text); margin: 0; }
+
 /* centred section, matching the sponsors block. .overline is inline-flex, so
    it needs width+justify-content rather than text-align. */
 .block.head-mid { text-align: center; }
