@@ -11,15 +11,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/shared/app.css">
 <style>
-  .pend-line { color: #e08a3d; font-weight: 600; font-size: .92rem; margin-top: 6px; }
+  .pend-line { color: var(--ink-amber); font-weight: 600; font-size: .92rem; margin-top: 6px; }
   .pend-line .spendable { color: var(--muted); font-weight: 400; }
   /* layout + dividers now come from the shared .m-row; only the type scale
      and wrapping behaviour are specific to redemption rows */
   .rd-row { font-size: .9rem; flex-wrap: wrap; }
   .rd-meta { color: var(--muted); font-size: .8rem; }
   .st-pill { font-size: .72rem; padding: 2px 9px; border-radius: 99px; font-weight: 700; }
-  .st-pill.pending { background: rgba(224,138,61,.16); color: #e08a3d; }
-  .st-pill.completed { background: rgba(47,158,99,.15); color: #2f9e63; }
+  .st-pill.pending { background: rgba(224,138,61,.16); color: var(--ink-amber); }
+  .st-pill.completed { background: rgba(47,158,99,.15); color: var(--ink-green); }
   .btn.small { padding: 6px 13px; font-size: .82rem; }
   .tile .redeem-btn { margin-top: 10px; }
   .left-badge {
@@ -200,7 +200,7 @@
             An officer will complete this when they hand you the item —
             only then is the VND deducted from your balance.</p>
           <div style="display:flex; gap:8px; align-items:flex-start; font-size:.82rem; line-height:1.45;
-              color:#e0b45c; background:rgba(224,180,92,.1); border:1px solid rgba(224,180,92,.35);
+              color:var(--ink-gold); background:rgba(224,180,92,.1); border:1px solid rgba(224,180,92,.35);
               border-radius:10px; padding:8px 11px; margin-bottom:6px">
             <span>⏳</span>
             <span>You can cancel this redemption for up to <b>4 hours</b>.

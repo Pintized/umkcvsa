@@ -146,7 +146,7 @@
 
           <div class="m-section">
             <h3>VND — current balance <strong id="m-pts">${vnd(m.points)}</strong>${pendOf(uid) ? `
-              <span style="color:#e08a3d; font-weight:600; font-size:.82rem"> −${vnd(pendOf(uid))} pending · ${vnd(m.points - pendOf(uid))} spendable</span>` : ''}</h3>
+              <span style="color:var(--ink-amber); font-weight:600; font-size:.82rem"> −${vnd(pendOf(uid))} pending · ${vnd(m.points - pendOf(uid))} spendable</span>` : ''}</h3>
             <div class="field-row">
               <div class="field"><label>Amount</label><input type="number" id="f-amt" min="1" value="5"></div>
               <div class="field"><label>Reason <span style="opacity:.55; font-weight:400">(shown in audit log)</span></label>
@@ -184,7 +184,7 @@
               <div class="award-row">
                 <span>🎁 <strong>${esc(r.reward_name)}</strong>${r.size ? ` <span style="color:var(--muted); font-size:.8rem">(${esc(r.size)})</span>` : ''}</span>
                 ${r.status === 'pending'
-                  ? `<span class="aw-meta" style="color:#e08a3d">−${vnd(r.points_spent)} VND · pending since ${fmtDate(r.created_at)}</span>
+                  ? `<span class="aw-meta" style="color:var(--ink-amber)">−${vnd(r.points_spent)} VND · pending since ${fmtDate(r.created_at)}</span>
                      <span style="margin-left:auto; display:inline-flex; gap:6px">
                        <button type="button" class="btn small" data-complete="${r.id}">Complete</button>
                        <button type="button" class="btn ghost small" data-cancelrd="${r.id}">Cancel</button>

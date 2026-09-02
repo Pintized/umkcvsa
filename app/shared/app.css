@@ -27,6 +27,14 @@
   --content-pad: 28px;   /* .content padding; .m-bleed negates it to span the area */
   --serif: 'Playfair Display', serif;
   --sans: 'Source Sans 3', system-ui, sans-serif;
+  /* Text-weight variants of the accent hues. The bright gold, amber and blue
+     were picked against ink and are 1.9-2.7:1 on a white card — the same
+     mistake the dashboard hero made. These stay legible in whichever theme is
+     on, so a colour never has to be chosen per page again. */
+  --ink-gold: #7a5a15;
+  --ink-amber: #8f5310;
+  --ink-blue: #2f6193;
+  --ink-green: #1b6b40;
   --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 1L43 22L22 43L1 22Z' fill='none' stroke='%23c99b3f' stroke-opacity='.16'/%3E%3C/svg%3E");
 }
 html.dark-mode {
@@ -41,6 +49,10 @@ html.dark-mode {
   --gold: #d9ac52;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
   --shadow-lg: 0 4px 10px rgba(0, 0, 0, .35), 0 18px 44px rgba(0, 0, 0, .45);
+  --ink-gold: #e0b45c;
+  --ink-amber: #e08a3d;
+  --ink-blue: #6ea8d8;
+  --ink-green: #7fd6a1;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -227,7 +239,7 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   box-shadow: var(--shadow-sm);
   transition: background .2s, width .2s, left .32s cubic-bezier(.4, 0, .2, 1);
 }
-.side-toggle:hover { background: var(--surface-2); width: 25px; color: var(--gold-bright); }
+.side-toggle:hover { background: var(--surface-2); width: 25px; color: var(--ink-gold); }
 .shell.side-collapsed ~ .side-toggle,
 .shell.side-collapsed .side-toggle { left: 76px; }
 .side-toggle svg { width: 14px; height: 14px; transition: transform .32s cubic-bezier(.4, 0, .2, 1); }
@@ -371,7 +383,7 @@ html:not(.dark-mode) .sidebar {
 html:not(.dark-mode) .sidebar::after { opacity: .22; }
 html:not(.dark-mode) .sidebar .brand { border-bottom-color: var(--line); }
 html:not(.dark-mode) .sidebar .brand span { color: var(--navy); }
-html:not(.dark-mode) .sidebar .nav-label { color: #7a5a15; opacity: 1; }
+html:not(.dark-mode) .sidebar .nav-label { color: var(--ink-gold); opacity: 1; }
 html:not(.dark-mode) .sidebar nav a { color: #5a6675; }
 html:not(.dark-mode) .sidebar nav a:hover { background: rgba(20, 48, 74, .07); color: var(--navy); }
 html:not(.dark-mode) .sidebar nav a.active {
@@ -674,7 +686,7 @@ html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--li
 /* alias in gold quotes after the name — matches the name's size, family and
    weight exactly, so colour is the only thing separating them. gold-bright
    rather than gold because the hero band is always dark. */
-.hero-alias { color: var(--gold-bright); font-size: 1em; white-space: nowrap; }
+.hero-alias { color: var(--ink-gold); font-size: 1em; white-space: nowrap; }
 
 /* avatar-as-button: opens the picture viewer / cropper. Used by the dashboard
    hero and the My Profile header. */
@@ -770,7 +782,7 @@ button.avatar-lg::after { font-size: .78rem; }
 }
 /* same split on the hero band: gold label, near-white figure */
 .m-hero .stat .num { color: #eef4fb; }
-.m-hero .stat .lbl { color: var(--gold-bright); }
+.m-hero .stat .lbl { color: var(--ink-gold); }
 
 /* ---------- dashboard hero in light mode ----------
    Same authoring gap as the sidebar: the band was written with hardcoded
@@ -794,11 +806,7 @@ html:not(.dark-mode) .m-hero::after {
   background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, .75) 46%, transparent 60%);
 }
 html:not(.dark-mode) .m-hero h2 { color: var(--navy); }
-/* gold-bright is a dark-background colour — on cream it fails AA badly, so
-   light mode uses the same deep gold the sidebar labels settled on */
-html:not(.dark-mode) .hero-alias { color: #7a5a15; }
 html:not(.dark-mode) .m-hero .stat .num { color: var(--navy); }
-html:not(.dark-mode) .m-hero .stat .lbl { color: #7a5a15; }
 
 /* ---------- cards / stats ---------- */
 .card {
@@ -1590,7 +1598,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   color: var(--gold); font: inherit; font-weight: 600;
   text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(201, 155, 63, .45);
 }
-.link-btn:hover { color: var(--gold-bright); text-decoration-color: currentColor; }
+.link-btn:hover { color: var(--ink-gold); text-decoration-color: currentColor; }
 
 .chip-btn {
   display: inline-flex; align-items: center; gap: 4px;
