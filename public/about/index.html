@@ -64,12 +64,13 @@
 
 <section class="section">
   <div style="display:flex; gap:48px; align-items:center; flex-wrap:wrap">
+    <!-- copy below is the fallback; Admin > About Page overrides it at runtime -->
     <div class="reveal" style="flex:1; min-width:280px">
-      <h2>Our Mission</h2>
-      <p class="lead">The UMKC Vietnamese Student Association is a student-led nonprofit organization dedicated to celebrating and sharing Vietnamese culture across the University of Missouri-Kansas City and the greater Kansas City community.</p>
-      <p class="lead" style="margin-top:14px">Through cultural events, educational programming, and community service, we create a welcoming space where students of all backgrounds can connect, learn, and build lasting friendships.</p>
+      <h2 id="ab-title">Our Mission</h2>
+      <p class="lead" id="ab-p1">The UMKC Vietnamese Student Association is a student-led nonprofit organization dedicated to celebrating and sharing Vietnamese culture across the University of Missouri-Kansas City and the greater Kansas City community.</p>
+      <p class="lead" style="margin-top:14px" id="ab-p2">Through cultural events, educational programming, and community service, we create a welcoming space where students of all backgrounds can connect, learn, and build lasting friendships.</p>
     </div>
-    <div class="ph reveal" style="flex:1; min-width:280px; height:320px">
+    <div class="ph reveal" id="ab-photo" style="flex:1; min-width:280px; height:320px">
       <img class="ph-logo" src="/assets/img/logo.png" alt="">
       <div class="ph-cap">Photo coming soon</div>
     </div>
@@ -115,5 +116,35 @@
 </footer>
 
 <script src="/assets/js/site.js"></script>
+<script type="module">
+  // Mission copy and photo come from site_settings (Admin > About Page).
+  // Anything unset keeps the wording hardcoded above, so the page is never
+  // blank and works even if the request fails.
+  import { supabase } from '/app/shared/supabase.js';
+
+  const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+  try {
+    const { data } = await supabase.from('site_settings').select('key, value');
+    const s = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+
+    const set = (id, val) => { if (val && val.trim()) document.getElementById(id).textContent = val; };
+    set('ab-title', s.about_mission_title);
+    set('ab-p1', s.about_mission_p1);
+    set('ab-p2', s.about_mission_p2);
+
+    if (s.about_image_path) {
+      const box = document.getElementById('ab-photo');
+      // the crop is free-form, so the slot takes the image's own ratio rather
+      // than the placeholder's fixed 320px — nothing gets letterboxed
+      box.classList.remove('ph');
+      box.style.height = '';
+      box.style.borderRadius = '14px';
+      box.style.overflow = 'hidden';
+      box.innerHTML = `<img src="${IMG}${s.about_image_path}" alt=""
+        style="width:100%; height:auto; display:block; object-fit:cover;
+               aspect-ratio:${s.about_image_ratio || '1.5'}">`;
+    }
+  } catch (e) { /* keep the hardcoded copy */ }
+</script>
 </body>
 </html>

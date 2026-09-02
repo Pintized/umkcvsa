@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Page | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading About page settings…</div>
+<script type="module">
+  import { requireAdmin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+  import { cropImage } from '/app/shared/image-cropper.js';
+
+  const ctx = await requireAdmin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'About Page');
+
+  const IMG_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  // the copy currently hardcoded in public/about/index.html — shown as the
+  // placeholder so an admin can see what the page falls back to
+  const FALLBACK = {
+    about_mission_title: 'Our Mission',
+    about_mission_p1: 'The UMKC Vietnamese Student Association is a student-led nonprofit organization dedicated to celebrating and sharing Vietnamese culture across the University of Missouri-Kansas City and the greater Kansas City community.',
+    about_mission_p2: 'Through cultural events, educational programming, and community service, we create a welcoming space where students of all backgrounds can connect, learn, and build lasting friendships.',
+  };
+
+  let settings = {};
+  let pendingCrop = null;   // { blob, type, ratio } awaiting Save
+
+  async function load() {
+    const { data } = await supabase.from('site_settings').select('*');
+    settings = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+    render();
+  }
+
+  function render() {
+    const path = settings.about_image_path || '';
+    const ratio = settings.about_image_ratio || '1.5';
+    page.innerHTML = `
+      <div class="card" style="max-width:760px">
+        <h2>Our Mission</h2>
+        <p style="color:var(--muted); font-size:.88rem; margin-bottom:16px">
+          This is the text block on the public
+          <a href="/about/" target="_blank" style="color:var(--gold)">About page</a>.
+          Leave a field empty to fall back to the original wording.
+        </p>
+        <div class="notice" id="t-notice"></div>
+        <div class="field"><label>Heading</label>
+          <input id="f-title" maxlength="120" placeholder="${esc(FALLBACK.about_mission_title)}"
+                 value="${esc(settings.about_mission_title || '')}"></div>
+        <div class="field"><label>First paragraph</label>
+          <textarea id="f-p1" rows="4" placeholder="${esc(FALLBACK.about_mission_p1)}">${esc(settings.about_mission_p1 || '')}</textarea></div>
+        <div class="field"><label>Second paragraph</label>
+          <textarea id="f-p2" rows="4" placeholder="${esc(FALLBACK.about_mission_p2)}">${esc(settings.about_mission_p2 || '')}</textarea></div>
+        <button class="btn" id="t-save">Save text</button>
+      </div>
+
+      <div class="card" style="max-width:760px">
+        <h2>Photo</h2>
+        <p style="color:var(--muted); font-size:.88rem; margin-bottom:16px">
+          Sits beside the mission text. You choose the crop — the page uses
+          whatever shape you draw, so nothing gets letterboxed.
+        </p>
+        <div class="notice" id="i-notice"></div>
+        <div class="ab-prev" id="i-prev">
+          ${path
+            ? `<img src="${IMG_BASE}${esc(path)}" alt="" style="aspect-ratio:${esc(ratio)}">`
+            : '<span class="ab-empty">No photo yet — the page shows its placeholder block.</span>'}
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px">
+          <input type="file" id="f-img" accept="image/png,image/jpeg,image/webp" hidden>
+          <button class="btn secondary" id="i-pick">${path ? 'Replace photo' : 'Choose photo'}</button>
+          ${path ? '<button class="btn ghost" id="i-remove">Remove photo</button>' : ''}
+          <button class="btn" id="i-save" disabled>Save photo</button>
+        </div>
+      </div>`;
+
+    document.getElementById('t-save').onclick = saveText;
+    document.getElementById('i-pick').onclick = () => document.getElementById('f-img').click();
+    document.getElementById('f-img').onchange = pickImage;
+    document.getElementById('i-save').onclick = saveImage;
+    document.getElementById('i-remove')?.addEventListener('click', removeImage);
+  }
+
+  async function saveText() {
+    const n = document.getElementById('t-notice');
+    const btn = document.getElementById('t-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const rows = [
+      { key: 'about_mission_title', value: document.getElementById('f-title').value.trim() },
+      { key: 'about_mission_p1', value: document.getElementById('f-p1').value.trim() },
+      { key: 'about_mission_p2', value: document.getElementById('f-p2').value.trim() },
+    ];
+    const { error } = await supabase.from('site_settings').upsert(rows);
+    n.textContent = error ? error.message : 'Saved — the About page updates immediately.';
+    n.className = `notice ${error ? 'error' : 'ok'}`;
+    btn.disabled = false; btn.textContent = 'Save text';
+    if (!error) await load();
+  }
+
+  async function pickImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    const n = document.getElementById('i-notice');
+    if (file.size > 12 * 1024 * 1024) {
+      n.textContent = 'That image is over 12 MB — try a smaller one.';
+      n.className = 'notice error'; return;
+    }
+    // aspect:null => the crop frame is drag-resizable, any shape
+    const res = await cropImage({ file, aspect: null, maxOut: 1600, title: 'Crop the About photo' });
+    if (!res) return;
+    pendingCrop = res;
+    document.getElementById('i-prev').innerHTML =
+      `<img src="${URL.createObjectURL(res.blob)}" alt="" style="aspect-ratio:${res.ratio}">`;
+    document.getElementById('i-save').disabled = false;
+    n.textContent = `Cropped to ${res.width}×${res.height}. Save to publish it.`;
+    n.className = 'notice';
+  }
+
+  async function saveImage() {
+    if (!pendingCrop) return;
+    const n = document.getElementById('i-notice');
+    const btn = document.getElementById('i-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const ext = pendingCrop.type === 'image/png' ? 'png' : 'jpg';
+      const path = `about-${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('site-images')
+        .upload(path, pendingCrop.blob, { contentType: pendingCrop.type });
+      if (upErr) throw upErr;
+
+      const prev = settings.about_image_path;
+      const { error } = await supabase.from('site_settings').upsert([
+        { key: 'about_image_path', value: path },
+        { key: 'about_image_ratio', value: String(pendingCrop.ratio) },
+      ]);
+      if (error) throw error;
+      if (prev) await supabase.storage.from('site-images').remove([prev]);
+
+      pendingCrop = null;
+      n.textContent = 'Photo published.';
+      n.className = 'notice ok';
+      await load();
+    } catch (err) {
+      n.textContent = err.message || String(err);
+      n.className = 'notice error';
+      btn.disabled = false; btn.textContent = 'Save photo';
+    }
+  }
+
+  async function removeImage() {
+    const n = document.getElementById('i-notice');
+    const prev = settings.about_image_path;
+    const { error } = await supabase.from('site_settings').upsert([
+      { key: 'about_image_path', value: '' },
+      { key: 'about_image_ratio', value: '' },
+    ]);
+    if (error) { n.textContent = error.message; n.className = 'notice error'; return; }
+    if (prev) await supabase.storage.from('site-images').remove([prev]);
+    pendingCrop = null;
+    n.textContent = 'Photo removed — the page shows its placeholder again.';
+    n.className = 'notice ok';
+    await load();
+  }
+
+  await load();
+</script>
+</body>
+</html>
