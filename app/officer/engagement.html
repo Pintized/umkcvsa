@@ -269,7 +269,7 @@
                 <td class="desc-cell">${esc(r.description || '')}</td>
                 <td><strong>${vnd(r.point_cost)} VND</strong></td>
                 <td>${cap(r.category)}${r.category === 'clothing' && r.sizes?.length ? `<div style="color:var(--muted); font-size:.76rem">${r.sizes.join(' · ')}</div>` : ''}</td>
-                <td>${r.stock == null ? '∞' : (r.stock === 0 ? '<strong style="color:#c8202f">0</strong>' : `<strong>${r.stock}</strong>`)}</td>
+                <td>${r.stock == null ? '∞' : (r.stock === 0 ? '<strong style="color:var(--ink-red)">0</strong>' : `<strong>${r.stock}</strong>`)}</td>
                 <td><span class="status-pill ${r.active ? 'live' : 'off'}">${r.active ? 'active' : 'inactive'}</span></td>
                 <td>${redeemCount(r.id)}×</td>
                 <td class="row-actions">

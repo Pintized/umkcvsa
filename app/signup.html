@@ -21,7 +21,7 @@
   }
   .alias-hint { font-size: .76rem; margin-top: 4px; min-height: 1em; opacity: .75; }
   .alias-hint.ok { color: var(--ink-green); opacity: 1; }
-  .alias-hint.bad { color: #c8202f; opacity: 1; }
+  .alias-hint.bad { color: var(--ink-red); opacity: 1; }
   .pw-meter { height: 6px; border-radius: 4px; background: rgba(128,128,128,.25);
     overflow: hidden; margin: 8px 0 4px; }
   .pw-meter > div { height: 100%; width: 0; border-radius: 4px; transition: width .25s, background .25s; }
@@ -33,12 +33,12 @@
   .pw-reqs li.met::before { content: '● '; }
   .match-hint { font-size: .76rem; margin-top: 4px; min-height: 1em; }
   .match-hint.ok { color: var(--ink-green); }
-  .match-hint.bad { color: #c8202f; }
+  .match-hint.bad { color: var(--ink-red); }
   .consent { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 16px; }
   .consent label { display: flex; gap: 9px; align-items: flex-start; font-size: .82rem; line-height: 1.5; cursor: pointer; }
   .consent input { margin-top: 3px; accent-color: #c99b3f; flex-shrink: 0; width: 15px; height: 15px; }
   .consent a { color: var(--ink-gold); text-decoration: underline; }
-  .consent .req { color: #c8202f; }
+  .consent .req { color: var(--ink-red); }
 </style>
 </head>
 <body>

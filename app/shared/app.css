@@ -35,6 +35,7 @@
   --ink-amber: #8f5310;
   --ink-blue: #2f6193;
   --ink-green: #1b6b40;
+  --ink-red: #a31824;
   --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 1L43 22L22 43L1 22Z' fill='none' stroke='%23c99b3f' stroke-opacity='.16'/%3E%3C/svg%3E");
 }
 html.dark-mode {
@@ -53,6 +54,7 @@ html.dark-mode {
   --ink-amber: #e08a3d;
   --ink-blue: #6ea8d8;
   --ink-green: #7fd6a1;
+  --ink-red: #f2707c;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -142,7 +144,7 @@ button { font-family: inherit; }
 .auth-card h1 { font-size: 1.65rem; margin-bottom: 4px; }
 .auth-card .sub { color: var(--muted); font-size: .92rem; margin-bottom: 24px; }
 .auth-alt { text-align: center; margin-top: 20px; font-size: .9rem; color: var(--muted); }
-.auth-alt a { color: var(--red); font-weight: 600; }
+.auth-alt a { color: var(--ink-red); font-weight: 600; }
 .auth-alt a:hover { color: var(--gold); }
 
 /* ---------- form fields ---------- */
@@ -201,7 +203,7 @@ button { font-family: inherit; }
 }
 
 .notice { border-radius: 10px; padding: 11px 14px; font-size: .9rem; margin-bottom: 16px; display: none; }
-.notice.error { display: block; background: rgba(200, 32, 47, .1); color: var(--red); border: 1px solid rgba(200, 32, 47, .35); }
+.notice.error { display: block; background: rgba(200, 32, 47, .1); color: var(--ink-red); border: 1px solid rgba(200, 32, 47, .35); }
 .notice.ok { display: block; background: rgba(47, 158, 99, .12); color: #1d7a40; border: 1px solid rgba(47, 158, 99, .3); }
 html.dark-mode .notice.ok { color: #7fd6a1; }
 
@@ -879,7 +881,7 @@ html.dark-mode .stat .num { color: var(--text); }
   color: var(--muted);
   text-transform: capitalize;
 }
-.badge.officer { background: rgba(200, 32, 47, .12); color: var(--red); border-color: rgba(200, 32, 47, .3); }
+.badge.officer { background: rgba(200, 32, 47, .12); color: var(--ink-red); border-color: rgba(200, 32, 47, .3); }
 .badge.admin { background: rgba(201, 155, 63, .15); color: #9a7325; border-color: rgba(201, 155, 63, .4); }
 html.dark-mode .badge.admin { color: var(--gold-bright); }
 
@@ -935,7 +937,7 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
 .tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .tile h3 { font-family: var(--sans); font-size: 1rem; margin-bottom: 6px; }
 .tile p { color: var(--muted); font-size: .87rem; margin-bottom: 10px; }
-.tile .pts { font-weight: 700; color: var(--red); font-size: .92rem; font-family: var(--serif); }
+.tile .pts { font-weight: 700; color: var(--ink-red); font-size: .92rem; font-family: var(--serif); }
 .tile.earned { border-color: rgba(201, 155, 63, .55); background: linear-gradient(160deg, var(--surface-2), rgba(201, 155, 63, .07)); }
 .tile .earned-tag {
   position: absolute;
@@ -967,7 +969,7 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
 }
 .cal-cell.out { opacity: .35; }
 .cal-cell.today { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
-.cal-cell.today .d { color: var(--red); }
+.cal-cell.today .d { color: var(--ink-red); }
 .cal-cell .d { font-weight: 700; margin-bottom: 4px; font-family: var(--serif); }
 .cal-ev {
   display: block;
@@ -1302,7 +1304,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .saved-ind { font-size: .78rem; color: var(--muted); min-width: 90px; }
 .saved-ind.saving { color: var(--warn); }
 .saved-ind.saved { color: var(--ok); }
-.saved-ind.unsaved { color: var(--red); }
+.saved-ind.unsaved { color: var(--ink-red); }
 
 .rt-toolbar { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
 .rt-btn {
@@ -1616,13 +1618,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .chip-btn.on.warn-chip {
   background: rgba(200, 32, 47, .12);
   border-color: rgba(200, 32, 47, .45);
-  color: var(--red);
+  color: var(--ink-red);
 }
 
 .task-card .st, .st-pill { cursor: pointer; }
 .task-card .st:hover, .st-pill:hover { filter: brightness(1.12); }
 .task-card.overdue { box-shadow: 0 0 0 2px rgba(200, 32, 47, .55), var(--shadow-sm); }
-.task-card.overdue .due { color: var(--red); font-weight: 700; }
+.task-card.overdue .due { color: var(--ink-red); font-weight: 700; }
 .task-card.due-soon { box-shadow: 0 0 0 2px rgba(224, 180, 92, .55), var(--shadow-sm); }
 .task-card.due-soon .due { color: var(--gold); font-weight: 700; }
 

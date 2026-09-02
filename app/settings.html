@@ -18,7 +18,7 @@
   letter-spacing:.08em; text-transform:uppercase; color:var(--gold);
   margin-bottom:4px;
 }
-.set-sec.danger > h3 { color:var(--red); }
+.set-sec.danger > h3 { color:var(--ink-red); }
 .set-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
 .set-row:last-child { border-bottom:none; }
 .set-row .txt { min-width:0; }
@@ -39,7 +39,7 @@
 .badge-ok { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; background:rgba(47, 158, 99, .16); color:var(--ok); }
 .badge-wait { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; background:rgba(232, 163, 61, .16); color:var(--ink-amber); }
 .danger-card { border:1px solid rgba(200, 32, 47, .4); }
-.danger-card h3 { color:var(--red); }
+.danger-card h3 { color:var(--ink-red); }
 .soon-note { background:rgba(201, 155, 63, .1); border:1px solid rgba(201, 155, 63, .35); border-radius:10px; padding:9px 12px; font-size:.8rem; color:var(--muted); margin-bottom:10px; }
 .tb-toast {
   position:fixed; left:50%; bottom:28px; transform:translate(-50%, 12px); z-index:500;
@@ -198,7 +198,7 @@
         </div>
         <div class="set-row">
           <div class="txt"><strong>Delete my account</strong><small>Permanently removes your account, profile, RSVPs, and check-ins. This cannot be undone.</small></div>
-          <button class="btn sm ghost" id="del-btn" style="color:var(--red); border-color:rgba(200,32,47,.5)">Delete…</button>
+          <button class="btn sm ghost" id="del-btn" style="color:var(--ink-red); border-color:rgba(200,32,47,.5)">Delete…</button>
         </div>
       </section>
 
@@ -513,7 +513,7 @@
     back.className = 'modal-back';
     back.innerHTML = `
       <div class="modal" style="max-width:440px">
-        <h2 style="color:var(--red)">Delete account</h2>
+        <h2 style="color:var(--ink-red)">Delete account</h2>
         <p style="color:var(--muted); font-size:.9rem; margin-bottom:12px">
           This permanently removes your account and everything tied to it —
           profile, RSVPs, check-ins, achievements. There is no undo.</p>

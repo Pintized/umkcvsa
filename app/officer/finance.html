@@ -52,15 +52,15 @@
 
 .kind-badge { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
 .kind-income { background:rgba(47, 158, 99, .16); color:var(--ok); }
-.kind-expense { background:rgba(200, 32, 47, .14); color:var(--red); }
+.kind-expense { background:rgba(200, 32, 47, .14); color:var(--ink-red); }
 .amt-in { color:var(--ok); font-weight:700; }
-.amt-out { color:var(--red); font-weight:700; }
+.amt-out { color:var(--ink-red); font-weight:700; }
 .st-tag { display:inline-block; padding:1px 9px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; }
 .st-pending { background:rgba(232, 163, 61, .16); color:var(--ink-amber); }
 .st-approved { background:rgba(63, 127, 191, .16); color:var(--ink-blue); }
 html:not(.dark-mode) .st-approved { color:#2a6099; }
 .st-paid, .st-received { background:rgba(47, 158, 99, .16); color:var(--ok); }
-.st-denied { background:rgba(200, 32, 47, .14); color:var(--red); }
+.st-denied { background:rgba(200, 32, 47, .14); color:var(--ink-red); }
 .st-draft, .st-submitted { background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
 
 .rcpt-link { cursor:pointer; }
@@ -76,7 +76,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
   padding:10px 14px; background:var(--surface-2); border-bottom:1px solid var(--line);
 }
 .plan-head-r { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.rcpt-x { cursor:pointer; color:var(--red); font-weight:700; padding:0 2px; }
+.rcpt-x { cursor:pointer; color:var(--ink-red); font-weight:700; padding:0 2px; }
 .plan-totals {
   display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
   margin-top:12px; padding-top:12px; border-top:1px solid var(--line); font-size:.9rem;
@@ -337,7 +337,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         <div class="stat-grid">
           <div class="stat"><div class="num">${money(balance())}</div><div class="lbl">Balance (all time)</div></div>
           <div class="stat"><div class="num" style="color:var(--ok)">${money(inc)}</div><div class="lbl">Income · ${esc(TERM === 'all' ? 'all time' : TERM)}</div></div>
-          <div class="stat"><div class="num" style="color:var(--red)">${money(exp)}</div><div class="lbl">Spent · ${esc(TERM === 'all' ? 'all time' : TERM)}</div></div>
+          <div class="stat"><div class="num" style="color:var(--ink-red)">${money(exp)}</div><div class="lbl">Spent · ${esc(TERM === 'all' ? 'all time' : TERM)}</div></div>
           <div class="stat"><div class="num">${money(inc - exp)}</div><div class="lbl">Net · ${esc(TERM === 'all' ? 'all time' : TERM)}</div></div>
         </div>
       </div>

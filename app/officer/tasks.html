@@ -103,7 +103,7 @@ html.dark-mode .board { --grid-line: rgba(201, 155, 63, .10); }
 .tcard .card-menu.open { display:block; }
 .tcard .card-menu button { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 14px; cursor:pointer; font-size:.85rem; color:var(--text); }
 .tcard .card-menu button:hover { background:var(--surface-2); }
-.tcard .card-menu button.del { color:var(--red); }
+.tcard .card-menu button.del { color:var(--ink-red); }
 .tcard .card-date { font-size:.78rem; color:var(--muted); margin:6px 0 4px; }
 .tcard .card-date .muted-due { font-style:italic; opacity:.8; }
 .tcard .card-toggle { display:inline-flex; align-items:center; gap:6px; border:none; background:transparent; cursor:pointer; padding:2px 0; font-size:.78rem; color:var(--gold); font-weight:600; }
@@ -137,7 +137,7 @@ html:not(.dark-mode) .status-open { color:#2a6099; }
 .tcard .assignees[open] summary .chev { transform:rotate(90deg); }
 .assignee-list { margin-top:6px; display:flex; flex-direction:column; gap:4px; }
 .assignee-row { display:flex; align-items:center; justify-content:space-between; font-size:.8rem; gap:6px; }
-.assignee-row .x { cursor:pointer; color:var(--red); font-weight:700; padding:0 4px; }
+.assignee-row .x { cursor:pointer; color:var(--ink-red); font-weight:700; padding:0 4px; }
 .assignee-add { display:flex; gap:6px; margin-top:6px; }
 .assignee-add select { flex:1; font-size:.78rem; padding:3px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--text); }
 
@@ -286,7 +286,7 @@ html:not(.dark-mode) .kanban-col[data-col="open"] { --col-ink:#2a6099; }
 .kcard-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:9px; padding-left:3px; }
 .kcard-chip { display:inline-flex; align-items:center; gap:4px; min-height:22px; padding:3px 7px; border-radius:7px; color:var(--muted); background:var(--surface); font-size:.66rem; font-weight:700; }
 .kcard-chip.priority { text-transform:capitalize; }
-.kcard-chip.overdue { color:var(--red); background:rgba(200, 32, 47, .12); }
+.kcard-chip.overdue { color:var(--ink-red); background:rgba(200, 32, 47, .12); }
 .kcard-parent { display:flex; align-items:center; gap:6px; margin:8px 0 0 3px; padding:6px 8px; border-radius:8px; color:var(--muted); background:var(--surface); font-size:.68rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .kcard-parent span { overflow:hidden; text-overflow:ellipsis; }
 .kcard-desc { display:none; margin:9px 0 0 3px; padding:9px 1px 1px; border-top:1px solid var(--line); color:var(--muted); font-size:.76rem; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
@@ -318,14 +318,14 @@ body.list-mode .listview { display:block; }
 .listview .status-badge:hover { filter:brightness(1.15); }
 .listview .lv-title { cursor:pointer; }
 .listview .lv-title:hover { color:var(--gold); }
-.listview td.due-overdue { color:var(--red); font-weight:700; }
+.listview td.due-overdue { color:var(--ink-red); font-weight:700; }
 
 /* overdue on the canvas */
 .tcard.overdue { box-shadow:0 0 0 2px rgba(200, 32, 47, .55), var(--shadow-sm); }
-.tcard.overdue .card-date { color:var(--red); font-weight:700; }
+.tcard.overdue .card-date { color:var(--ink-red); font-weight:700; }
 .tcard .status-badge { cursor:pointer; }
 .tcard .status-badge:hover { filter:brightness(1.15); }
-.tl-meta.overdue { color:var(--red); font-weight:600; }
+.tl-meta.overdue { color:var(--ink-red); font-weight:600; }
 
 /* ---- modal: meta row (due/status/priority) sits above the title ---- */
 .modal-meta-row { margin-bottom:4px; }
@@ -356,7 +356,7 @@ body.list-mode .listview { display:block; }
 }
 .assignee-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .assignee-chip .rm { cursor:pointer; opacity:.65; font-size:.72rem; flex:none; }
-.assignee-chip .rm:hover { opacity:1; color:var(--red); }
+.assignee-chip .rm:hover { opacity:1; color:var(--ink-red); }
 .assignee-placeholder { color:var(--muted); }
 .assignee-panel {
   position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:60;
@@ -447,7 +447,7 @@ html.dark-mode .event-chip { background:rgba(201, 155, 63, .10); border-color:rg
   font-size:.75rem; line-height:1; padding:4px 5px; border-radius:5px;
 }
 .duty-tools button:hover { background:var(--surface); color:var(--gold); }
-.duty-tools button.rm:hover { color:var(--red); }
+.duty-tools button.rm:hover { color:var(--ink-red); }
 .duty-tools button[disabled] { opacity:.25; cursor:default; }
 .duty-tools button[disabled]:hover { background:none; color:var(--muted); }
 .duties-empty { color:var(--muted); font-size:.8rem; padding:12px; text-align:center; }
