@@ -142,20 +142,20 @@
     </div>
   </div>
 
-  <div class="block">
+  <div class="block head-mid">
     <div class="overline fx">What's next</div>
     <h2 class="statement fx">Pull up. <span class="g">You're invited.</span></h2>
     <div class="event-grid" id="events" style="margin-top:34px"></div>
   </div>
 
-  <div class="block" id="gstrip-sec" style="display:none">
+  <div class="block head-mid" id="gstrip-sec" style="display:none">
     <div class="overline fx">Recent moments</div>
     <h2 class="statement fx">Nights we <span class="g">won't forget</span>.</h2>
     <div class="gstrip fx" id="gstrip" style="margin-top:34px"></div>
     <p style="margin-top:22px"><a class="btn ghost" href="/about/gallery/">View the Gallery</a></p>
   </div>
 
-  <div class="block">
+  <div class="block head-mid">
     <div class="overline fx">Join us</div>
     <h2 class="statement fx">Two minutes to <span class="g">belong</span>.</h2>
     <div class="steps" style="margin-top:52px">
@@ -409,7 +409,8 @@ if (sponsors.length) {
   document.getElementById('sponsor-sec').style.display = 'block';
   document.getElementById('sponsors').innerHTML = sponsors.map(s => {
     const inner = s.logo_path
-      ? `<img src="${IMG + s.logo_path}" alt="${esc(s.name)}" title="${esc(s.name)}" loading="lazy">`
+      // no title= — the browser tooltip would name the sponsor on hover
+      ? `<img src="${IMG + s.logo_path}" alt="${esc(s.name)}" loading="lazy">`
       : `<span class="sp-name">${esc(s.name)}</span>`;
     return s.link_url
       ? `<a href="${esc(s.link_url)}" target="_blank" rel="noopener">${inner}</a>`

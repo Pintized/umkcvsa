@@ -101,7 +101,8 @@ const sponsors = data || [];
 if (sponsors.length) {
   document.getElementById('sponsors').innerHTML = sponsors.map(s => {
     const inner = s.logo_path
-      ? `<img src="${IMG + s.logo_path}" alt="${esc(s.name)}" title="${esc(s.name)}" loading="lazy">`
+      // no title= — the browser tooltip would name the sponsor on hover
+      ? `<img src="${IMG + s.logo_path}" alt="${esc(s.name)}" loading="lazy">`
       : `<span class="sp-name">${esc(s.name)}</span>`;
     return s.link_url
       ? `<a href="${esc(s.link_url)}" target="_blank" rel="noopener">${inner}</a>`
