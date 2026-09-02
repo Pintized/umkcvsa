@@ -16,7 +16,7 @@
 .fin-head .grp { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .fin-tabs { margin-bottom:16px; }
 .fin-balance { font-family:var(--serif); font-size:1.05rem; }
-.fin-balance strong { color:var(--gold); }
+.fin-balance strong { color:var(--ink-gold); }
 
 /* charts */
 .chart-card h3 { font-size:1rem; margin-bottom:12px; }
@@ -853,7 +853,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
         <div class="field" style="flex:2; min-width:160px"><label>URL / link</label><input class="r-url" placeholder="https://…"></div>
         <div class="field" style="min-width:120px; flex:0 1 150px"><label>Store</label><input class="r-store" list="store-names" placeholder="auto"></div>
         <div class="field" style="min-width:52px; flex:0 0 auto"><label>ID</label>
-          <div class="r-tx" style="padding:11px 2px; font-weight:700; color:var(--gold); white-space:nowrap">—</div></div>
+          <div class="r-tx" style="padding:11px 2px; font-weight:700; color:var(--ink-gold); white-space:nowrap">—</div></div>
         <button type="button" class="btn sm ghost r-del" title="Remove this item">✕</button>
       </div>`;
 
@@ -1137,7 +1137,7 @@ html:not(.dark-mode) .st-approved { color:#2a6099; }
                 <tr style="${past || done ? 'opacity:.45;' : ''}${next && !done ? 'background:rgba(201,155,63,.1);' : ''}${done ? 'background:rgba(47,158,99,.07);' : ''}">
                   <td><label class="p-check" title="Mark handled — also mutes the Discord reminders for this deadline">
                     <input type="checkbox" data-safc="${r[0]}" ${done ? 'checked' : ''}><span class="box"></span></label></td>
-                  <td><strong style="${done ? 'text-decoration:line-through' : ''}">${fmt(r[0])}</strong>${next && !done ? ' <span class="badge" style="background:rgba(201,155,63,.25); color:var(--gold, #c99b3f)">next</span>' : ''}${done ? ' <span class="badge" style="background:rgba(47,158,99,.18); color:var(--ink-green)">done</span>' : ''}</td>
+                  <td><strong style="${done ? 'text-decoration:line-through' : ''}">${fmt(r[0])}</strong>${next && !done ? ' <span class="badge" style="background:rgba(201,155,63,.25); color:var(--ink-gold)">next</span>' : ''}${done ? ' <span class="badge" style="background:rgba(47,158,99,.18); color:var(--ink-green)">done</span>' : ''}</td>
                   <td>${fmt(r[1])}</td>
                   <td>${fmt(r[2])}</td>
                   <td>${fmt(r[3])}</td>

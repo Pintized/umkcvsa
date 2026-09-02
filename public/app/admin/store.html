@@ -41,7 +41,7 @@
                style="width:44px; height:44px; border-radius:10px; object-fit:cover; border:1px solid var(--line)">
         </td>
         <td><strong>${esc(p.name)}</strong>${p.badge ? ` <span class="badge admin">${esc(p.badge)}</span>` : ''}${p.active ? '' : ' <span class="badge">hidden</span>'}</td>
-        <td style="font-family:var(--serif); font-weight:700; color:var(--gold)">$${Number(p.price).toFixed(2).replace(/\.00$/, '')}</td>
+        <td style="font-family:var(--serif); font-weight:700; color:var(--ink-gold)">$${Number(p.price).toFixed(2).replace(/\.00$/, '')}</td>
         <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted)">${esc(p.description)}</td>
         <td class="actions">
           <button class="btn sm ghost" data-mv="${p.id}" data-d="-1" ${i === 0 ? 'disabled' : ''}>↑</button>
