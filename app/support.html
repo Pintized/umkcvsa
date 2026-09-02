@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Loading support…</div>
+<script type="module">
+  import { requireLogin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireLogin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Support');
+
+  const CATEGORIES = [
+    ['question', 'General question'],
+    ['account', 'Account & login'],
+    ['events', 'Events'],
+    ['rewards', 'Rewards & points'],
+    ['bug', 'Bug report'],
+    ['other', 'Other'],
+  ];
+  const catLabel = (c) => (CATEGORIES.find(x => x[0] === c) || [, c])[1];
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const when = (iso) => new Date(iso).toLocaleString('en-US',
+    { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  let tickets = [], sel = null, msgs = [], people = new Map();
+
+  async function load() {
+    const [tRes, pRes] = await Promise.all([
+      supabase.from('tickets').select('*').eq('user_id', ctx.user.id)
+        .order('updated_at', { ascending: false }),
+      supabase.from('profiles').select('id, full_name'),
+    ]);
+    tickets = tRes.data || [];
+    people = new Map((pRes.data || []).map(p => [p.id, p.full_name || 'Member']));
+    if (sel && !tickets.some(t => t.id === sel)) sel = null;
+    render();
+    if (sel) loadThread(sel);
+  }
+
+  async function loadThread(id) {
+    const { data } = await supabase.from('ticket_messages')
+      .select('*').eq('ticket_id', id).order('created_at');
+    msgs = data || [];
+    renderThread();
+  }
+
+  function render() {
+    page.innerHTML = `
+      <div class="m-page">
+        <section class="m-sec">
+          <h2>Open a ticket</h2>
+          <div class="notice" id="new-err"></div>
+          <div class="field"><label>Subject</label>
+            <input id="t-subject" maxlength="180" placeholder="Short summary of the issue"></div>
+          <div class="field-row">
+            <div class="field"><label>Category</label>
+              <select id="t-cat">${CATEGORIES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+            </div>
+          </div>
+          <div class="field"><label>What's going on?</label>
+            <textarea id="t-body" rows="4" placeholder="Describe the problem or question in as much detail as you can."></textarea></div>
+          <button class="btn" id="t-send">Submit ticket</button>
+        </section>
+
+        <section class="m-sec">
+          <h2>Your tickets</h2>
+          ${tickets.length ? `<div class="m-list" id="t-list">${tickets.map(t => `
+            <div class="m-row tk-row${sel === t.id ? ' on' : ''}" data-t="${t.id}">
+              <span class="tk-pill ${t.status}">${esc(t.status.replace('_', ' '))}</span>
+              <div style="min-width:0">
+                <strong>${esc(t.subject)}</strong><br>
+                <span style="color:var(--muted); font-size:.84rem">
+                  ${esc(catLabel(t.category))} · updated ${when(t.updated_at)}
+                </span>
+              </div>
+            </div>`).join('')}</div>`
+            : '<p style="color:var(--muted)">You haven’t opened any tickets yet.</p>'}
+        </section>
+
+        <section class="m-sec" id="thread-sec" ${sel ? '' : 'hidden'}>
+          <h2>Conversation</h2>
+          <div id="thread"></div>
+        </section>
+      </div>`;
+
+    document.getElementById('t-send').onclick = submit;
+    page.querySelectorAll('[data-t]').forEach(el => el.onclick = () => {
+      sel = +el.dataset.t; render(); loadThread(sel);
+    });
+    if (sel) renderThread();
+  }
+
+  function renderThread() {
+    const box = document.getElementById('thread');
+    if (!box) return;
+    const t = tickets.find(x => x.id === sel);
+    if (!t) return;
+    const closed = t.status === 'closed';
+    box.innerHTML = `
+      <div class="tk-head">
+        <span class="tk-pill ${t.status}">${esc(t.status.replace('_', ' '))}</span>
+        <strong>${esc(t.subject)}</strong>
+      </div>
+      <div class="tk-thread">${msgs.map(m => `
+        <div class="tk-msg${m.user_id === ctx.user.id ? ' mine' : ''}">
+          <div class="tk-msg-head">
+            <span>${esc(m.user_id === ctx.user.id ? 'You' : (people.get(m.user_id) || 'VSA officer'))}</span>
+            <span>${when(m.created_at)}</span>
+          </div>
+          <div class="tk-msg-body">${esc(m.body)}</div>
+        </div>`).join('') || '<p style="color:var(--muted); font-size:.88rem">No messages yet.</p>'}
+      </div>
+      ${closed
+        ? '<p style="color:var(--muted); font-size:.85rem; margin-top:12px">This ticket is closed. Open a new one if you still need help.</p>'
+        : `<div class="field" style="margin-top:14px"><label>Reply</label>
+             <textarea id="r-body" rows="3" placeholder="Add to the conversation…"></textarea></div>
+           <div class="notice" id="r-err"></div>
+           <button class="btn secondary" id="r-send">Send reply</button>`}`;
+
+    const rb = document.getElementById('r-send');
+    if (rb) rb.onclick = reply;
+  }
+
+  async function submit() {
+    const err = document.getElementById('new-err');
+    const say = (m) => { err.textContent = m; err.className = 'notice error'; };
+    const subject = document.getElementById('t-subject').value.trim();
+    const body = document.getElementById('t-body').value.trim();
+    if (!subject) return say('Give your ticket a subject.');
+    if (!body) return say('Describe the issue so an officer can help.');
+
+    const btn = document.getElementById('t-send');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    const { data, error } = await supabase.from('tickets').insert({
+      user_id: ctx.user.id, subject,
+      category: document.getElementById('t-cat').value,
+    }).select('id').single();
+    if (error) { btn.disabled = false; btn.textContent = 'Submit ticket'; return say(error.message); }
+
+    const { error: mErr } = await supabase.from('ticket_messages')
+      .insert({ ticket_id: data.id, user_id: ctx.user.id, body });
+    if (mErr) { btn.disabled = false; btn.textContent = 'Submit ticket'; return say(mErr.message); }
+
+    sel = data.id;
+    await load();
+    document.getElementById('thread-sec')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function reply() {
+    const err = document.getElementById('r-err');
+    const say = (m) => { err.textContent = m; err.className = 'notice error'; };
+    const body = document.getElementById('r-body').value.trim();
+    if (!body) return say('Write something first.');
+    const btn = document.getElementById('r-send');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const { error } = await supabase.from('ticket_messages')
+      .insert({ ticket_id: sel, user_id: ctx.user.id, body });
+    if (error) { btn.disabled = false; btn.textContent = 'Send reply'; return say(error.message); }
+    await load();
+  }
+
+  // officer replies land while the page is open
+  supabase.channel('support-' + ctx.user.id)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ticket_messages' },
+      () => { if (sel) loadThread(sel); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets',
+      filter: `user_id=eq.${ctx.user.id}` }, () => load())
+    .subscribe();
+
+  await load();
+</script>
+</body>
+</html>
