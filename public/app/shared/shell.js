@@ -2,6 +2,7 @@
 // wires up theme toggle + logout. Replaces the legacy PHP partials
 // (sidebar.php, topbar.php, theme-toggle.php).
 import { isOfficer, logout } from './guard.js';
+import { supabase } from './supabase.js';
 
 // Custom line-icon set (stroke inherits link color; gold dot accents)
 const SVG = (inner) =>
@@ -30,11 +31,14 @@ const ICONS = {
   form: SVG('<rect x="4.6" y="3.6" width="14.8" height="16.8" rx="2"/><path d="m7.6 8.2 1.1 1.1 2-2.1M13 8.6h3.6"/><path d="m7.6 13 1.1 1.1 2-2.1M13 13.4h3.6"/><path d="M8 17.6h8.6"/>'),
   bot: SVG('<rect x="5" y="8.6" width="14" height="9.8" rx="3"/><circle cx="9.4" cy="13.2" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.6" cy="13.2" r="1.3" fill="currentColor" stroke="none"/><path d="M12 8.6V5.6M12 4.2a1.3 1.3 0 1 0 0 .01M5 13.4H3.4M20.6 13.4H19"/>'),
   eye: SVG('<path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="3"/>'),
+  lifebuoy: SVG('<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.6"/><path d="m6 6 3.5 3.5M14.5 14.5 18 18M18 6l-3.5 3.5M9.5 14.5 6 18"/>'),
+  ticket: SVG('<path d="M3.4 9.2V7.4a1.6 1.6 0 0 1 1.6-1.6h14a1.6 1.6 0 0 1 1.6 1.6v1.8a2.8 2.8 0 0 0 0 5.6v1.8a1.6 1.6 0 0 1-1.6 1.6H5a1.6 1.6 0 0 1-1.6-1.6v-1.8a2.8 2.8 0 0 0 0-5.6Z"/><path d="M14 6.4v11.2"/>'),
+  bell: SVG('<path d="M18 8.6a6 6 0 1 0-12 0c0 5-2 6.4-2 6.4h16s-2-1.4-2-6.4Z"/><path d="M13.7 19a2 2 0 0 1-3.4 0"/>'),
 };
 
+// Calendar was folded into the Dashboard; /app/calendar now redirects there.
 const MEMBER_LINKS = [
   { href: '/app/',                  label: 'Dashboard',    icon: 'dashboard' },
-  { href: '/app/calendar',     label: 'Calendar',     icon: 'calendar' },
   { href: '/app/achievements', label: 'Achievements', icon: 'trophy' },
   { href: '/app/rewards',      label: 'Rewards',      icon: 'gift' },
   { href: '/app/members',      label: 'Members',      icon: 'users' },
@@ -43,6 +47,7 @@ const MEMBER_LINKS = [
 // personal configuration pages, separate from day-to-day functions
 const SETTINGS_LINKS = [
   { href: '/app/profile',      label: 'My Profile',   icon: 'user' },
+  { href: '/app/support',      label: 'Support',      icon: 'lifebuoy' },
   { href: '/app/settings',     label: 'Settings',     icon: 'gear' },
 ];
 
@@ -56,6 +61,8 @@ const I18N = {
     Inventory: 'Kho đồ', Finance: 'Tài chính', Notes: 'Ghi chú', 'Audit Log': 'Nhật ký hoạt động', Inbox: 'Hộp thư', 'Member Directory': 'Danh bạ thành viên', 'Engagement Settings': 'Cài đặt tương tác', Forms: 'Biểu mẫu',
     Roles: 'Vai trò', 'Home Page': 'Trang chủ', 'E-Board': 'Ban chấp hành', Store: 'Cửa hàng',
     Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất', 'Main site': 'Trang chính',
+    Support: 'Hỗ trợ', Tickets: 'Yêu cầu hỗ trợ',
+    Notifications: 'Thông báo', 'Mark all read': 'Đánh dấu đã đọc',
   },
   es: {
     Member: 'Miembro', Officer: 'Oficiales', Admin: 'Administración', Settings: 'Configuración',
@@ -64,6 +71,8 @@ const I18N = {
     Inventory: 'Inventario', Finance: 'Finanzas', Notes: 'Notas', 'Audit Log': 'Registro de actividad', Inbox: 'Buzón', 'Member Directory': 'Directorio de miembros', 'Engagement Settings': 'Ajustes de participación', Forms: 'Formularios',
     Roles: 'Roles', 'Home Page': 'Página de inicio', 'E-Board': 'Directiva', Store: 'Tienda',
     Gallery: 'Galería', 'Log out': 'Cerrar sesión', 'Main site': 'Sitio principal',
+    Support: 'Soporte', Tickets: 'Tickets',
+    Notifications: 'Notificaciones', 'Mark all read': 'Marcar todo como leído',
   },
   zh: {
     Member: '成员', Officer: '干部', Admin: '管理', Settings: '设置',
@@ -72,20 +81,25 @@ const I18N = {
     Inventory: '库存', Finance: '财务', Notes: '笔记', 'Audit Log': '审计日志', Inbox: '收件箱', 'Member Directory': '成员名录', 'Engagement Settings': '互动设置', Forms: '表单',
     Roles: '角色', 'Home Page': '首页', 'E-Board': '执行委员会', Store: '商店',
     Gallery: '相册', 'Log out': '退出登录', 'Main site': '主网站',
+    Support: '支持', Tickets: '工单',
+    Notifications: '通知', 'Mark all read': '全部标为已读',
   },
 };
 const tr = (lang, s) => (I18N[lang] && I18N[lang][s]) || s;
 
 const OFFICER_LINKS = [
-  { href: '/app/officer/events',    label: 'Events',    icon: 'pin' },
-  { href: '/app/officer/tasks',     label: 'Tasks',     icon: 'board' },
-  { href: '/app/officer/inventory', label: 'Inventory', icon: 'box' },
-  { href: '/app/officer/finance',   label: 'Finance',   icon: 'coin' },
-  { href: '/app/officer/notes',     label: 'Notes',     icon: 'note' },
-  { href: '/app/officer/inbox',     label: 'Inbox',     icon: 'mail' },
-  { href: '/app/officer/directory', label: 'Member Directory', icon: 'users' },
+  // kept A–Z; add new officer tools in alphabetical position
   { href: '/app/officer/engagement', label: 'Engagement Settings', icon: 'trophy' },
-  { href: '/app/officer/forms', label: 'Forms', icon: 'form' },
+  { href: '/app/officer/events',     label: 'Events',            icon: 'pin' },
+  { href: '/app/officer/finance',    label: 'Finance',           icon: 'coin' },
+  { href: '/app/officer/forms',      label: 'Forms',             icon: 'form' },
+  { href: '/app/officer/gallery',    label: 'Gallery',           icon: 'camera' },
+  { href: '/app/officer/inbox',      label: 'Inbox',             icon: 'mail' },
+  { href: '/app/officer/inventory',  label: 'Inventory',         icon: 'box' },
+  { href: '/app/officer/directory',  label: 'Member Directory',  icon: 'users' },
+  { href: '/app/officer/notes',      label: 'Notes',             icon: 'note' },
+  { href: '/app/officer/tasks',      label: 'Tasks',             icon: 'board' },
+  { href: '/app/officer/tickets',    label: 'Tickets',           icon: 'ticket' },
 ];
 
 // site content managers — admins only
@@ -93,7 +107,6 @@ const ADMIN_LINKS = [
   { href: '/app/admin/home',      label: 'Home Page', icon: 'megaphone' },
   { href: '/app/admin/eboard',    label: 'E-Board',  icon: 'crown' },
   { href: '/app/admin/store',     label: 'Store',    icon: 'tag' },
-  { href: '/app/officer/gallery', label: 'Gallery',  icon: 'camera' },
   { href: '/app/officer/roles',   label: 'Roles',    icon: 'shield' },
   { href: '/app/officer/audit',   label: 'Audit Log', icon: 'scope' },
   { href: '/app/admin/bot',       label: 'VSA Bot',  icon: 'bot' },
@@ -105,6 +118,10 @@ const ADMIN_LINKS = [
 export const MANAGED_PAGES = [
   ...MEMBER_LINKS.filter((l) => l.href !== '/app/').map((l) => ({ ...l, section: 'Member' })),
   ...OFFICER_LINKS.map((l) => ({ ...l, section: 'Officer' })),
+  // Support lives in the Settings group but stays hideable. My Profile and
+  // Settings deliberately don't — hiding those would strand a member with no
+  // way back to their own account.
+  ...SETTINGS_LINKS.filter((l) => l.href === '/app/support').map((l) => ({ ...l, section: 'Member' })),
 ];
 
 function navLink({ href, label, icon, soon, off }, officerLink = false) {
@@ -170,7 +187,7 @@ export function renderShell(ctx, pageTitle) {
           ${officer ? `<div class="nav-label">${tr(lang, 'Officer')}</div>${vis(OFFICER_LINKS).map(l => navLink(mk(l), true)).join('')}` : ''}
           ${ctx.roles.includes('admin') ? `<div class="nav-label">${tr(lang, 'Admin')}</div>${ADMIN_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) }, true)).join('')}` : ''}
           <div class="nav-label">${tr(lang, 'Settings')}</div>
-          ${SETTINGS_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) })).join('')}
+          ${vis(SETTINGS_LINKS).map(l => navLink(mk(l))).join('')}
         </nav>
         <div class="foot">Vietnamese Student Association<br>at UMKC</div>
       </aside>
@@ -181,6 +198,21 @@ export function renderShell(ctx, pageTitle) {
         <header class="topbar">
           <div class="page-title">${pageTitle}</div>
           <div class="actions">
+            <div class="notif" id="notif">
+              <button class="notif-btn" id="notif-btn" type="button"
+                      aria-haspopup="true" aria-expanded="false"
+                      title="${tr(lang, 'Notifications')}" aria-label="${tr(lang, 'Notifications')}">
+                ${ICONS.bell}
+                <span class="notif-dot" id="notif-dot" hidden></span>
+              </button>
+              <div class="notif-panel" id="notif-panel">
+                <div class="notif-head">
+                  <span>${tr(lang, 'Notifications')}</span>
+                  <button type="button" id="notif-read-all">${tr(lang, 'Mark all read')}</button>
+                </div>
+                <div class="notif-list" id="notif-list"></div>
+              </div>
+            </div>
             <a class="btn ghost" href="/" style="text-decoration:none">${tr(lang, 'Main site')}</a>
             <div class="userchip">
               <img src="${avatar}" alt="">
@@ -208,8 +240,101 @@ export function renderShell(ctx, pageTitle) {
       collapsed ? 'Expand sidebar' : 'Collapse sidebar');
   });
 
+  wireNotifications(ctx);
+
   const content = document.getElementById('page-content');
   new MutationObserver(() => animateStats(content))
     .observe(content, { childList: true, subtree: true });
   return content;
+}
+
+// ---------- notification bell ----------
+// Lives in the shell so every signed-in page gets it. Rows are written by
+// the security-definer triggers in 20260830120000_support_tickets, never by
+// the client, so this only ever reads and marks-as-read.
+let notifCh = null;
+
+function wireNotifications(ctx) {
+  const wrap = document.getElementById('notif');
+  const panel = document.getElementById('notif-panel');
+  const btn = document.getElementById('notif-btn');
+  const dot = document.getElementById('notif-dot');
+  const list = document.getElementById('notif-list');
+  if (!wrap) return;
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ago = (iso) => {
+    const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  };
+
+  async function load() {
+    const { data } = await supabase.from('notifications')
+      .select('*').eq('user_id', ctx.user.id)
+      .order('created_at', { ascending: false }).limit(12);
+    const rows = data || [];
+    const unread = rows.filter(n => !n.read_at).length;
+
+    dot.hidden = unread === 0;
+    dot.textContent = unread > 9 ? '9+' : String(unread);
+    btn.setAttribute('aria-label', unread ? `Notifications (${unread} unread)` : 'Notifications');
+
+    list.innerHTML = rows.length ? rows.map(n => `
+      <button type="button" class="notif-item${n.read_at ? '' : ' unread'}"
+              data-id="${n.id}" data-link="${esc(n.link || '')}">
+        <span class="notif-title">${esc(n.title)}</span>
+        ${n.body ? `<span class="notif-body">${esc(n.body)}</span>` : ''}
+        <span class="notif-when">${ago(n.created_at)}</span>
+      </button>`).join('')
+      : '<p class="notif-empty">Nothing yet.</p>';
+
+    list.querySelectorAll('.notif-item').forEach(el => {
+      el.onclick = async () => {
+        await supabase.from('notifications')
+          .update({ read_at: new Date().toISOString() }).eq('id', +el.dataset.id);
+        const to = el.dataset.link;
+        if (to) location.href = to; else load();
+      };
+    });
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = wrap.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) load();
+  });
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) { wrap.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { wrap.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+  });
+  panel.addEventListener('click', (e) => e.stopPropagation());
+
+  document.getElementById('notif-read-all').onclick = async () => {
+    await supabase.from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', ctx.user.id).is('read_at', null);
+    load();
+  };
+
+  // live badge — filtered server-side to this member's rows
+  if (!notifCh) {
+    notifCh = supabase.channel('notif-' + ctx.user.id)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${ctx.user.id}`,
+      }, () => load())
+      .subscribe();
+  }
+  // safety net: realtime is paused in background tabs
+  setInterval(() => { if (!document.hidden) load(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+
+  load();
 }

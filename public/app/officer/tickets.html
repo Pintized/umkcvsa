@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tickets | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+<style>
+  .tk-wrap { display:grid; grid-template-columns:minmax(0,340px) minmax(0,1fr); gap:16px; align-items:start; }
+  @media (max-width:1000px){ .tk-wrap { grid-template-columns:minmax(0,1fr); } }
+  .tk-list { max-height:calc(100vh - 300px); overflow-y:auto; }
+  .tk-li {
+    display:flex; gap:10px; align-items:flex-start; width:100%; text-align:left;
+    background:none; border:0; border-bottom:1px solid var(--line);
+    padding:12px 6px; cursor:pointer; font:inherit; color:var(--text);
+  }
+  .tk-li:last-child { border-bottom:0; }
+  .tk-li:hover { background:var(--surface-2); }
+  .tk-li.on { background:var(--surface-2); box-shadow:inset 3px 0 0 var(--gold); }
+  .tk-li .who { font-size:.78rem; color:var(--muted); }
+  .tk-empty { color:var(--muted); font-size:.88rem; padding:22px 4px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading tickets…</div>
+<script type="module">
+  import { requireOfficer } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireOfficer();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Tickets');
+
+  const STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+  const CATS = {
+    question: 'General question', account: 'Account & login', events: 'Events',
+    rewards: 'Rewards & points', bug: 'Bug report', other: 'Other',
+  };
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const when = (iso) => new Date(iso).toLocaleString('en-US',
+    { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  let tickets = [], msgs = [], people = new Map(), sel = null, filter = 'open';
+
+  async function load() {
+    const [tRes, pRes] = await Promise.all([
+      supabase.from('tickets').select('*').order('updated_at', { ascending: false }),
+      supabase.from('profiles').select('id, full_name'),
+    ]);
+    tickets = tRes.data || [];
+    people = new Map((pRes.data || []).map(p => [p.id, p.full_name || 'Member']));
+    render();
+    if (sel) loadThread(sel);
+  }
+
+  async function loadThread(id) {
+    const { data } = await supabase.from('ticket_messages')
+      .select('*').eq('ticket_id', id).order('created_at');
+    msgs = data || [];
+    renderThread();
+  }
+
+  const shown = () => filter === 'all' ? tickets : tickets.filter(t => t.status === filter);
+
+  function render() {
+    const counts = Object.fromEntries(STATUSES.map(s => [s, tickets.filter(t => t.status === s).length]));
+    page.innerHTML = `
+      <div class="card">
+        <div class="filter-bar" style="margin-bottom:14px">
+          ${STATUSES.map(s => `<button class="chip-btn ${filter === s ? 'on' : ''}" data-f="${s}">
+            ${s.replace('_', ' ')}${counts[s] ? ` (${counts[s]})` : ''}</button>`).join('')}
+          <button class="chip-btn ${filter === 'all' ? 'on' : ''}" data-f="all">all (${tickets.length})</button>
+        </div>
+        <div class="tk-wrap">
+          <div class="tk-list" id="tk-list"></div>
+          <div id="tk-view"></div>
+        </div>
+      </div>`;
+
+    const list = document.getElementById('tk-list');
+    const rows = shown();
+    list.innerHTML = rows.length ? rows.map(t => `
+      <button type="button" class="tk-li${sel === t.id ? ' on' : ''}" data-t="${t.id}">
+        <span class="tk-pill ${t.status}">${esc(t.status.replace('_', ' '))}</span>
+        <span style="min-width:0">
+          <strong style="display:block">${esc(t.subject)}</strong>
+          <span class="who">${esc(people.get(t.user_id) || 'Member')} · ${esc(CATS[t.category] || t.category)} · ${when(t.updated_at)}</span>
+        </span>
+      </button>`).join('')
+      : `<p class="tk-empty">No ${filter === 'all' ? '' : filter.replace('_', ' ')} tickets.</p>`;
+
+    page.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; render(); });
+    list.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+      sel = +b.dataset.t; render(); loadThread(sel);
+    });
+    renderThread();
+  }
+
+  function renderThread() {
+    const box = document.getElementById('tk-view');
+    if (!box) return;
+    const t = tickets.find(x => x.id === sel);
+    if (!t) {
+      box.innerHTML = '<p class="tk-empty">Select a ticket to read and reply.</p>';
+      return;
+    }
+    box.innerHTML = `
+      <div class="tk-head">
+        <span class="tk-pill ${t.status}">${esc(t.status.replace('_', ' '))}</span>
+        <strong>${esc(t.subject)}</strong>
+      </div>
+      <p style="color:var(--muted); font-size:.84rem; margin-bottom:12px">
+        ${esc(people.get(t.user_id) || 'Member')} · ${esc(CATS[t.category] || t.category)} · opened ${when(t.created_at)}
+      </p>
+      <div class="field-row" style="margin-bottom:12px">
+        <div class="field"><label>Status</label>
+          <select id="tk-status">${STATUSES.map(s =>
+            `<option value="${s}" ${t.status === s ? 'selected' : ''}>${s.replace('_', ' ')}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="tk-thread">${msgs.map(m => `
+        <div class="tk-msg${m.user_id === t.user_id ? '' : ' mine'}">
+          <div class="tk-msg-head">
+            <span>${esc(m.user_id === t.user_id ? (people.get(m.user_id) || 'Member') : (people.get(m.user_id) || 'Officer'))}</span>
+            <span>${when(m.created_at)}</span>
+          </div>
+          <div class="tk-msg-body">${esc(m.body)}</div>
+        </div>`).join('') || '<p style="color:var(--muted); font-size:.88rem">No messages yet.</p>'}
+      </div>
+      <div class="field" style="margin-top:14px"><label>Reply</label>
+        <textarea id="tk-reply" rows="3" placeholder="Write your response…"></textarea></div>
+      <div class="notice" id="tk-err"></div>
+      <button class="btn" id="tk-send">Send reply</button>`;
+
+    document.getElementById('tk-status').onchange = async (e) => {
+      const { error } = await supabase.from('tickets')
+        .update({ status: e.target.value, updated_at: new Date().toISOString() }).eq('id', t.id);
+      if (error) { alert(error.message); return; }
+      load();
+    };
+    document.getElementById('tk-send').onclick = async () => {
+      const err = document.getElementById('tk-err');
+      const body = document.getElementById('tk-reply').value.trim();
+      if (!body) { err.textContent = 'Write a reply first.'; err.className = 'notice error'; return; }
+      const btn = document.getElementById('tk-send');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      const { error } = await supabase.from('ticket_messages')
+        .insert({ ticket_id: t.id, user_id: ctx.user.id, body });
+      if (error) {
+        err.textContent = error.message; err.className = 'notice error';
+        btn.disabled = false; btn.textContent = 'Send reply'; return;
+      }
+      // an officer answering moves it along unless it's already settled
+      if (t.status === 'open') {
+        await supabase.from('tickets').update({ status: 'in_progress' }).eq('id', t.id);
+      }
+      load();
+    };
+  }
+
+  supabase.channel('tickets-desk')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ticket_messages' },
+      () => { if (sel) loadThread(sel); })
+    .subscribe();
+
+  await load();
+</script>
+</body>
+</html>
