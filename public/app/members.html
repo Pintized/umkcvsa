@@ -104,24 +104,26 @@
   }).join('') || '<p style="color:var(--muted)">No one on the board yet.</p>';
 
   page.innerHTML = `
-    <div class="card">
-      <div class="lb-head">
-        <h2 style="margin:0">Leaderboard</h2>
-        <div class="lb-nav">
-          <button id="lb-prev" aria-label="Previous page">‹</button>
-          <span id="lb-where"></span>
-          <button id="lb-next" aria-label="Next page">›</button>
+    <div class="m-page">
+      <section class="m-sec">
+        <div class="m-sec-head lb-head">
+          <h2>Leaderboard</h2>
+          <div class="lb-nav">
+            <button id="lb-prev" aria-label="Previous page">‹</button>
+            <span id="lb-where"></span>
+            <button id="lb-next" aria-label="Next page">›</button>
+          </div>
         </div>
-      </div>
-      <div class="lb-list" id="lb-list"></div>
-    </div>
-    <div class="card">
-      <h2>Member directory</h2>
-      <input class="searchbar" id="search" type="search" placeholder="Search members…">
-      ${error ? `<p style="color:var(--red)">${error.message}</p>` : `
-        <div class="member-list" id="list">${(members || []).map(card).join('')}</div>
-        <p style="color:var(--muted); font-size:.85rem; margin-top:14px">${(members || []).length} member${members?.length === 1 ? '' : 's'}</p>
-      `}
+        <div class="lb-list" id="lb-list"></div>
+      </section>
+      <section class="m-sec">
+        <h2>Member directory</h2>
+        <input class="searchbar" id="search" type="search" placeholder="Search members…">
+        ${error ? `<p style="color:var(--red)">${error.message}</p>` : `
+          <div class="member-list" id="list">${(members || []).map(card).join('')}</div>
+          <p style="color:var(--muted); font-size:.85rem; margin-top:14px">${(members || []).length} member${members?.length === 1 ? '' : 's'}</p>
+        `}
+      </section>
     </div>`;
 
   // live online indicators — guard.js joins the presence channel on

@@ -47,19 +47,21 @@
   };
 
   page.innerHTML = `
-    <div class="card">
-      <h2>Your progress</h2>
-      <div class="stat-grid">
-        <div class="stat"><div class="num">${earnedIds.size}</div><div class="lbl">Achievements earned</div></div>
-        <div class="stat"><div class="num">${(totalEarned ?? 0).toLocaleString('vi-VN')}</div><div class="lbl">VND from achievements</div></div>
-        <div class="stat"><div class="num">${(ctx.profile?.points ?? 0).toLocaleString('vi-VN')}</div><div class="lbl">Total VND</div></div>
-      </div>
-    </div>
-    <div class="card">
-      <h2>All achievements</h2>
-      ${(achievements && achievements.length)
-        ? `<div class="tile-grid">${achievements.map(tile).join('')}</div>`
-        : '<p style="color:var(--muted)">No achievements have been created yet.</p>'}
+    <div class="m-page">
+      <section class="m-sec">
+        <h2>Your progress</h2>
+        <div class="stat-grid">
+          <div class="stat"><div class="num">${earnedIds.size}</div><div class="lbl">Achievements earned</div></div>
+          <div class="stat"><div class="num">${(totalEarned ?? 0).toLocaleString('vi-VN')}</div><div class="lbl">VND from achievements</div></div>
+          <div class="stat"><div class="num">${(ctx.profile?.points ?? 0).toLocaleString('vi-VN')}</div><div class="lbl">Total VND</div></div>
+        </div>
+      </section>
+      <section class="m-sec">
+        <h2>All achievements</h2>
+        ${(achievements && achievements.length)
+          ? `<div class="tile-grid">${achievements.map(tile).join('')}</div>`
+          : '<p style="color:var(--muted)">No achievements have been created yet.</p>'}
+      </section>
     </div>`;
 </script>
 </body>

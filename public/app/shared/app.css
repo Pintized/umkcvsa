@@ -24,6 +24,7 @@
   --shadow-lg: 0 4px 10px rgba(10, 26, 43, .08), 0 18px 44px rgba(10, 26, 43, .12);
   --sidebar-width: 264px;
   --header-h: 72px;
+  --content-pad: 28px;   /* .content padding; .m-bleed negates it to span the area */
   --serif: 'Playfair Display', serif;
   --sans: 'Source Sans 3', system-ui, sans-serif;
   --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 1L43 22L22 43L1 22Z' fill='none' stroke='%23c99b3f' stroke-opacity='.16'/%3E%3C/svg%3E");
@@ -355,6 +356,33 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   transition: opacity .2s ease;
 }
 
+/* ---------- sidebar in light mode ----------
+   The rail was authored with hardcoded dark values and no light variant, so
+   light mode used to stop at the content edge. These override only the
+   colours; structure, the gold edge and the lattice all stay put. Scoped to
+   :not(.dark-mode) so the dark theme is untouched.
+   Text colours were picked for >=4.5:1 (AA) against the rail's mid-tone —
+   the obvious gold and grey both failed at first pass. */
+html:not(.dark-mode) .sidebar {
+  background: linear-gradient(178deg, #fffdf9 0%, #f0e8d9 100%);
+  color: var(--text);
+  border-right: 1px solid var(--line);
+}
+html:not(.dark-mode) .sidebar::after { opacity: .22; }
+html:not(.dark-mode) .sidebar .brand { border-bottom-color: var(--line); }
+html:not(.dark-mode) .sidebar .brand span { color: var(--navy); }
+html:not(.dark-mode) .sidebar .nav-label { color: #7a5a15; opacity: 1; }
+html:not(.dark-mode) .sidebar nav a { color: #5a6675; }
+html:not(.dark-mode) .sidebar nav a:hover { background: rgba(20, 48, 74, .07); color: var(--navy); }
+html:not(.dark-mode) .sidebar nav a.active {
+  background: linear-gradient(90deg, rgba(201, 155, 63, .28), rgba(201, 155, 63, .07));
+  color: var(--navy);
+}
+html:not(.dark-mode) .sidebar nav a.officer-link { color: #b81f2c; }
+html:not(.dark-mode) .sidebar nav a.officer-link:hover { color: #8f1722; background: rgba(200, 32, 47, .10); }
+html:not(.dark-mode) .sidebar nav a.officer-link.active { color: var(--navy); }
+html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--line); }
+
 /* ---------- topbar + content ---------- */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar {
@@ -394,17 +422,98 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   font-family: var(--serif);
   font-weight: 700;
   font-size: 1.28rem;
-  position: relative;
-  padding-left: 14px;
-}
-.topbar .page-title::before {
-  content: "";
-  position: absolute; left: 0; top: 4px; bottom: 4px;
-  width: 4px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--gold-bright), var(--red));
 }
 .topbar .actions { display: flex; align-items: center; gap: 12px; }
+
+/* ---------- notification bell ---------- */
+.notif { position: relative; }
+.notif-btn {
+  position: relative; display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 10px;
+  background: none; border: 1px solid var(--line); color: var(--text);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.notif-btn:hover, .notif.open .notif-btn { border-color: var(--gold); background: var(--surface-2); }
+.notif-btn .nav-ic { width: 19px; height: 19px; }
+.notif-dot {
+  position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px;
+  padding: 0 4px; border-radius: 999px; background: var(--red); color: #fff;
+  font-size: .64rem; font-weight: 800; line-height: 17px; text-align: center;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.notif-panel {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
+  width: 330px; max-width: calc(100vw - 32px);
+  background: var(--surface); border: 1px solid rgba(201, 155, 63, .45);
+  border-radius: 12px; box-shadow: var(--shadow-lg);
+  display: none; overflow: hidden;
+}
+.notif.open .notif-panel { display: block; }
+.notif-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 11px 14px; border-bottom: 1px solid var(--line);
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--gold);
+}
+.notif-head button {
+  background: none; border: 0; cursor: pointer; font: inherit;
+  font-size: .68rem; color: var(--muted); text-transform: none; letter-spacing: 0;
+}
+.notif-head button:hover { color: var(--gold); text-decoration: underline; }
+.notif-list { max-height: 380px; overflow-y: auto; }
+.notif-item {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 11px 14px; font: inherit; color: var(--text);
+}
+.notif-item:last-child { border-bottom: 0; }
+.notif-item:hover { background: var(--surface-2); }
+/* unread carries a gold edge so the eye finds it without relying on weight */
+.notif-item.unread { border-left: 3px solid var(--gold); padding-left: 11px; }
+.notif-title { display: block; font-size: .86rem; font-weight: 700; }
+.notif-item.unread .notif-title { color: var(--gold); }
+.notif-body {
+  display: block; font-size: .78rem; color: var(--muted); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.notif-when { display: block; font-size: .7rem; color: var(--muted); margin-top: 4px; }
+.notif-empty { padding: 22px 14px; text-align: center; color: var(--muted); font-size: .84rem; }
+@media (max-width: 560px) { .notif-panel { width: 290px; } }
+
+/* ---------- support tickets (member Support + officer Tickets) ---------- */
+.tk-pill {
+  flex: none; display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: .66rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+}
+.tk-pill.open        { background: rgba(232, 163, 61, .16); border-color: rgba(232, 163, 61, .5); color: var(--warn); }
+.tk-pill.in_progress { background: rgba(63, 127, 191, .16); border-color: rgba(63, 127, 191, .5); color: #3f7fbf; }
+.tk-pill.resolved    { background: rgba(47, 158, 99, .16);  border-color: rgba(47, 158, 99, .5);  color: var(--ok); }
+.tk-pill.closed      { background: var(--surface-2); color: var(--muted); }
+
+.tk-row { cursor: pointer; align-items: flex-start; }
+.tk-row:hover { background: var(--surface-2); }
+.tk-row.on { box-shadow: inset 3px 0 0 var(--gold); }
+
+.tk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.tk-head strong { font-family: var(--serif); font-size: 1.05rem; }
+
+.tk-thread { display: flex; flex-direction: column; gap: 10px; }
+.tk-msg {
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 13px;
+  background: var(--surface-2); max-width: 88%;
+}
+/* your own messages sit right and carry the gold edge */
+.tk-msg.mine {
+  align-self: flex-end; background: rgba(201, 155, 63, .10);
+  border-color: rgba(201, 155, 63, .42);
+}
+.tk-msg-head {
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: .72rem; color: var(--muted); margin-bottom: 4px;
+}
+.tk-msg-head span:first-child { font-weight: 700; color: var(--gold); }
+.tk-msg-body { font-size: .9rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
 .theme-toggle {
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -422,7 +531,173 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   box-shadow: 0 0 0 2px var(--gold);
 }
 .userchip .name { font-size: .9rem; font-weight: 600; }
-.content { padding: 28px; flex: 1; }
+.content { padding: var(--content-pad); flex: 1; }
+
+/* ---------- surface-less page pattern (member section) ----------
+   Content sits directly on .content instead of inside .card boxes.
+   Generalises what settings.html already does with .set-page/.set-sec.
+   .card is deliberately left untouched — 38 wrappers across officer/
+   admin/profile still rely on it. */
+.m-page { max-width: 1180px; margin-inline: auto; }
+.m-sec { margin-bottom: 34px; }
+.m-sec:last-child { margin-bottom: 0; }
+/* eyebrow heading, mirroring .set-sec > h3 so the portal reads as one system */
+.m-sec > h2,
+.m-sec > .m-sec-head > h2 {
+  font-family: var(--sans); font-size: .78rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 14px;
+}
+/* for sections whose heading shares a row with controls */
+.m-sec > .m-sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.m-sec > .m-sec-head > h2 { margin-bottom: 0; }
+
+/* full-bleed band: cancels .content's padding so it spans the whole area,
+   then re-pads so its own contents stay aligned */
+.m-bleed {
+  margin-inline: calc(-1 * var(--content-pad));
+  padding-inline: var(--content-pad);
+}
+
+/* dashboard: calendar beside the what's-next rail */
+.dash-cols {
+  display: grid; grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 26px; align-items: start;
+}
+.dash-cols > .m-sec { margin-bottom: 0; }
+/* stack early: below this the 7-column month grid gets squeezed under ~640px
+   once the 320px rail and gap are taken out */
+@media (max-width: 1300px) { .dash-cols { grid-template-columns: minmax(0, 1fr); gap: 34px; } }
+
+/* flat divider list — replaces rows that used to rely on a padded card */
+.m-list { display: flex; flex-direction: column; }
+.m-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 0; border-bottom: 1px solid var(--line);
+}
+.m-row:last-child { border-bottom: none; }
+.m-row .spacer { margin-left: auto; }
+
+/* Lifted out of a white card onto the page, --surface-2 is nearly identical
+   to --bg in light mode (#fbf8f1 vs #f6f2e9) and tiles lose their edges.
+   --surface separates cleanly in both themes. (.stat is excluded — it has no
+   box at all now, just a label over a figure.) */
+.m-sec .tile,
+.m-sec .member-card { background: var(--surface); }
+
+/* Dashboard hero as a full-bleed band rather than a floating card. Same
+   gradient/lattice/sweep identity as .card.hero, minus the box. */
+.m-hero {
+  background:
+    radial-gradient(circle at 85% 20%, rgba(224, 180, 92, .2), transparent 45%),
+    radial-gradient(circle at 10% 90%, rgba(200, 32, 47, .25), transparent 40%),
+    linear-gradient(140deg, #0e2338, #143049 60%, #2a1220);
+  border-bottom: 1px solid rgba(224, 180, 92, .3);
+  color: #eef4fb;
+  position: relative;
+  overflow: hidden;
+  padding-block: 30px;
+  margin-top: calc(-1 * var(--content-pad));   /* meets the topbar */
+  margin-bottom: 34px;
+}
+.m-hero::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: var(--lattice);
+  opacity: .5;
+  mask-image: linear-gradient(115deg, transparent 42%, black);
+  pointer-events: none;
+}
+.m-hero::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 32%, rgba(224, 180, 92, .17) 46%, transparent 60%);
+  transform: translateX(-100%);
+  animation: heroSweep 1.5s .35s cubic-bezier(.4, 0, .2, 1) forwards;
+  pointer-events: none;
+}
+.m-hero > * { position: relative; }
+.m-hero h2 { color: #fff; font-size: 1.7rem; font-family: var(--serif); margin-bottom: 14px; }
+
+/* avatar + name identity block at the top of the hero */
+.hero-id { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
+.hero-avatar {
+  width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex: none;
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--gold), 0 0 22px rgba(201, 155, 63, .3);
+}
+.hero-id h2 { margin: 0; line-height: 1.15; }
+/* alias in gold quotes after the name — matches the name's size, family and
+   weight exactly, so colour is the only thing separating them. gold-bright
+   rather than gold because the hero band is always dark. */
+.hero-alias { color: var(--gold-bright); font-size: 1em; white-space: nowrap; }
+
+/* avatar-as-button: opens the picture viewer / cropper. Used by the dashboard
+   hero and the My Profile header. */
+button.hero-avatar,
+button.avatar-lg { padding: 0; border: 0; cursor: pointer; display: block; position: relative; overflow: hidden; }
+button.hero-avatar img,
+button.avatar-lg img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+button.avatar-lg::after,
+button.hero-avatar::after {
+  content: "Edit";
+  position: absolute; inset: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(10, 20, 32, .6); color: #fff;
+  font-family: var(--sans); font-size: .72rem; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  opacity: 0; transition: opacity .18s;
+}
+button.hero-avatar:hover::after,
+button.hero-avatar:focus-visible::after,
+button.avatar-lg:hover::after,
+button.avatar-lg:focus-visible::after { opacity: 1; }
+button.avatar-lg::after { font-size: .78rem; }
+
+/* ---------- avatar viewer / cropper ---------- */
+.av-modal { max-width: 380px; text-align: center; }
+.av-modal h2 { margin-bottom: 12px; }
+.av-large {
+  width: 220px; height: 220px; border-radius: 50%; object-fit: cover;
+  margin: 4px auto 12px; display: block; background: var(--surface-2);
+  box-shadow: 0 0 0 3px var(--gold), 0 0 26px rgba(201, 155, 63, .28);
+}
+.av-hint { color: var(--muted); font-size: .82rem; margin-bottom: 6px; }
+.av-stage {
+  position: relative; width: 300px; height: 300px; margin: 4px auto 14px;
+  border-radius: 14px; overflow: hidden; background: var(--surface-2);
+  touch-action: none;   /* let the canvas own drag gestures */
+}
+.av-stage canvas { display: block; cursor: grab; }
+.av-stage canvas:active { cursor: grabbing; }
+/* circular cut-out showing exactly what will be saved */
+.av-ring {
+  position: absolute; inset: 0; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(10, 20, 32, .55);
+  border-radius: 50%;
+  outline: 2px solid rgba(224, 180, 92, .85);
+}
+.av-zoom { display: flex; align-items: center; gap: 12px; margin: 0 auto 4px; max-width: 300px; }
+.av-zoom > span {
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--gold);
+}
+.av-zoom input[type="range"] { flex: 1; accent-color: var(--gold); }
+@media (max-width: 420px) {
+  .av-stage { width: 250px; height: 250px; }
+  .av-large { width: 180px; height: 180px; }
+}
+.hero-id .roles { margin: 7px 0 0; display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .hero-avatar { width: 58px; height: 58px; }
+  .m-hero .hero-id h2 { font-size: 1.35rem; }
+}
+/* same split on the hero band: gold label, near-white figure */
+.m-hero .stat .num { color: #eef4fb; }
+.m-hero .stat .lbl { color: var(--gold-bright); }
 
 /* ---------- cards / stats ---------- */
 .card {
@@ -458,31 +733,29 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
 .card.hero .stat .num { color: var(--gold-bright); }
 .card.hero .stat .lbl { color: rgba(238, 244, 251, .75); }
 
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
-.stat {
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px;
-  position: relative;
-  overflow: hidden;
+/* Stats read as label-over-number rather than boxes: small gold caps on top,
+   large serif figure beneath. The label uses `order` (not column-reverse) so
+   stats carrying extra children — e.g. the pending line on Rewards — keep
+   their natural sequence underneath the number. */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 26px 34px; }
+.stat { display: flex; flex-direction: column; min-width: 0; }
+.stat .lbl {
+  order: -1;
+  font-family: var(--sans); font-size: .72rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--gold);
+  line-height: 1.25;
+  margin: 0;
 }
-.stat::before {
-  content: "";
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg,
-    var(--gold-bright) 0%, var(--red) 28%, #ffe9bd 50%, var(--red) 72%, var(--gold-bright) 100%);
-  background-size: 100% 200%;
-  animation: flowBarV 7s linear infinite;
+/* gold belongs to the label; the figure reads as plain text so the two are
+   never the same hue (they were both gold in dark mode and blurred together) */
+/* line-height 1 keeps the figure tight under its label — Playfair carries a
+   lot of empty ascender space, and any extra leading reads as a loose gap */
+.stat .num {
+  font-size: 1.8rem; font-weight: 700; font-family: var(--serif);
+  color: var(--navy); line-height: 1; margin-top: 4px;
+  overflow-wrap: anywhere;
 }
-@keyframes flowBarV {
-  from { background-position: 0 0; }
-  to   { background-position: 0 200%; }
-}
-.stat .num { font-size: 1.85rem; font-weight: 700; font-family: var(--serif); color: var(--navy); }
-html.dark-mode .stat .num { color: var(--gold); }
-.stat .lbl { font-size: .8rem; color: var(--muted); margin-top: 2px; letter-spacing: .02em; }
+html.dark-mode .stat .num { color: var(--text); }
 
 .badge {
   display: inline-block;
@@ -571,7 +844,9 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
 .cal-head h2 { font-size: 1.35rem; }
 .cal-nav { display: flex; gap: 8px; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+/* minmax(0, 1fr), not 1fr: plain 1fr resolves its minimum to min-content, so a
+   long nowrap event name widens its whole column and skews the week. */
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
 .cal-dow { text-align: center; font-size: .72rem; font-weight: 800; color: var(--gold); padding: 7px 0; text-transform: uppercase; letter-spacing: .1em; }
 .cal-cell {
   min-height: 88px;
@@ -596,11 +871,69 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
   font-size: .72rem;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   cursor: pointer;
   transition: filter .15s;
+  /* the chip's width comes from the cell, never from its text — this is what
+     keeps a long event name from pushing the day box wider */
+  container-type: inline-size;
+  --sx: 0px;   /* scroll distance, measured per chip in renderCalendar() */
 }
 .cal-ev:hover { filter: brightness(1.25); }
+/* soft right edge hints there's more text than fits */
+.cal-ev.is-clipped {
+  -webkit-mask-image: linear-gradient(90deg, #000 78%, rgba(0, 0, 0, .15));
+  mask-image: linear-gradient(90deg, #000 78%, rgba(0, 0, 0, .15));
+}
+.cal-ev-t { display: inline-block; white-space: nowrap; }
+/* On hover the name travels left so the tail reads in, then returns.
+   --sx is measured in JS: transform:translateX() with min() over a percentage
+   is dropped as invalid by the engine, so the distance can't be pure CSS. */
+.cal-ev.is-clipped:hover { mask-image: none; -webkit-mask-image: none; }
+.cal-ev.is-clipped:hover .cal-ev-t {
+  animation: evScroll 3.2s cubic-bezier(.45, 0, .55, 1) .18s infinite alternate;
+}
+@keyframes evScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(var(--sx)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cal-ev.is-clipped:hover .cal-ev-t { animation: none; }
+}
+
+/* ---- personal reminders (private to the signed-in member) ----
+   Explicit solid + tint pairs per color rather than color-mix(), so the
+   chips render identically everywhere. */
+.rem-gold   { --rc: #c99b3f; --rc-soft: rgba(201, 155, 63, .18); }
+.rem-red    { --rc: #c8202f; --rc-soft: rgba(200, 32, 47, .18); }
+.rem-teal   { --rc: #2aa198; --rc-soft: rgba(42, 161, 152, .18); }
+.rem-violet { --rc: #7c5cbf; --rc-soft: rgba(124, 92, 191, .20); }
+.rem-green  { --rc: #2f9e63; --rc-soft: rgba(47, 158, 99, .18); }
+.rem-blue   { --rc: #3f7fbf; --rc-soft: rgba(63, 127, 191, .20); }
+
+/* distinct from club events: tinted + dashed rather than solid navy */
+.cal-ev.personal {
+  background: var(--rc-soft);
+  color: var(--text);
+  border-left: 3px solid var(--rc);
+  border-top: 1px dashed var(--rc);
+  border-right: 1px dashed var(--rc);
+  border-bottom: 1px dashed var(--rc);
+  font-weight: 600;
+}
+.rem-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--rc); flex: none;
+}
+/* color picker in the reminder modal */
+.rem-swatches { display: flex; gap: 9px; flex-wrap: wrap; }
+.rem-swatch {
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  background: var(--rc); border: 2px solid transparent; padding: 0;
+  transition: transform .14s, box-shadow .14s;
+}
+.rem-swatch:hover { transform: scale(1.1); }
+.rem-swatch.on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--rc); }
+
 .ev-detail { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
 .rsvp-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .rsvp-row .btn.on { outline: 3px solid rgba(201, 155, 63, .5); }
@@ -918,18 +1251,18 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 }
 .rt-content:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201, 155, 63, .18); }
 .rt-content[contenteditable="false"] { border-color: transparent; background: transparent; padding: 14px 2px; }
-/* Text pasted from Google Docs / Word arrives carrying hardcoded colours —
+/* Text pasted from Google Docs / Word arrives carrying hardcoded colors —
    near-black text and white backgrounds — which disappear against the dark
    theme (and would disappear in light mode if flipped the other way). The
-   editor has no colour control, so no note is ever meant to set one: force
-   pasted colours to inherit so body text always follows the active theme.
+   editor has no color control, so no note is ever meant to set one: force
+   pasted colors to inherit so body text always follows the active theme.
    Scoped to the note/compose body, never to received email HTML. */
 .rt-content [style*="color"],
 .rt-content [style*="background"] {
   color: inherit !important;
   background-color: transparent !important;
 }
-/* table headers keep their own themed colours */
+/* table headers keep their own themed colors */
 .rt-content th[style*="color"], .rt-content th[style*="background"] {
   color: var(--gold) !important;
   background-color: var(--surface-2) !important;
@@ -1070,6 +1403,17 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .content .card:nth-of-type(4) { animation-delay: .24s; }
 .content .card:nth-of-type(n+5) { animation-delay: .3s; }
 
+/* same stagger for the card-free pages. nth-of-type counts elements, so the
+   sections are <section> and the hero is the first of them. */
+.content .m-hero,
+.content .m-page > .m-sec,
+.content .dash-cols > .m-sec { animation: fadeRise .45s cubic-bezier(.2, .7, .3, 1) backwards; }
+.content .dash-cols > .m-sec:nth-of-type(2) { animation-delay: .08s; }
+.content .m-page > .m-sec:nth-of-type(2) { animation-delay: .08s; }
+.content .m-page > .m-sec:nth-of-type(3) { animation-delay: .16s; }
+.content .m-page > .m-sec:nth-of-type(4) { animation-delay: .24s; }
+.content .m-page > .m-sec:nth-of-type(n+5) { animation-delay: .3s; }
+
 /* hero light-sweep (plays once) + drifting lattice */
 .card.hero::after {
   content: "";
@@ -1080,6 +1424,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   pointer-events: none;
 }
 .card.hero::before,
+.m-hero::before,
 .sidebar::after,
 .auth-wrap::before { animation: latticeDrift 70s linear infinite; }
 
@@ -1132,7 +1477,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   .sidebar nav { display: flex; flex-wrap: wrap; }
   .sidebar .nav-label { width: 100%; }
   .sidebar .foot { display: none; }
-  .content { padding: 18px; }
+  .content { --content-pad: 18px; }
   .topbar { padding: 0 16px; height: 60px; }
   .sidebar .brand { height: 60px; }
   .userchip .name { display: none; }
