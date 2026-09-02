@@ -779,7 +779,16 @@ footer {
   color: var(--gold-bright);
   margin-bottom: 16px;
 }
-.overline::before { content: ""; width: 34px; height: 2px; background: linear-gradient(90deg, var(--gold-bright), var(--red)); border-radius: 1px; }
+/* centred section, matching the sponsors block. .overline is inline-flex, so
+   it needs width+justify-content rather than text-align. */
+.block.head-mid { text-align: center; }
+.block.head-mid > .overline { width: 100%; justify-content: center; }
+/* card copy stays left — centred body text inside a card reads badly */
+.block.head-mid .event-card,
+.block.head-mid .step { text-align: left; }
+/* flex rows don't respond to text-align. `safe` keeps the leading items
+   reachable if the strip ever overflows its container. */
+.block.head-mid .gstrip { justify-content: safe center; }
 .statement { font-size: clamp(30px, 4.4vw, 44px); color: #fff; line-height: 1.15; margin-bottom: 18px; }
 .statement .g { color: var(--gold-bright); }
 
