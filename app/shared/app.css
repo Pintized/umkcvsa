@@ -145,7 +145,7 @@ button { font-family: inherit; }
 .auth-card .sub { color: var(--muted); font-size: .92rem; margin-bottom: 24px; }
 .auth-alt { text-align: center; margin-top: 20px; font-size: .9rem; color: var(--muted); }
 .auth-alt a { color: var(--ink-red); font-weight: 600; }
-.auth-alt a:hover { color: var(--gold); }
+.auth-alt a:hover { color: var(--ink-gold); }
 
 /* ---------- form fields ---------- */
 .field { margin-bottom: 14px; }
@@ -234,7 +234,7 @@ html.dark-mode .notice.ok { color: #7fd6a1; }
   border: 1px solid rgba(201, 155, 63, .55);
   border-left: none;
   border-radius: 0 9px 9px 0;
-  color: var(--gold);
+  color: var(--ink-gold);
   cursor: pointer;
   padding: 0;
   z-index: 45;
@@ -467,13 +467,13 @@ html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--li
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 11px 14px; border-bottom: 1px solid var(--line);
   font-size: .72rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--gold);
+  text-transform: uppercase; color: var(--ink-gold);
 }
 .notif-head button {
   background: none; border: 0; cursor: pointer; font: inherit;
   font-size: .68rem; color: var(--muted); text-transform: none; letter-spacing: 0;
 }
-.notif-head button:hover { color: var(--gold); text-decoration: underline; }
+.notif-head button:hover { color: var(--ink-gold); text-decoration: underline; }
 .notif-list { max-height: 380px; overflow-y: auto; }
 .notif-item {
   display: block; width: 100%; text-align: left; cursor: pointer;
@@ -485,7 +485,7 @@ html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--li
 /* unread carries a gold edge so the eye finds it without relying on weight */
 .notif-item.unread { border-left: 3px solid var(--gold); padding-left: 11px; }
 .notif-title { display: block; font-size: .86rem; font-weight: 700; }
-.notif-item.unread .notif-title { color: var(--gold); }
+.notif-item.unread .notif-title { color: var(--ink-gold); }
 .notif-body {
   display: block; font-size: .78rem; color: var(--muted); margin-top: 2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -567,7 +567,7 @@ html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--li
   display: flex; justify-content: space-between; gap: 12px;
   font-size: .72rem; color: var(--muted); margin-bottom: 4px;
 }
-.tk-msg-head span:first-child { font-weight: 700; color: var(--gold); }
+.tk-msg-head span:first-child { font-weight: 700; color: var(--ink-gold); }
 .tk-msg-body { font-size: .9rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
 .theme-toggle {
   background: var(--surface-2);
@@ -600,7 +600,7 @@ html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--li
 .m-sec > h2,
 .m-sec > .m-sec-head > h2 {
   font-family: var(--sans); font-size: .78rem; font-weight: 700;
-  letter-spacing: .08em; text-transform: uppercase; color: var(--gold);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--ink-gold);
   margin-bottom: 14px;
 }
 /* for sections whose heading shares a row with controls */
@@ -770,7 +770,7 @@ button.avatar-lg::after { font-size: .78rem; }
 .av-zoom { display: flex; align-items: center; gap: 12px; margin: 0 auto 4px; max-width: 300px; }
 .av-zoom > span {
   font-size: .72rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--gold);
+  text-transform: uppercase; color: var(--ink-gold);
 }
 .av-zoom input[type="range"] { flex: 1; accent-color: var(--gold); }
 @media (max-width: 420px) {
@@ -853,7 +853,7 @@ html:not(.dark-mode) .m-hero .stat .num { color: var(--navy); }
 .stat .lbl {
   order: -1;
   font-family: var(--sans); font-size: .72rem; font-weight: 700;
-  letter-spacing: .08em; text-transform: uppercase; color: var(--gold);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--ink-gold);
   line-height: 1.25;
   margin: 0;
 }
@@ -958,7 +958,7 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
 /* minmax(0, 1fr), not 1fr: plain 1fr resolves its minimum to min-content, so a
    long nowrap event name widens its whole column and skews the week. */
 .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
-.cal-dow { text-align: center; font-size: .72rem; font-weight: 800; color: var(--gold); padding: 7px 0; text-transform: uppercase; letter-spacing: .1em; }
+.cal-dow { text-align: center; font-size: .72rem; font-weight: 800; color: var(--ink-gold); padding: 7px 0; text-transform: uppercase; letter-spacing: .1em; }
 .cal-cell {
   min-height: 88px;
   background: var(--surface-2);
@@ -1064,7 +1064,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   font-size: .72rem;
   text-transform: uppercase;
   letter-spacing: .09em;
-  color: var(--gold);
+  color: var(--ink-gold);
   padding: 9px 10px;
   border-bottom: 2px solid var(--line);
 }
@@ -1153,7 +1153,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .task-card .st.in-progress, .st-pill.in-progress { background: rgba(232, 163, 61, .15); color: #b97b18; border-color: rgba(232, 163, 61, .4); }
 .task-card .st.done, .st-pill.done { background: rgba(47, 158, 99, .15); color: var(--ok); border-color: rgba(47, 158, 99, .4); }
 .task-card .edit-hit { position: absolute; top: 7px; right: 9px; cursor: pointer; opacity: .5; font-size: .85rem; }
-.task-card .edit-hit:hover { opacity: 1; color: var(--gold); }
+.task-card .edit-hit:hover { opacity: 1; color: var(--ink-gold); }
 
 /* ---------- notes ---------- */
 /* fills the viewport and scrolls internally, like a real notes app, instead of
@@ -1256,7 +1256,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .note-item .trow { display: flex; align-items: center; gap: 7px; }
 .note-item .trow .t { font-weight: 600; font-size: .92rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-item .meta { font-size: .76rem; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.note-item .fold { font-size: .72rem; color: var(--gold); }
+.note-item .fold { font-size: .72rem; color: var(--ink-gold); }
 .note-item .chips { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
 
 .star-btn { cursor: pointer; opacity: .35; font-size: .95rem; transition: opacity .15s, transform .15s; background: none; border: none; padding: 0; line-height: 1; }
@@ -1267,7 +1267,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   display: inline-flex; align-items: center; gap: 4px;
   background: rgba(201, 155, 63, .13);
   border: 1px solid rgba(201, 155, 63, .35);
-  color: var(--gold);
+  color: var(--ink-gold);
   border-radius: 999px;
   padding: 1px 9px;
   font-size: .74rem;
@@ -1318,7 +1318,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .rt-btn.on {
   border-color: var(--gold);
   background: rgba(201, 155, 63, .18);
-  color: var(--gold);
+  color: var(--ink-gold);
   box-shadow: inset 0 0 6px rgba(201, 155, 63, .25);
 }
 .rt-sel {
@@ -1348,7 +1348,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
   box-shadow: var(--shadow-lg);
 }
 .img-bar input[type="range"] { width: 150px; accent-color: var(--gold); cursor: pointer; }
-.img-bar #img-pct { min-width: 42px; text-align: center; font-size: .82rem; font-weight: 700; color: var(--gold); }
+.img-bar #img-pct { min-width: 42px; text-align: center; font-size: .82rem; font-weight: 700; color: var(--ink-gold); }
 
 .rt-content {
   min-height: 340px;
@@ -1375,7 +1375,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 }
 /* table headers keep their own themed colors */
 .rt-content th[style*="color"], .rt-content th[style*="background"] {
-  color: var(--gold) !important;
+  color: var(--ink-gold) !important;
   background-color: var(--surface-2) !important;
 }
 .rt-content h2 { font-size: 1.15rem; margin: 14px 0 6px; }
@@ -1383,11 +1383,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .rt-content img { max-width: 100%; border-radius: 10px; margin: 8px 0; }
 .rt-content table { border-collapse: collapse; margin: 10px 0; width: 100%; }
 .rt-content th, .rt-content td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
-.rt-content th { background: var(--surface-2); color: var(--gold); font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; }
+.rt-content th { background: var(--surface-2); color: var(--ink-gold); font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; }
 .rt-content ul.cklist { list-style: none; padding-left: 4px; }
 .rt-content ul.cklist li { cursor: pointer; padding: 2px 0 2px 26px; position: relative; }
 .rt-content ul.cklist li::before {
-  content: "○"; position: absolute; left: 2px; color: var(--gold); font-size: 1rem;
+  content: "○"; position: absolute; left: 2px; color: var(--ink-gold); font-size: 1rem;
 }
 .rt-content ul.cklist li.done { color: var(--muted); text-decoration: line-through; }
 .rt-content ul.cklist li.done::before { content: "●"; color: var(--ok); }
@@ -1597,7 +1597,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 /* ---- officer tool refinements (events/tasks/inventory) ---- */
 .link-btn {
   background: none; border: none; padding: 0; cursor: pointer;
-  color: var(--gold); font: inherit; font-weight: 600;
+  color: var(--ink-gold); font: inherit; font-weight: 600;
   text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(201, 155, 63, .45);
 }
 .link-btn:hover { color: var(--ink-gold); text-decoration-color: currentColor; }
@@ -1613,7 +1613,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .chip-btn.on {
   background: rgba(201, 155, 63, .14);
   border-color: rgba(201, 155, 63, .5);
-  color: var(--gold);
+  color: var(--ink-gold);
 }
 .chip-btn.on.warn-chip {
   background: rgba(200, 32, 47, .12);
@@ -1626,7 +1626,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .task-card.overdue { box-shadow: 0 0 0 2px rgba(200, 32, 47, .55), var(--shadow-sm); }
 .task-card.overdue .due { color: var(--ink-red); font-weight: 700; }
 .task-card.due-soon { box-shadow: 0 0 0 2px rgba(224, 180, 92, .55), var(--shadow-sm); }
-.task-card.due-soon .due { color: var(--gold); font-weight: 700; }
+.task-card.due-soon .due { color: var(--ink-gold); font-weight: 700; }
 
 /* ---- nested lists in the notes editor (Tab-indentable, 10 levels) ---- */
 .rt-content ul ul, .rt-content ul ol,
@@ -1659,7 +1659,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .f-notes-pad .tree-empty { color: var(--muted); font-size: .78rem; padding: 6px 2px; }
 
 /* ---- notes custom icons + drag-to-move ---- */
-.n-ic { width: 17px; height: 17px; vertical-align: -3.5px; color: var(--gold); }
+.n-ic { width: 17px; height: 17px; vertical-align: -3.5px; color: var(--ink-gold); }
 .icon-grid button .n-ic { width: 20px; height: 20px; vertical-align: middle; }
 .icon-btn .n-ic { width: 22px; height: 22px; vertical-align: middle; }
 .note-item .trow .ic .n-ic { flex-shrink: 0; }

@@ -15,7 +15,7 @@
 .set-sec { margin-bottom:34px; }
 .set-sec > h3 {
   font-family:var(--sans); font-size:.78rem; font-weight:700;
-  letter-spacing:.08em; text-transform:uppercase; color:var(--gold);
+  letter-spacing:.08em; text-transform:uppercase; color:var(--ink-gold);
   margin-bottom:4px;
 }
 .set-sec.danger > h3 { color:var(--ink-red); }
@@ -228,7 +228,7 @@
       btn.onclick = async () => {
         const { data: code, error } = await supabase.rpc('discord_verify_code');
         if (error) { toast(error.message); return; }
-        st.innerHTML = `In the VSA Discord, run <strong style="color:var(--gold, #e0b45c)">/verify ${code}</strong> — the code lasts 15 minutes.`;
+        st.innerHTML = `In the VSA Discord, run <strong style="color:var(--ink-gold)">/verify ${code}</strong> — the code lasts 15 minutes.`;
         btn.textContent = 'New code';
       };
     }
@@ -387,7 +387,7 @@
       list.innerHTML = devs.map(d => `
         <div class="set-row">
           <div class="txt">
-            <strong>${d.label || 'Unknown device'}${d.device_id === thisDevice ? ' <span class="badge-ok">this device</span>' : ''}${d.trusted ? ' <span class="badge-ok" style="background:rgba(201,155,63,.16); color:var(--gold)">trusted</span>' : ''}</strong>
+            <strong>${d.label || 'Unknown device'}${d.device_id === thisDevice ? ' <span class="badge-ok">this device</span>' : ''}${d.trusted ? ' <span class="badge-ok" style="background:rgba(201,155,63,.16); color:var(--ink-gold)">trusted</span>' : ''}</strong>
             <small>Last seen ${when(d.last_seen)} · first seen ${when(d.first_seen)}</small>
           </div>
           <div style="display:flex; gap:8px; flex-shrink:0">

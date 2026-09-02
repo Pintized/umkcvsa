@@ -118,7 +118,7 @@
       dead(esc(form.title), 'This form is no longer accepting responses. 🙏');
     } else if (form.settings?.limit_one && !signedIn && !isPreview) {
       dead(esc(form.title), `This form is limited to one response per member, so you need to be
-        signed in. <a href="/app/login" style="color:var(--gold, #c99b3f)">Log in</a> and then reopen this link.`);
+        signed in. <a href="/app/login" style="color:var(--ink-gold)">Log in</a> and then reopen this link.`);
     } else {
       const qs = form.questions || [];
       const qHtml = (q) => {
