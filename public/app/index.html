@@ -17,51 +17,359 @@
   import { requireLogin } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
+  import { openAvatarEditor } from '/app/shared/avatar-editor.js';
 
   const ctx = await requireLogin();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Dashboard');
 
+  const REM_COLORS = ['gold', 'red', 'teal', 'violet', 'green', 'blue'];
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtTime = (t) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+  const longDate = (d) => new Date(d + 'T00:00:00')
+    .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  // short month so the date renders at the same size as the other figures —
+  // mixing sizes made the label-to-value gap look uneven across the row
   const joined = ctx.profile?.created_at
-    ? new Date(ctx.profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(ctx.profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : '—';
 
-  const [{ count: awardCount }, { data: nextEvents }] = await Promise.all([
-    supabase.from('achievement_awards').select('id', { count: 'exact', head: true }).eq('user_id', ctx.user.id),
-    supabase.from('events').select('name,event_date,start_time,location')
-      .gte('event_date', new Date().toISOString().slice(0, 10))
-      .order('event_date').limit(3),
-  ]);
+  // same avatar source and fallback the profile page and topbar use
+  const avatarUrl = ctx.profile?.avatar_path
+    ? `https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/${ctx.profile.avatar_path}`
+    : '/assets/img/logo-128.png';
+  const fullName = [ctx.profile?.first_name, ctx.profile?.last_name]
+    .filter(Boolean).join(' ') || ctx.profile?.full_name || 'Member';
 
+  const { count: awardCount } = await supabase
+    .from('achievement_awards').select('id', { count: 'exact', head: true }).eq('user_id', ctx.user.id);
+
+  // ---------- page shell (written once) ----------
+  // Calendar and rail render into their own containers so month navigation
+  // and reminder edits never replay the hero's entrance animation.
   page.innerHTML = `
-    <div class="card hero">
-      <h2>Chào ${ctx.profile?.first_name || 'member'} 👋</h2>
-      <p style="margin:2px 0 16px">
-        ${ctx.roles.map(r => `<span class="badge ${r}">${r}</span>`).join('')}
-      </p>
-      <div class="stat-grid">
-        <div class="stat"><div style="display:flex; align-items:baseline; gap:8px"><div class="num">${(ctx.profile?.points ?? 0).toLocaleString('vi-VN')}</div><div class="lbl" style="margin:0">VND</div></div></div>
-        <div class="stat"><div class="num">${awardCount ?? 0}</div><div class="lbl">Achievements earned</div></div>
-        <div class="stat"><div class="num" style="font-size:1.05rem; padding-top:8px">${joined}</div><div class="lbl">Member since</div></div>
+    <section class="m-hero m-bleed">
+      <div class="m-page">
+        <div class="hero-id">
+          <button class="hero-avatar" id="avatar-btn" type="button"
+                  title="View or change your picture"
+                  aria-label="View or change your profile picture">
+            <img src="${esc(avatarUrl)}" alt="" onerror="this.src='/assets/img/logo-128.png'">
+          </button>
+          <div>
+            <h2>${esc(fullName)}${ctx.profile?.alias
+              ? ` <span class="hero-alias">&ldquo;${esc(ctx.profile.alias)}&rdquo;</span>` : ''}</h2>
+            <p class="roles">
+              ${ctx.roles.map(r => `<span class="badge ${esc(r)}">${esc(r)}</span>`).join('')}
+            </p>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat"><div class="num">${(ctx.profile?.points ?? 0).toLocaleString('vi-VN')}</div><div class="lbl">VND</div></div>
+          <div class="stat"><div class="num">${awardCount ?? 0}</div><div class="lbl">Achievements earned</div></div>
+          <div class="stat"><div class="num">${joined}</div><div class="lbl">Member since</div></div>
+        </div>
+      </div>
+    </section>
+    <div class="m-page">
+      <div class="dash-cols">
+        <section class="m-sec" id="cal-sec"></section>
+        <section class="m-sec" id="next-sec"></section>
       </div>
     </div>
-    <div class="card">
-      <h2>Upcoming events</h2>
-      ${
-        (nextEvents && nextEvents.length)
-          ? nextEvents.map(ev => `
-              <p style="margin-bottom:10px">
-                <strong>${ev.name}</strong><br>
-                <span style="color:var(--muted); font-size:.9rem">
-                  ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  ${ev.start_time ? ' · ' + ev.start_time.slice(0, 5) : ''}
-                  ${ev.location ? ' · ' + ev.location : ''}
-                </span>
-              </p>`).join('')
-          : '<p style="color:var(--muted)">No upcoming events yet — check back soon!</p>'
-      }
-    </div>
   `;
+
+  document.getElementById('avatar-btn').onclick = () => openAvatarEditor(ctx);
+
+  const calSec = document.getElementById('cal-sec');
+  const nextSec = document.getElementById('next-sec');
+
+  let current = new Date();
+  current.setDate(1);
+  let events = [];        // club events for the shown month
+  let personal = [];      // this member's reminders for the shown month
+  let myRsvps = new Map();
+
+  // ---------- data ----------
+  async function loadMonth() {
+    const y = current.getFullYear(), m = current.getMonth();
+    const from = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    const last = new Date(y, m + 1, 0);
+    const toS = `${y}-${String(m + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+    const [evRes, rsvpRes, perRes] = await Promise.all([
+      supabase.from('events').select('*').gte('event_date', from).lte('event_date', toS).order('event_date'),
+      supabase.from('rsvps').select('event_id, status').eq('user_id', ctx.user.id),
+      // RLS already limits this to the signed-in member; the filter is just an index hint
+      supabase.from('personal_events').select('*')
+        .eq('user_id', ctx.user.id).gte('event_date', from).lte('event_date', toS).order('event_date'),
+    ]);
+    events = evRes.data || [];
+    myRsvps = new Map((rsvpRes.data || []).map(r => [r.event_id, r.status]));
+    personal = perRes.data || [];
+    renderCalendar();
+  }
+
+  async function loadUpcoming() {
+    const today = new Date().toISOString().slice(0, 10);
+    const [evRes, perRes] = await Promise.all([
+      supabase.from('events').select('id,name,event_date,start_time,location')
+        .gte('event_date', today).order('event_date').limit(5),
+      supabase.from('personal_events').select('*')
+        .eq('user_id', ctx.user.id).gte('event_date', today).order('event_date').limit(5),
+    ]);
+    const items = [
+      ...(evRes.data || []).map(e => ({ kind: 'club', date: e.event_date, time: e.start_time, title: e.name, sub: e.location })),
+      ...(perRes.data || []).map(p => ({ kind: 'mine', date: p.event_date, time: p.start_time, title: p.title, sub: p.note, color: p.color })),
+    ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time || '').localeCompare(b.time || '')))
+     .slice(0, 6);
+
+    nextSec.innerHTML = `
+      <h2>Upcoming</h2>
+      ${items.length ? `<div class="m-list">${items.map(i => `
+        <div class="m-row${i.kind === 'mine' ? ' rem-' + esc(i.color) : ''}" style="align-items:flex-start">
+          ${i.kind === 'mine'
+            ? '<span class="rem-dot" style="margin-top:6px" title="Your private reminder"></span>'
+            : '<span class="rem-dot" style="margin-top:6px; background:var(--gold-bright)" title="Club event"></span>'}
+          <div>
+            <strong>${esc(i.title)}</strong><br>
+            <span style="color:var(--muted); font-size:.86rem">
+              ${longDate(i.date)}${i.time ? ' · ' + fmtTime(i.time) : ''}${i.sub ? ' · ' + esc(i.sub) : ''}
+            </span>
+          </div>
+        </div>`).join('')}</div>`
+        : '<p style="color:var(--muted)">Nothing coming up yet.</p>'}
+      <p style="color:var(--muted); font-size:.76rem; margin-top:12px">
+        Dotted entries are your private reminders — only you can see them.
+      </p>`;
+  }
+
+  // ---------- calendar ----------
+  function renderCalendar() {
+    const y = current.getFullYear(), m = current.getMonth();
+    const monthName = current.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const firstDow = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const todayS = new Date().toISOString().slice(0, 10);
+
+    const byDay = {};
+    events.forEach(ev => { (byDay[ev.event_date] ||= []).push(ev); });
+    const perByDay = {};
+    personal.forEach(p => { (perByDay[p.event_date] ||= []).push(p); });
+
+    let cells = '';
+    for (let i = 0; i < firstDow; i++) cells += '<div class="cal-cell out"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const evs = (byDay[ds] || []).map(ev =>
+        `<span class="cal-ev" data-ev="${ev.id}" title="${esc(ev.name)}"><span class="cal-ev-t">${esc(ev.name)}</span></span>`).join('');
+      const mine = (perByDay[ds] || []).map(p =>
+        `<span class="cal-ev personal rem-${esc(p.color)}" data-mine="${p.id}" title="${esc(p.title)} — private reminder"><span class="cal-ev-t">${esc(p.title)}</span></span>`).join('');
+      cells += `<div class="cal-cell ${ds === todayS ? 'today' : ''}" data-day="${ds}">
+        <div class="d">${d}</div>${evs}${mine}</div>`;
+    }
+
+    calSec.innerHTML = `
+      <div class="cal-head">
+        <h2>${monthName}</h2>
+        <div class="cal-nav">
+          <button class="btn ghost" id="prev">‹ Prev</button>
+          <button class="btn ghost" id="today">Today</button>
+          <button class="btn ghost" id="next">Next ›</button>
+          <button class="btn" id="add-rem">+ Reminder</button>
+        </div>
+      </div>
+      <div class="cal-grid">
+        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="cal-dow">${d}</div>`).join('')}
+        ${cells}
+      </div>
+      <div class="ev-detail" id="detail">
+        <p style="color:var(--muted); font-size:.9rem">
+          ${events.length || personal.length
+            ? 'Click an entry to see details.'
+            : 'Nothing this month.'}
+          Double-click a day to add a private reminder.
+        </p>
+      </div>`;
+
+    document.getElementById('prev').onclick = () => { current.setMonth(m - 1); loadMonth(); };
+    document.getElementById('next').onclick = () => { current.setMonth(m + 1); loadMonth(); };
+    document.getElementById('today').onclick = () => { current = new Date(); current.setDate(1); loadMonth(); };
+    document.getElementById('add-rem').onclick = () => reminderModal(null, todayS);
+
+    // Only chips whose name actually overflows get the fade + hover scroll.
+    // The travel distance is measured here and handed to the keyframes as --sx.
+    calSec.querySelectorAll('.cal-ev').forEach(chip => {
+      const t = chip.querySelector('.cal-ev-t');
+      if (!t) return;
+      const over = t.scrollWidth - chip.clientWidth;
+      if (over > 1) {
+        chip.classList.add('is-clipped');
+        chip.style.setProperty('--sx', `-${over + 8}px`);
+      }
+    });
+
+    calSec.querySelectorAll('[data-ev]').forEach(el =>
+      el.addEventListener('click', (e) => { e.stopPropagation(); showEvent(Number(el.dataset.ev)); }));
+    calSec.querySelectorAll('[data-mine]').forEach(el =>
+      el.addEventListener('click', (e) => { e.stopPropagation(); showReminder(Number(el.dataset.mine)); }));
+    calSec.querySelectorAll('.cal-cell[data-day]').forEach(cell =>
+      cell.addEventListener('dblclick', () => reminderModal(null, cell.dataset.day)));
+  }
+
+  // ---------- detail panel ----------
+  function showEvent(evId) {
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    const mine = myRsvps.get(ev.id);
+    const btn = (status, label) =>
+      `<button class="btn ${status === 'cancelled' ? 'ghost' : status === 'maybe' ? 'secondary' : ''} ${mine === status ? 'on' : ''}"
+        data-rsvp="${status}">${label}${mine === status ? ' ✓' : ''}</button>`;
+
+    document.getElementById('detail').innerHTML = `
+      ${ev.photo_path ? `<img src="https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/event-images/${esc(ev.photo_path)}"
+        alt="" style="width:100%; max-width:560px; aspect-ratio:16/9; object-fit:cover; border-radius:12px; border:1px solid var(--line); margin-bottom:14px">` : ''}
+      <h3 style="margin-bottom:6px">${esc(ev.name)}</h3>
+      <p style="color:var(--muted); font-size:.9rem">
+        ${longDate(ev.event_date)}
+        ${ev.start_time ? ' · ' + fmtTime(ev.start_time) : ''}${ev.end_time ? '–' + fmtTime(ev.end_time) : ''}
+        ${ev.location ? ' · ' + esc(ev.location) : ''}
+      </p>
+      ${ev.description ? `<p style="margin-top:8px; font-size:.92rem">${esc(ev.description)}</p>` : ''}
+      <div class="rsvp-row">${btn('going', 'Going')}${btn('maybe', 'Maybe')}${btn('cancelled', "Can't go")}</div>
+      <p id="rsvp-msg" style="color:var(--muted); font-size:.82rem; margin-top:8px"></p>`;
+
+    document.querySelectorAll('#detail [data-rsvp]').forEach(b => {
+      b.addEventListener('click', async () => {
+        const status = b.dataset.rsvp;
+        const { error } = await supabase.from('rsvps').upsert(
+          { user_id: ctx.user.id, event_id: ev.id, status },
+          { onConflict: 'user_id,event_id' },
+        );
+        const msg = document.getElementById('rsvp-msg');
+        if (error) { msg.textContent = error.message; msg.style.color = 'var(--red)'; return; }
+        myRsvps.set(ev.id, status);
+        showEvent(ev.id);
+        document.getElementById('rsvp-msg').textContent = 'RSVP saved!';
+      });
+    });
+  }
+
+  function showReminder(id) {
+    const p = personal.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('detail').innerHTML = `
+      <div class="rem-${esc(p.color)}" style="display:flex; align-items:center; gap:9px; margin-bottom:6px">
+        <span class="rem-dot"></span>
+        <h3 style="margin:0">${esc(p.title)}</h3>
+      </div>
+      <p style="color:var(--muted); font-size:.9rem">
+        ${longDate(p.event_date)}${p.start_time ? ' · ' + fmtTime(p.start_time) : ''}
+        · <span style="color:var(--gold)">private to you</span>
+      </p>
+      ${p.note ? `<p style="margin-top:8px; font-size:.92rem; white-space:pre-wrap">${esc(p.note)}</p>` : ''}
+      <div class="rsvp-row">
+        <button class="btn secondary" id="rem-edit">Edit</button>
+        <button class="btn ghost" id="rem-del">Delete</button>
+      </div>
+      <p id="rem-msg" style="color:var(--muted); font-size:.82rem; margin-top:8px"></p>`;
+
+    document.getElementById('rem-edit').onclick = () => reminderModal(p);
+    document.getElementById('rem-del').onclick = async () => {
+      const msg = document.getElementById('rem-msg');
+      msg.textContent = 'Deleting…';
+      const { error } = await supabase.from('personal_events').delete().eq('id', p.id);
+      if (error) { msg.textContent = error.message; msg.style.color = 'var(--red)'; return; }
+      await Promise.all([loadMonth(), loadUpcoming()]);
+    };
+  }
+
+  // ---------- add / edit reminder ----------
+  function reminderModal(rem, presetDate) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    const chosen = rem?.color || 'gold';
+    back.innerHTML = `
+      <div class="modal">
+        <h2>${rem ? 'Edit reminder' : 'New reminder'}</h2>
+        <p style="color:var(--muted); font-size:.84rem; margin-bottom:14px">
+          Private to your account — officers and other members can't see it.
+        </p>
+        <div class="notice" id="rm-err"></div>
+        <div class="field"><label>Title</label>
+          <input id="rm-title" maxlength="180" placeholder="e.g. Midterm, shift, study group" value="${esc(rem?.title)}"></div>
+        <div class="field-row">
+          <div class="field"><label>Date</label>
+            <input type="date" id="rm-date" value="${esc(rem?.event_date || presetDate || '')}"></div>
+          <div class="field"><label>Time (optional)</label>
+            <input type="time" id="rm-time" value="${esc(rem?.start_time ? String(rem.start_time).slice(0, 5) : '')}"></div>
+        </div>
+        <div class="field"><label>Note (optional)</label>
+          <textarea id="rm-note" rows="3" placeholder="Anything you want to remember">${esc(rem?.note)}</textarea></div>
+        <div class="field"><label>Color</label>
+          <div class="rem-swatches" id="rm-colors">
+            ${REM_COLORS.map(c => `<button type="button" class="rem-swatch rem-${c}${c === chosen ? ' on' : ''}"
+              data-c="${c}" aria-label="${c}"></button>`).join('')}
+          </div>
+        </div>
+        <div class="row-btns">
+          <button type="button" class="btn ghost" id="rm-cancel">Cancel</button>
+          <button type="button" class="btn" id="rm-save">${rem ? 'Save' : 'Add reminder'}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+
+    let color = chosen;
+    back.querySelector('#rm-colors').addEventListener('click', (e) => {
+      const sw = e.target.closest('[data-c]');
+      if (!sw) return;
+      color = sw.dataset.c;
+      back.querySelectorAll('.rem-swatch').forEach(s => s.classList.toggle('on', s === sw));
+    });
+
+    const close = () => back.remove();
+    back.querySelector('#rm-cancel').onclick = close;
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
+    });
+    back.querySelector('#rm-title').focus();
+
+    back.querySelector('#rm-save').onclick = async () => {
+      const err = back.querySelector('#rm-err');
+      const say = (m) => { err.textContent = m; err.className = 'notice error'; };
+      const title = back.querySelector('#rm-title').value.trim();
+      const date = back.querySelector('#rm-date').value;
+      if (!title) return say('Give your reminder a title.');
+      if (!date) return say('Pick a date.');
+
+      const payload = {
+        title, event_date: date,
+        start_time: back.querySelector('#rm-time').value || null,
+        note: back.querySelector('#rm-note').value.trim() || null,
+        color,
+      };
+      const { error } = rem
+        ? await supabase.from('personal_events')
+            .update({ ...payload, updated_at: new Date().toISOString() }).eq('id', rem.id)
+        : await supabase.from('personal_events')
+            .insert({ ...payload, user_id: ctx.user.id });
+      if (error) return say(error.message);
+
+      // jump the calendar to the month the reminder lives in
+      const d = new Date(date + 'T00:00:00');
+      current = new Date(d.getFullYear(), d.getMonth(), 1);
+      close();
+      await Promise.all([loadMonth(), loadUpcoming()]);
+    };
+  }
+
+  await Promise.all([loadMonth(), loadUpcoming()]);
 </script>
 </body>
 </html>
