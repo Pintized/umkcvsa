@@ -3,6 +3,14 @@
 .env.*
 *.local
 
+# Archives. git can't see inside a zip, so an ignored .env packed into one
+# would sail straight past the rules above and into this public repo.
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+
 # OS noise
 Thumbs.db
 Desktop.ini

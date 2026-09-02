@@ -577,10 +577,10 @@
 
     const contentEl = document.getElementById('ed-content');
 
-    // ---- paste: keep the formatting, drop the colours ----
+    // ---- paste: keep the formatting, drop the colors ----
     // Google Docs / Word paste hardcoded near-black text and white backgrounds,
     // which are invisible against the dark theme. Structure and emphasis are
-    // preserved; only colour declarations are stripped so text follows the
+    // preserved; only color declarations are stripped so text follows the
     // theme. CSS neutralises whatever already got saved before this existed.
     contentEl.addEventListener('paste', (e) => {
       const html = e.clipboardData?.getData('text/html');
