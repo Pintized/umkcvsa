@@ -426,6 +426,12 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+# Invoked by pg_cron with the anon key; reads the Instagram token from
+# integration_tokens using the service role, never from the client.
+[functions.instagram-sync]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

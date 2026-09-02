@@ -68,6 +68,18 @@
     Nothing posted right now — follow <a href="https://www.instagram.com/umkc_vsa" target="_blank" style="color:var(--gold-bright)">@umkc_vsa</a> for the latest.</p>
 </section>
 
+<!-- hidden until the Instagram sync has cached something -->
+<section class="section" id="ig-sec" style="display:none">
+  <div class="block head-mid" style="padding:0">
+    <div class="overline">From Instagram</div>
+    <h2 class="statement">Straight from <span class="g">@umkc_vsa</span>.</h2>
+  </div>
+  <div class="ig-grid" id="ig-grid" style="margin-top:34px"></div>
+  <p style="text-align:center; margin-top:32px">
+    <a class="btn ghost" href="https://www.instagram.com/umkc_vsa" target="_blank" rel="noopener">Follow on Instagram</a>
+  </p>
+</section>
+
 <footer>
   <div class="footer-cols">
     <div class="footer-col">
@@ -100,6 +112,34 @@ if (items.length) {
     </div>`).join('');
 } else {
   document.getElementById('news-empty').style.display = 'block';
+}
+
+// ---- Instagram, from the hourly cache (never fetched live: the Graph API is
+// rate limited and the token must stay server-side) ----
+const IMG = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/site-images/';
+const { data: ig } = await supabase.from('instagram_posts')
+  .select('*').order('posted_at', { ascending: false }).limit(12);
+
+if (ig && ig.length) {
+  document.getElementById('ig-sec').style.display = 'block';
+  document.getElementById('ig-grid').innerHTML = ig.map(p => {
+    const cap = (p.caption || '').replace(/\s+/g, ' ').trim();
+    const short = cap.length > 120 ? cap.slice(0, 120) + '…' : cap;
+    return `
+      <a class="ig-card reveal visible" href="${esc(p.permalink)}" target="_blank" rel="noopener">
+        <div class="ig-media">
+          ${p.image_path
+            ? `<img src="${IMG}${esc(p.image_path)}" alt="" loading="lazy">`
+            : '<span class="ig-noimg">📷</span>'}
+          ${p.media_type === 'VIDEO' ? '<span class="ig-badge">▶</span>' : ''}
+          ${p.media_type === 'CAROUSEL_ALBUM' ? '<span class="ig-badge">▣</span>' : ''}
+        </div>
+        <div class="ig-body">
+          ${p.posted_at ? `<div class="ig-date">${new Date(p.posted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>` : ''}
+          ${short ? `<p>${esc(short)}</p>` : ''}
+        </div>
+      </a>`;
+  }).join('');
 }
 </script>
 </body>
