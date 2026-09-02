@@ -772,6 +772,34 @@ button.avatar-lg::after { font-size: .78rem; }
 .m-hero .stat .num { color: #eef4fb; }
 .m-hero .stat .lbl { color: var(--gold-bright); }
 
+/* ---------- dashboard hero in light mode ----------
+   Same authoring gap as the sidebar: the band was written with hardcoded
+   dark values (navy/wine gradient, #fff heading, near-white figures), so it
+   stayed dark while everything around it went cream. These swap only the
+   colours — the lattice, the sweep and the full-bleed geometry are untouched.
+   The gold radial is dialled back from .22 to .16: at .22 the warm wash
+   dropped the gold label below 4.5:1 where the two gradients overlap. */
+html:not(.dark-mode) .m-hero {
+  background:
+    radial-gradient(circle at 85% 20%, rgba(201, 155, 63, .16), transparent 45%),
+    radial-gradient(circle at 10% 90%, rgba(200, 32, 47, .09), transparent 40%),
+    linear-gradient(140deg, #fffdf9, #f4ecdd 60%, #f7e7e1);
+  border-bottom: 1px solid rgba(201, 155, 63, .45);
+  color: var(--text);
+}
+html:not(.dark-mode) .m-hero::before { opacity: .28; }
+/* the sweep is a gold shimmer on dark; on cream it has to be white to read
+   as light passing over rather than a smear of colour */
+html:not(.dark-mode) .m-hero::after {
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, .75) 46%, transparent 60%);
+}
+html:not(.dark-mode) .m-hero h2 { color: var(--navy); }
+/* gold-bright is a dark-background colour — on cream it fails AA badly, so
+   light mode uses the same deep gold the sidebar labels settled on */
+html:not(.dark-mode) .hero-alias { color: #7a5a15; }
+html:not(.dark-mode) .m-hero .stat .num { color: var(--navy); }
+html:not(.dark-mode) .m-hero .stat .lbl { color: #7a5a15; }
+
 /* ---------- cards / stats ---------- */
 .card {
   background: var(--surface);
