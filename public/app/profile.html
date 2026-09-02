@@ -44,7 +44,7 @@
   import { requireLogin } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
-  import { compressImage, outExt } from '/app/shared/img.js';
+  import { openAvatarEditor } from '/app/shared/avatar-editor.js';
 
   const AVATAR_BASE = 'https://wrlpsetbkeyoyamkopgf.supabase.co/storage/v1/object/public/avatars/';
 
@@ -61,7 +61,11 @@
   page.innerHTML = `
     <div class="card">
       <div class="profile-head">
-        <img class="avatar-lg" id="avatar" src="${avatarUrl}" alt="Your avatar">
+        <button class="avatar-lg" id="avatar-btn" type="button"
+                title="View or change your picture"
+                aria-label="View or change your profile picture">
+          <img id="avatar" src="${avatarUrl}" alt="Your avatar">
+        </button>
         <div>
           <h2 style="margin-bottom:4px" id="head-name">${p.full_name || 'Member'}${p.alias ? ` <span style="color:var(--gold); font-size:1.05rem">“${p.alias}”</span>` : ''}</h2>
           <p style="color:var(--muted); font-size:.9rem">${ctx.user.email} · member since ${joined}${p.linkedin_url ? ` · <a href="${p.linkedin_url}" target="_blank" rel="noopener" style="color:#0a66c2">LinkedIn</a>${p.show_linkedin ? '' : ' <span style="font-size:.75rem">(hidden from directory)</span>'}` : ''}</p>
@@ -118,13 +122,11 @@
             </select>
           </div>
         </div>
-        <div class="field">
-          <label for="pic">Profile picture (JPG/PNG — large photos are shrunk automatically)</label>
-          <input type="file" id="pic" accept="image/png,image/jpeg,image/webp">
-        </div>
         <button class="btn" id="save" type="submit">Save changes</button>
       </form>
     </div>`;
+
+  document.getElementById('avatar-btn').onclick = () => openAvatarEditor(ctx);
 
   const notice = document.getElementById('notice');
   const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
@@ -236,20 +238,8 @@
         grad_year: gradYear,
       };
 
-      const file = document.getElementById('pic').files[0];
-      if (file) {
-        // avatars render small everywhere, so 512px is plenty
-        const up = await compressImage(file, 512, 0.85);
-        if (up.size > 2 * 1024 * 1024) throw new Error('Image is too large even after compression — try a different photo.');
-        const path = `${ctx.user.id}/avatar-${Date.now()}.${outExt(up, file)}`;
-        const { error: upErr } = await supabase.storage.from('avatars').upload(path, up, { upsert: true, contentType: up.type || file.type });
-        if (upErr) throw upErr;
-        if (ctx.profile?.avatar_path) {
-          await supabase.storage.from('avatars').remove([ctx.profile.avatar_path]);
-        }
-        updates.avatar_path = path;
-      }
-
+      // the picture is handled by the avatar editor (click the avatar), which
+      // crops and saves it on its own — this form only covers the text fields
       const { error } = await supabase.from('profiles').update(updates).eq('id', ctx.user.id);
       if (error) {
         if (error.code === '23505') throw new Error('That alias is already taken — pick another.');
@@ -262,10 +252,6 @@
       ctx.profile.alias = updates.alias;
       document.getElementById('head-name').innerHTML =
         `${ctx.profile.full_name || 'Member'}${updates.alias ? ` <span style="color:var(--gold); font-size:1.05rem">“${updates.alias}”</span>` : ''}`;
-      if (updates.avatar_path) {
-        document.getElementById('avatar').src = AVATAR_BASE + updates.avatar_path;
-        ctx.profile.avatar_path = updates.avatar_path;
-      }
     } catch (err) {
       say(err.message || String(err), 'error');
     } finally {
