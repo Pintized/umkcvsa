@@ -30,7 +30,7 @@
   .mail-row .m-date { font-size: .75rem; opacity: .6; white-space: nowrap; }
   .m-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c8202f; margin-right: 6px; }
   .star-btn { background: none; border: none; cursor: pointer; font-size: 1.05rem; padding: 0 2px; opacity: .45; color: inherit; }
-  .star-btn.on { opacity: 1; color: #e0b45c; }
+  .star-btn.on { opacity: 1; color: var(--ink-gold); }
   .mail-view .mv-head { border-bottom: 1px solid rgba(128,128,128,.25); padding-bottom: 12px; margin-bottom: 14px; }
   .mail-view .mv-meta { font-size: .85rem; opacity: .75; margin-top: 4px; }
   .mv-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -96,7 +96,7 @@
   .rt-area:empty::before { content: attr(data-placeholder); opacity: .45; }
   .rt-area blockquote { border-left: 3px solid rgba(128,128,128,.45); margin: 6px 0; padding-left: 10px; opacity: .85; }
   .rt-area img { max-width: 100%; height: auto; border-radius: 6px; }
-  .rt-area a { color: #3f7fbf; }
+  .rt-area a { color: var(--ink-blue); }
   .emoji-pop {
     position: absolute; top: 40px; left: 0; z-index: 30; background: var(--card-bg, #16324f);
     border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px;
@@ -784,7 +784,7 @@
           font-family: ${cs.fontFamily};
           font-size: .95rem; line-height: 1.55;
           ${canvas} }
-        a { color: #3f7fbf; }
+        a { color: var(--ink-blue); }
         blockquote { border-left: 3px solid rgba(128,128,128,.45);
           margin: 6px 0; padding-left: 10px; opacity: .8; }
         img { max-width: 100%; height: auto; }

@@ -97,7 +97,7 @@
         form.accepting = true;
         document.body.insertAdjacentHTML('afterbegin', `
           <div style="position:sticky; top:0; z-index:50; text-align:center; font-size:.85rem; font-weight:600;
-              padding:8px 14px; background:rgba(224,180,92,.14); border-bottom:1px solid rgba(224,180,92,.4); color:#e0b45c">
+              padding:8px 14px; background:rgba(224,180,92,.14); border-bottom:1px solid rgba(224,180,92,.4); color:var(--ink-gold)">
             👁️ Preview — this is what people will see. Responses are not recorded.</div>`);
       }
     } else {
@@ -211,7 +211,7 @@
             <div class="big">${isPreview ? '👁️' : '🎉'}</div>
             <h1>${isPreview ? 'Looks good!' : 'Response recorded!'}</h1>
             <p class="sub">${esc(form.settings?.confirm_msg || 'Cảm ơn bạn! Thanks for filling this out. 🌸')}</p>
-            ${isPreview ? '<p class="sub" style="color:#e0b45c">Preview only — nothing was saved. Close this tab to keep editing.</p>' : ''}
+            ${isPreview ? '<p class="sub" style="color:var(--ink-gold)">Preview only — nothing was saved. Close this tab to keep editing.</p>' : ''}
           </div>`;
       });
     }
