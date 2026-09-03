@@ -43,6 +43,22 @@
 
   const notice = document.getElementById('notice');
   const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
+  const RATE_COPY = 'Too many reset emails have gone out in the last hour. Wait about an hour and try again, or email support@umkcvsa.org and an officer can help.';
+  // Supabase caps how many auth emails go out per hour, and its raw error
+  // ("email rate limit exceeded") reads like the signup itself failed — so
+  // people retry immediately, which spends more of the quota and stretches
+  // the block. Say what actually happened and give them a way through.
+  const emailWait = (error) => {
+    if (!error) return null;
+    const msg = error.message || '';
+    const secs = msg.match(/after (\d+) seconds?/i);
+    if (secs) return `Give it ${secs[1]} more seconds, then try again — that's a short cooldown between emails.`;
+    const limited = error.status === 429
+      || error.code === 'over_email_send_rate_limit'
+      || /rate limit|too many requests/i.test(msg);
+    return limited ? RATE_COPY : null;
+  };
+
 
   // Already signed in? Straight to the dashboard.
   supabase.auth.getSession().then(({ data: { session } }) => {
@@ -76,7 +92,7 @@
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'https://umkcvsa.org/app/reset',
     });
-    say(error ? error.message : 'Password reset email sent — check your inbox.', error ? 'error' : 'ok');
+    say(error ? (emailWait(error) || error.message) : 'Password reset email sent — check your inbox.', error ? 'error' : 'ok');
   });
 </script>
 </body>
