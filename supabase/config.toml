@@ -201,6 +201,19 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
+#
+# This block is LOCAL DEV ONLY — production's limit lives in the dashboard under
+# Authentication > Rate Limits, and that is the one to raise when signups start
+# failing with "email rate limit exceeded".
+#
+# WARNING: `supabase config push` sends this whole [auth] section to the linked
+# project and would overwrite the custom SMTP set up in the dashboard
+# (smtp.resend.com / noreply@umkcvsa.org), which is not represented in this file.
+# Change production in the dashboard, not by pushing this.
+#
+# Left at the CLI default of 2 rather than raised, so a local run keeps hitting
+# the limit early and this stays a bug you can reproduce instead of one only
+# real signups find.
 email_sent = 2
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
