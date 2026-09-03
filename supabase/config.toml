@@ -203,8 +203,9 @@ password_requirements = ""
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
 #
 # This block is LOCAL DEV ONLY — production's limit lives in the dashboard under
-# Authentication > Rate Limits, and that is the one to raise when signups start
-# failing with "email rate limit exceeded".
+# Authentication > Rate Limits. It sat at 2/h (the default for projects without
+# custom SMTP) even though SMTP was enabled, which is what broke member signups;
+# raised to 100/h on 2026-09-02.
 #
 # WARNING: `supabase config push` sends this whole [auth] section to the linked
 # project and would overwrite the custom SMTP set up in the dashboard
