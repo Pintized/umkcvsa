@@ -41,7 +41,7 @@
     return `
       <div class="tile ${when ? 'earned' : ''}">
         ${when ? `<span class="earned-tag">Earned</span>` : ''}
-        <div class="tile-art${a.image_path ? '' : ' is-emoji'}">
+        <div class="tile-art${a.image_path ? '' : ' is-emoji'}"${a.image_path ? ` style="--art:url('${BADGE_BASE}${a.image_path}')"` : ''}>
           ${a.image_path
             ? `<img src="${BADGE_BASE}${a.image_path}" alt="" loading="lazy">`
             : `<span>${a.icon || '🏆'}</span>`}

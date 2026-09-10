@@ -499,20 +499,38 @@ html:not(.dark-mode) .sidebar .foot { color: #5a6675; border-top-color: var(--li
    ground when no image has been uploaded, so nothing reads as broken. */
 .tile-art {
   margin: -18px -18px 14px;              /* cancel .tile's padding to bleed */
-  height: 132px; overflow: hidden;
+  height: 150px; overflow: hidden;
   border-radius: 13px 13px 0 0;
   background: var(--surface-2);
+  position: relative;
   /* minmax(0,1fr) pins the row to the band. Implicit (or plain 1fr, whose
      automatic minimum is min-content) the row grows to the image's intrinsic
      height, so height:100% resolved against that and the picture overflowed —
      the same 1fr trap as the calendar's week columns. */
   display: grid; grid-template-rows: minmax(0, 1fr); place-items: center;
 }
+/* Reward and badge photos are square (768x768 for the ones uploaded so far)
+   and object-fit: cover in a 2.1:1 band threw away more than half of them —
+   the ramen pack was showing 47% of its own height. So the photo is contained
+   whole, and a blurred, over-scaled copy fills the band behind it: the tile
+   still reads edge-to-edge rather than as a thumbnail on a slab, and the fill
+   is drawn from the picture itself so it always matches.
+   :not(.is-emoji) because --art is only set when there is a real image. */
+.tile-art:not(.is-emoji)::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: var(--art);
+  background-size: cover; background-position: center;
+  /* over-scaled so the blur's soft edge is pushed outside the clip */
+  filter: blur(18px) saturate(1.3); transform: scale(1.2);
+  opacity: .5; pointer-events: none;
+}
 /* stretch past place-items:center (which is there to centre the emoji),
-   otherwise the image overflows the band instead of filling it */
+   otherwise the image is sized to its own intrinsic box instead of the band */
 .tile-art img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  width: 100%; height: 100%; object-fit: contain; display: block;
   grid-area: 1 / 1; align-self: stretch; justify-self: stretch;
+  position: relative;                    /* above the blurred fill */
 }
 .tile-art.is-emoji {
   background:
