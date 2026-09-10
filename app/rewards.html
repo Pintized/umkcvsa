@@ -96,7 +96,7 @@
             ? '<span class="left-badge out">Sold out</span>'
             : `<span class="left-badge">🔥 ${r.stock} Left!</span>`) : ''}
           ${canAfford ? '<span class="earned-tag">Affordable</span>' : ''}
-          <div class="tile-art${r.image_path ? '' : ' is-emoji'}">
+          <div class="tile-art${r.image_path ? '' : ' is-emoji'}"${r.image_path ? ` style="--art:url('${BADGE_BASE}${esc(r.image_path)}')"` : ''}>
             ${r.image_path
               ? `<img src="${BADGE_BASE}${esc(r.image_path)}" alt="" loading="lazy">`
               : `<span>${esc(r.icon || '🎁')}</span>`}
