@@ -38,7 +38,7 @@
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:6px">
           <div>
             <h2 style="margin-bottom:2px">Public gallery</h2>
-            <p style="color:var(--muted); font-size:.86rem">These photos appear on the public site's Gallery page instantly. Max 11 MB each — they're auto-compressed for fast loading.</p>
+            <p style="color:var(--muted); font-size:.86rem">These photos appear on the public site's Gallery page instantly. Max 50 MB each — they're shrunk to 1600px on upload, so what lands is usually well under 1 MB.</p>
           </div>
           <button class="btn" id="upload-btn">⬆ Upload photos</button>
           <input type="file" id="files" accept="image/png,image/jpeg,image/webp,image/gif" multiple style="display:none">
@@ -63,21 +63,46 @@
     const notice = document.getElementById('notice');
     const say = (msg, cls) => { notice.textContent = msg; notice.className = `notice ${cls}`; };
 
+    // Source cap is Supabase's own ceiling on the Free plan, so it's the honest
+    // number to check against — anything bigger is refused server-side anyway.
+    const SRC_MAX = 50 * 1024 * 1024;
+    // What actually lands is capped separately and much lower. compressImage
+    // hands a file straight back for GIFs (to keep the animation) and whenever
+    // it can't decode one, so without this a 50 MB GIF would upload raw, take
+    // 5% of the project's 1 GB, and then ship itself to every visitor of the
+    // public gallery page.
+    const OUT_MAX = 11 * 1024 * 1024;
+    const mb = (b) => `${(b / 1048576).toFixed(1)} MB`;
+
     document.getElementById('upload-btn').onclick = () => document.getElementById('files').click();
     document.getElementById('files').addEventListener('change', async (e) => {
       const files = [...e.target.files];
       if (!files.length) return;
-      let done = 0, failed = 0;
+      let done = 0;
+      const skipped = [];
       say(`Uploading 0/${files.length}…`, 'ok');
       for (const file of files) {
-        if (file.size > 11 * 1024 * 1024) { failed++; continue; }
+        if (file.size > SRC_MAX) {
+          skipped.push(`${file.name} is ${mb(file.size)}, over the 50 MB limit`);
+          continue;
+        }
         const up = await compressImage(file, 1600, .85); // auto-shrink, keeps event detail
+        if (up.size > OUT_MAX) {
+          skipped.push(`${file.name} wouldn't compress (still ${mb(up.size)}) — re-save it as a JPEG`);
+          continue;
+        }
         const { error } = await supabase.storage.from('gallery')
           .upload(`${crypto.randomUUID()}.${outExt(up, file)}`, up, { contentType: up.type });
-        error ? failed++ : done++;
+        if (error) skipped.push(`${file.name} — ${error.message}`);
+        else done++;
         say(`Uploading ${done}/${files.length}…`, 'ok');
       }
-      say(`Uploaded ${done} photo${done === 1 ? '' : 's'}${failed ? ` — ${failed} failed (too large or error)` : ''}.`, failed ? 'error' : 'ok');
+      // let the same file be picked again after a skip, otherwise re-selecting
+      // it fires no change event and the retry looks like nothing happened
+      e.target.value = '';
+      say(`Uploaded ${done} photo${done === 1 ? '' : 's'}.`
+          + (skipped.length ? ` Skipped ${skipped.length}: ${skipped.join('; ')}` : ''),
+          skipped.length ? 'error' : 'ok');
       load();
     });
 
