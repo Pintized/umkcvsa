@@ -844,7 +844,9 @@ footer {
   opacity: 0;
   transform: translateY(48px);
   transition: opacity .9s cubic-bezier(.2, .7, .3, 1), transform .9s cubic-bezier(.2, .7, .3, 1);
-  will-change: opacity, transform;
+  /* no will-change here on purpose — it would apply to every .fx on the page
+     at once and never come off. index.html sets it per element as each one
+     enters and clears it when the transition ends. */
 }
 .fx.fx-left  { transform: translateX(-64px); }
 .fx.fx-right { transform: translateX(64px); }
