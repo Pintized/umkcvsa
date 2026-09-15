@@ -67,6 +67,7 @@
     const fileBytes = buckets.reduce((s, b) => s + b.bytes, 0);
     const fileCount = buckets.reduce((s, b) => s + b.files, 0);
     const used = buckets.filter(b => b.files > 0).length;
+    const biggest = Math.max(...buckets.map(b => b.bytes), 1);
 
     page.innerHTML = `
       <div class="card">
@@ -87,15 +88,19 @@
 
       <div class="card">
         <h2>Where the files are</h2>
-        <div style="margin-top:4px">
+        <p style="color:var(--muted); font-size:.84rem; margin-bottom:10px">
+          Bars are relative to the largest bucket. Against the 1 GB allowance
+          every one of these would be an empty sliver, which tells you nothing.</p>
+        <div>
           ${buckets.map(b => {
-            const pct = (b.bytes / QUOTA.files) * 100;
+            // widest bucket sets the scale, so the breakdown actually compares
+            const pct = (b.bytes / biggest) * 100;
             return `
               <div class="bk-row">
                 <div class="nm">${esc(b.bucket)}
                   <small>${b.files.toLocaleString()} file${b.files === 1 ? '' : 's'}${b.public ? '' : ' · private'}</small>
                 </div>
-                <div class="meter-track"><div class="meter-fill" style="--pct:${Math.min(100, pct).toFixed(2)}%"></div></div>
+                <div class="meter-track"><div class="meter-fill${b.bytes ? '' : ' zero'}" style="--pct:${pct.toFixed(2)}%"></div></div>
                 <div class="sz">${b.bytes ? fmt(b.bytes) : '—'}</div>
               </div>`;
           }).join('')}
