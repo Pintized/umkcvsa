@@ -912,6 +912,52 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
   letter-spacing: .04em;
 }
 
+/* ---------- usage meters (Admin > Storage) ----------
+   Width rides a --pct custom property so the fill can be set from one inline
+   style instead of a stylesheet write per bar. Colour is a state class rather
+   than a gradient: a bar that is always part-red reads as a warning even at
+   2% full, which is exactly the wrong signal for a quota that is mostly empty. */
+.meter-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; margin-bottom: 7px;
+}
+.meter-head .lbl {
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-gold);
+}
+.meter-head .val { font-size: .88rem; color: var(--muted); }
+.meter-head .val b { color: var(--text); font-weight: 700; }
+.meter-track {
+  height: 10px; border-radius: 99px; overflow: hidden;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.meter-fill {
+  height: 100%; width: var(--pct, 0%); border-radius: 99px;
+  background: var(--gold);
+  transition: width .5s cubic-bezier(.2, .7, .3, 1);
+  /* a 0.4% bar would otherwise render as nothing and read as "broken" */
+  min-width: 3px;
+}
+.meter.lg .meter-track { height: 14px; }
+.meter.warn .meter-fill { background: var(--warn); }
+.meter.crit .meter-fill { background: var(--red); }
+.meter + .meter { margin-top: 20px; }
+
+/* per-bucket breakdown: label, bar, size — collapses to stacked on narrow */
+.bk-row {
+  display: grid; grid-template-columns: minmax(120px, 1.1fr) minmax(0, 2fr) auto;
+  gap: 14px; align-items: center;
+  padding: 11px 0; border-bottom: 1px solid var(--line);
+}
+.bk-row:last-child { border-bottom: none; }
+.bk-row .nm { font-weight: 600; font-size: .92rem; overflow-wrap: anywhere; }
+.bk-row .nm small { display: block; color: var(--muted); font-weight: 400; font-size: .76rem; }
+.bk-row .sz { text-align: right; font-family: var(--serif); font-weight: 700; white-space: nowrap; }
+@media (max-width: 620px) {
+  .bk-row { grid-template-columns: 1fr auto; }
+  .bk-row .meter-track { grid-column: 1 / -1; }
+}
+
 /* ---------- member list ---------- */
 .member-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 14px; }
 .member-card {

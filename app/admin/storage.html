@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage | UMKC VSA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="/app/shared/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app/shared/app.css">
+</head>
+<body>
+<div class="loading" id="loading">Measuring storage…</div>
+<script type="module">
+  import { requireAdmin } from '/app/shared/guard.js';
+  import { renderShell } from '/app/shared/shell.js';
+  import { supabase } from '/app/shared/supabase.js';
+
+  const ctx = await requireAdmin();
+  document.getElementById('loading').remove();
+  const page = renderShell(ctx, 'Storage');
+
+  // Supabase Free Plan allowances. They are not exposed to the client by any
+  // API, so they live here — if the project is ever upgraded these two numbers
+  // are the only thing that needs changing. The org usage page is the source
+  // of truth; this page exists so nobody has to go log into the dashboard to
+  // answer "is there room for more photos?".
+  const QUOTA = {
+    files: 1024 ** 3,        // 1 GB of file storage
+    db: 500 * 1024 ** 2,     // 500 MB of database
+  };
+  const USAGE_URL = 'https://supabase.com/dashboard/org/njjjusklgqtbrcqpgyui/usage';
+
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const fmt = (b) => {
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 ** 2) return `${(b / 1024).toFixed(0)} KB`;
+    if (b < 1024 ** 3) return `${(b / 1024 ** 2).toFixed(b < 10 * 1024 ** 2 ? 2 : 1)} MB`;
+    return `${(b / 1024 ** 3).toFixed(2)} GB`;
+  };
+  // amber at 70%, red at 90% — early enough that there's still time to act
+  const level = (pct) => (pct >= 90 ? ' crit' : pct >= 70 ? ' warn' : '');
+
+  const meter = ({ label, used, total, big }) => {
+    const pct = total ? (used / total) * 100 : 0;
+    const shown = pct > 0 && pct < 0.1 ? '<0.1' : pct.toFixed(1);
+    return `
+      <div class="meter${big ? ' lg' : ''}${level(pct)}">
+        <div class="meter-head">
+          <span class="lbl">${esc(label)}</span>
+          <span class="val"><b>${fmt(used)}</b> of ${fmt(total)} · ${shown}%</span>
+        </div>
+        <div class="meter-track"><div class="meter-fill" style="--pct:${Math.min(100, pct).toFixed(2)}%"></div></div>
+      </div>`;
+  };
+
+  function render(report, error) {
+    if (error) {
+      page.innerHTML = `<div class="card"><h2>Storage</h2>
+        <p class="notice error">Couldn't read usage — ${esc(error)}</p></div>`;
+      return;
+    }
+
+    const buckets = [...report.buckets].sort((a, b) => b.bytes - a.bytes);
+    const fileBytes = buckets.reduce((s, b) => s + b.bytes, 0);
+    const fileCount = buckets.reduce((s, b) => s + b.files, 0);
+    const used = buckets.filter(b => b.files > 0).length;
+
+    page.innerHTML = `
+      <div class="card">
+        <h2>Capacity</h2>
+        <p style="color:var(--muted); font-size:.88rem; margin-bottom:20px">
+          Photos, receipts and avatars all draw on one shared file allowance —
+          the Gallery doesn't get its own. Database is separate.</p>
+        ${meter({ label: 'File storage', used: fileBytes, total: QUOTA.files, big: true })}
+        ${meter({ label: 'Database', used: report.db_bytes, total: QUOTA.db, big: true })}
+        <p style="color:var(--muted); font-size:.84rem; margin-top:18px">
+          ${fileCount.toLocaleString()} file${fileCount === 1 ? '' : 's'} across
+          ${used} of ${buckets.length} buckets.
+          Measured ${new Date(report.generated_at).toLocaleString('en-US',
+            { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.
+          <button class="link-btn" id="refresh">Refresh</button>
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Where the files are</h2>
+        <div style="margin-top:4px">
+          ${buckets.map(b => {
+            const pct = (b.bytes / QUOTA.files) * 100;
+            return `
+              <div class="bk-row">
+                <div class="nm">${esc(b.bucket)}
+                  <small>${b.files.toLocaleString()} file${b.files === 1 ? '' : 's'}${b.public ? '' : ' · private'}</small>
+                </div>
+                <div class="meter-track"><div class="meter-fill" style="--pct:${Math.min(100, pct).toFixed(2)}%"></div></div>
+                <div class="sz">${b.bytes ? fmt(b.bytes) : '—'}</div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Not shown here</h2>
+        <p style="color:var(--muted); font-size:.88rem">
+          <b>Egress</b> — how much gets downloaded by visitors, 5 GB/month — isn't
+          readable from inside the project, only from the billing dashboard. It's
+          worth watching: a public Gallery page serves its photos on every visit,
+          so egress usually runs out well before disk does.
+          <a href="${USAGE_URL}" target="_blank" rel="noopener">Open the usage dashboard →</a>
+        </p>
+      </div>`;
+
+    document.getElementById('refresh').onclick = load;
+  }
+
+  async function load() {
+    const { data, error } = await supabase.rpc('storage_report');
+    render(data, error?.message);
+  }
+
+  await load();
+</script>
+</body>
+</html>
