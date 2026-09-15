@@ -33,6 +33,7 @@ const ICONS = {
   eye: SVG('<path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="3"/>'),
   lifebuoy: SVG('<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.6"/><path d="m6 6 3.5 3.5M14.5 14.5 18 18M18 6l-3.5 3.5M9.5 14.5 6 18"/>'),
   ticket: SVG('<path d="M3.4 9.2V7.4a1.6 1.6 0 0 1 1.6-1.6h14a1.6 1.6 0 0 1 1.6 1.6v1.8a2.8 2.8 0 0 0 0 5.6v1.8a1.6 1.6 0 0 1-1.6 1.6H5a1.6 1.6 0 0 1-1.6-1.6v-1.8a2.8 2.8 0 0 0 0-5.6Z"/><path d="M14 6.4v11.2"/>'),
+  database: SVG('<ellipse cx="12" cy="6" rx="7.4" ry="3"/><path d="M4.6 6v12c0 1.66 3.31 3 7.4 3s7.4-1.34 7.4-3V6"/><path d="M4.6 12c0 1.66 3.31 3 7.4 3s7.4-1.34 7.4-3"/>'),
   bell: SVG('<path d="M18 8.6a6 6 0 1 0-12 0c0 5-2 6.4-2 6.4h16s-2-1.4-2-6.4Z"/><path d="M13.7 19a2 2 0 0 1-3.4 0"/>'),
 };
 
@@ -62,6 +63,7 @@ const I18N = {
     Roles: 'Vai trò', 'About Page': 'Trang giới thiệu', 'Home Page': 'Trang chủ', 'E-Board': 'Ban chấp hành', Store: 'Cửa hàng',
     Gallery: 'Thư viện ảnh', 'Log out': 'Đăng xuất', 'Main site': 'Trang chính',
     Support: 'Hỗ trợ', Tickets: 'Yêu cầu hỗ trợ',
+    Storage: 'Dung lượng',
     Notifications: 'Thông báo', 'Mark all read': 'Đánh dấu đã đọc',
   },
   es: {
@@ -72,6 +74,7 @@ const I18N = {
     Roles: 'Roles', 'About Page': 'Página Acerca de', 'Home Page': 'Página de inicio', 'E-Board': 'Directiva', Store: 'Tienda',
     Gallery: 'Galería', 'Log out': 'Cerrar sesión', 'Main site': 'Sitio principal',
     Support: 'Soporte', Tickets: 'Tickets',
+    Storage: 'Almacenamiento',
     Notifications: 'Notificaciones', 'Mark all read': 'Marcar todo como leído',
   },
   zh: {
@@ -82,6 +85,7 @@ const I18N = {
     Roles: '角色', 'About Page': '关于页面', 'Home Page': '首页', 'E-Board': '执行委员会', Store: '商店',
     Gallery: '相册', 'Log out': '退出登录', 'Main site': '主网站',
     Support: '支持', Tickets: '工单',
+    Storage: '存储空间',
     Notifications: '通知', 'Mark all read': '全部标为已读',
   },
 };
@@ -110,6 +114,7 @@ const ADMIN_LINKS = [
   { href: '/app/admin/store',     label: 'Store',    icon: 'tag' },
   { href: '/app/officer/roles',   label: 'Roles',    icon: 'shield' },
   { href: '/app/officer/audit',   label: 'Audit Log', icon: 'scope' },
+  { href: '/app/admin/storage',   label: 'Storage',  icon: 'database' },
   { href: '/app/admin/bot',       label: 'VSA Bot',  icon: 'bot' },
   { href: '/app/admin/pages',     label: 'Pages',    icon: 'eye' },
 ];
