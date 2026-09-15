@@ -938,6 +938,9 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
   /* a 0.4% bar would otherwise render as nothing and read as "broken" */
   min-width: 3px;
 }
+/* except at exactly nothing, where a sliver would claim the bucket has
+   something in it */
+.meter-fill.zero { min-width: 0; }
 .meter.lg .meter-track { height: 14px; }
 .meter.warn .meter-fill { background: var(--warn); }
 .meter.crit .meter-fill { background: var(--red); }
