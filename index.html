@@ -105,8 +105,6 @@
 
   <div class="hero-divider" aria-hidden="true"></div>
 
-  <div class="ticker-line" id="ticker" style="display:none"><div class="ticker-track" id="ticker-track"></div></div>
-
   <div class="block tight" id="announce-sec" style="display:none">
     <div class="overline fx">Announcements</div>
     <div class="announce-grid" id="announcements"></div>
@@ -355,23 +353,6 @@ if (events.length) {
   };
   tick();
   setInterval(tick, 1000);
-}
-
-// ticker
-if (events.length) {
-  const names = events.map(ev =>
-    `<b>${esc(ev.name)}</b> · ${new Date(ev.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
-    .join('&nbsp;&nbsp;✦&nbsp;&nbsp;');
-  const half = names + '&nbsp;&nbsp;✦&nbsp;&nbsp;';
-  const ticker = document.getElementById('ticker');
-  const track = document.getElementById('ticker-track');
-  ticker.style.display = 'block';
-  // repeat until one copy spans the bar (short event lists left a blank
-  // gap and a visible jump), then duplicate for the seamless -50% loop
-  track.innerHTML = half;
-  for (let i = 0; i < 60 && track.scrollWidth < ticker.offsetWidth; i++) track.innerHTML += half;
-  track.innerHTML += track.innerHTML;
-  track.style.animationDuration = Math.max(12, Math.round(track.scrollWidth / 2 / 55)) + 's';
 }
 
 // announcements

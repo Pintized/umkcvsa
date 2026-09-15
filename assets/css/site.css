@@ -573,25 +573,6 @@ footer {
 .cd-unit .n { font-family: var(--serif); font-weight: 800; font-size: 1.3rem; color: var(--gold-bright); }
 .cd-unit .u { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 
-/* ---------- homepage: event ticker ---------- */
-.ticker {
-  overflow: hidden;
-  background: #081524;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 9px 0;
-  white-space: nowrap;
-}
-.ticker-track {
-  display: inline-block;
-  animation: tickerScroll 30s linear infinite;
-  color: var(--muted);
-  font-size: .88rem;
-  letter-spacing: .04em;
-}
-.ticker-track b { color: var(--gold-bright); font-weight: 700; }
-@keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-
 /* ---------- homepage: announcements ---------- */
 .announce-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
 .announce {
@@ -825,9 +806,6 @@ footer {
 .statement { font-size: clamp(30px, 4.4vw, 44px); color: #fff; line-height: 1.15; margin-bottom: 18px; }
 .statement .g { color: var(--gold-bright); }
 
-/* borderless ticker line */
-.ticker-line { overflow: hidden; white-space: nowrap; padding: 4px 0 0; opacity: .85; }
-.ticker-line .ticker-track { animation-duration: 34s; }
 
 /* floating counters — no band */
 .counter-row { display: flex; justify-content: center; gap: clamp(30px, 7vw, 90px); flex-wrap: wrap; text-align: center; }
