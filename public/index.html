@@ -200,14 +200,30 @@
   var bar = document.getElementById('scroll-progress');
   var o1 = document.querySelector('.ambient .o1');
   var o2 = document.querySelector('.ambient .o2');
+
+  // scrollHeight and clientHeight are layout-inducing reads. Taking them
+  // inside the scroll handler forced a synchronous layout of the whole page
+  // on every single frame of every scroll — the jank was self-inflicted.
+  // They only change when the page does, so measure then, not per frame.
+  var range = 1;
+  function measure() {
+    var h = document.documentElement;
+    range = Math.max(1, h.scrollHeight - h.clientHeight);
+  }
+  measure();
+  // events, announcements, sponsors and the gallery strip are all injected
+  // after this runs, and each one changes the page height
+  if (window.ResizeObserver) new ResizeObserver(measure).observe(document.body);
+  addEventListener('resize', measure, { passive: true });
+
   var ticking = false;
   function onScroll() {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(function () {
-      var h = document.documentElement;
-      var y = h.scrollTop;
-      bar.style.transform = 'scaleX(' + (y / (h.scrollHeight - h.clientHeight)) + ')';
+      // scrollTop alone doesn't force layout the way the other two do
+      var y = document.documentElement.scrollTop;
+      bar.style.transform = 'scaleX(' + (y / range) + ')';
       o1.style.transform = 'translateY(' + (y * -0.06) + 'px)';
       o2.style.transform = 'translateY(' + (y * -0.11) + 'px)';
       ticking = false;
@@ -220,7 +236,17 @@
 (function () {
   var obs = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
-      if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); }
+      if (!e.isIntersecting) return;
+      var el = e.target;
+      el.style.willChange = 'opacity, transform';
+      el.setAttribute('data-fxw', '1');
+      el.classList.add('in');
+      obs.unobserve(el);
+      el.addEventListener('transitionend', function () { window.__fxRelease(el); }, { once: true });
+      // transitionend doesn't fire in a throttled tab, and a layer that is
+      // never released is the bug this is fixing. 0.9s transition + the
+      // stagger, rounded up.
+      setTimeout(function () { if (el.hasAttribute('data-fxw')) window.__fxRelease(el); }, 2500);
     });
   }, { threshold: .18, rootMargin: '0px 0px -40px 0px' });
   window.__fxScan = function () {
@@ -231,6 +257,15 @@
       obs.observe(el);
     });
   };
+  // will-change is a promise that something is about to change, not a speed
+  // switch — it used to sit on all 29 .fx elements in the stylesheet, so the
+  // page carried 29 compositor layers forever for an animation each element
+  // plays once. Promote on the way in, release on the way out.
+  function release(el) {
+    el.style.willChange = '';
+    el.removeAttribute('data-fxw');
+  }
+  window.__fxRelease = release;
   window.__fxScan();
 })();
 
