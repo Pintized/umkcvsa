@@ -96,9 +96,36 @@ export function isOfficer(roles) {
   return roles.includes('officer') || roles.includes('admin');
 }
 
+// Officer pages that roles below officer may also open, and which roles.
+// One map, read by both the page guard and the sidebar, so a link can
+// never show up without access behind it — or access exist with no link.
+// The matching database grant lives in the migration of the same name;
+// this only decides what gets rendered and routed.
+export const OFFICER_PAGE_ROLES = {
+  '/app/officer/notes': ['intern'],
+};
+
+export function canOpenOfficerPage(href, roles) {
+  if (isOfficer(roles)) return true;
+  return (OFFICER_PAGE_ROLES[href] || []).some((r) => roles.includes(r));
+}
+
 export async function requireOfficer() {
   const ctx = await requireLogin();
   if (!isOfficer(ctx.roles)) {
+    location.replace('/app/');
+    return new Promise(() => {});
+  }
+  return ctx;
+}
+
+// For an officer page that some lower role can reach too. Defaults to the
+// current path, so a page just calls requireOfficerPage() and the map above
+// decides. Falls back to officer-only for any path not in the map.
+export async function requireOfficerPage(href) {
+  const path = href || location.pathname.replace(/\.html$/, '');
+  const ctx = await requireLogin();
+  if (!canOpenOfficerPage(path, ctx.roles)) {
     location.replace('/app/');
     return new Promise(() => {});
   }
