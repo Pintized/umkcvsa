@@ -961,6 +961,44 @@ html.dark-mode .badge.admin { color: var(--gold-bright); }
   .bk-row .meter-track { grid-column: 1 / -1; }
 }
 
+/* ---------- note snapshots (Admin > Storage) ---------- */
+.snap-row { border-bottom: 1px solid var(--line); }
+.snap-row:last-child { border-bottom: none; }
+.snap-head {
+  width: 100%; display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  gap: 10px; align-items: center;
+  background: none; border: 0; cursor: pointer;
+  padding: 11px 2px; text-align: left; color: inherit; font-size: .92rem;
+}
+.snap-head:hover { background: var(--surface-2); }
+.snap-caret { color: var(--ink-gold); font-size: .8rem; }
+.snap-when { font-weight: 600; overflow-wrap: anywhere; }
+.snap-size { color: var(--muted); font-size: .84rem; white-space: nowrap; }
+.snap-sum {
+  color: var(--muted); font-size: .84rem;
+  padding: 2px 0 12px 24px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline;
+}
+.snap-gone { color: var(--ink-red); }
+.snap-notes { padding: 0 0 12px 24px; display: grid; gap: 6px; }
+.snap-note {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .88rem; padding: 7px 11px;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px;
+}
+/* a missing note is the one you came here for — it gets the red edge */
+.snap-note.is-gone { border-left: 3px solid var(--red); }
+.snap-note .t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.snap-ok { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+/* --muted on the tinted row lands at 4.47:1 in light mode, just under AA.
+   Dark mode is fine at 5.93:1 and a fixed grey dark enough for cream would
+   disappear on ink, so the nudge is light-mode only. */
+html:not(.dark-mode) .snap-ok { color: #646e7c; }
+@media (max-width: 560px) {
+  .snap-head { grid-template-columns: 14px minmax(0, 1fr) auto; }
+  .snap-sum, .snap-notes { padding-left: 0; }
+}
+
 /* ---------- member list ---------- */
 .member-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 14px; }
 .member-card {

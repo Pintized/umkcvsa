@@ -107,6 +107,15 @@
         </div>
       </div>
 
+      <div class="card" id="snap-card">
+        <h2>Note snapshots</h2>
+        <p style="color:var(--muted); font-size:.88rem; margin-bottom:10px">
+          An hourly backup of the Notes page. A snapshot is written only when
+          something actually changed, so every entry below is a distinct state
+          of the notes rather than an hourly duplicate.</p>
+        <div id="snap-list"><p class="loading" style="padding:20px">Reading snapshots…</p></div>
+      </div>
+
       <div class="card">
         <h2>Not shown here</h2>
         <p style="color:var(--muted); font-size:.88rem">
@@ -119,6 +128,201 @@
       </div>`;
 
     document.getElementById('refresh').onclick = load;
+    renderSnapshots();
+  }
+
+  // ---------- note snapshots ----------
+  // The bucket is private; an officer's session is what makes list() and
+  // download() work from the browser at all. File contents are fetched only
+  // when a row is opened — each is ~60 KB and there can be 60 of them.
+  const SNAP = 'note-snapshots';
+  let liveNotes = null;   // id -> row; loaded on first expand, dropped after a restore
+
+  // notes.id is a bigint. It arrives as a JSON number from PostgREST but can
+  // arrive as a string from anything that serialises bigints safely, and a
+  // snapshot is just a file that has been sitting around. Comparing the two
+  // raw silently classifies every note as deleted, so every id crossing that
+  // boundary goes through here.
+  const key = (v) => String(v);
+
+  const when = (iso) => new Date(iso).toLocaleString('en-US',
+    { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  async function renderSnapshots() {
+    const box = document.getElementById('snap-list');
+    const { data, error } = await supabase.storage.from(SNAP)
+      .list('', { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+
+    if (error) {
+      box.innerHTML = `<p class="notice error">Couldn't list snapshots — ${esc(error.message)}</p>`;
+      return;
+    }
+    const files = (data || []).filter((f) => f.name.endsWith('.json'));
+    if (!files.length) {
+      box.innerHTML = `<p style="color:var(--muted); font-size:.88rem">
+        Nothing yet. The job runs at half past each hour and writes only when the
+        notes have changed since the last snapshot.</p>`;
+      return;
+    }
+
+    box.innerHTML = files.map((f, i) => `
+      <div class="snap-row" data-name="${esc(f.name)}">
+        <button class="snap-head" data-open="1" aria-expanded="false">
+          <span class="snap-caret">&#9656;</span>
+          <span class="snap-when">${when(f.created_at)}</span>
+          ${i === 0 ? '<span class="badge">latest</span>' : '<span></span>'}
+          <span class="snap-size">${fmt(f.metadata?.size || 0)}</span>
+        </button>
+        <div class="snap-body" hidden></div>
+      </div>`).join('');
+
+    box.querySelectorAll('[data-open]').forEach((b) => { b.onclick = () => toggleSnap(b); });
+  }
+
+  async function toggleSnap(btn) {
+    const row = btn.closest('.snap-row');
+    const body = row.querySelector('.snap-body');
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    row.querySelector('.snap-caret').innerHTML = open ? '&#9656;' : '&#9662;';
+    body.hidden = open;
+    if (open || body.dataset.loaded) return;
+
+    body.innerHTML = '<p class="loading" style="padding:14px">Opening…</p>';
+    const { data: blob, error } = await supabase.storage.from(SNAP).download(row.dataset.name);
+    if (error) {
+      body.innerHTML = `<p class="notice error">Couldn't open — ${esc(error.message)}</p>`;
+      return;
+    }
+    let snap;
+    try {
+      snap = JSON.parse(await blob.text());
+    } catch (e) {
+      body.innerHTML = '<p class="notice error">That file is not valid JSON.</p>';
+      return;
+    }
+
+    if (!liveNotes) {
+      const { data } = await supabase.from('notes').select('id, title');
+      liveNotes = new Map((data || []).map((n) => [key(n.id), n]));
+    }
+
+    const rows = snap.notes || [];
+    const gone = rows.filter((n) => !liveNotes.has(key(n.id)));
+    const added = liveNotes.size - (rows.length - gone.length);
+    const folders = (snap.note_folders || []).length;
+    const atts = (snap.note_attendees || []).length;
+
+    body.dataset.loaded = '1';
+    body.innerHTML = `
+      <p class="snap-sum">
+        ${rows.length} note${rows.length === 1 ? '' : 's'} ·
+        ${folders} folder${folders === 1 ? '' : 's'} ·
+        ${atts} attendee row${atts === 1 ? '' : 's'}
+        ${gone.length
+          ? `<b class="snap-gone">· ${gone.length} no longer exist${gone.length === 1 ? 's' : ''}</b>`
+          : '· all still present'}
+        ${added > 0 ? `· ${added} created since` : ''}
+        <button class="link-btn" data-dl="1">Download</button>
+      </p>
+      <div class="snap-notes">
+        ${rows.map((n) => `
+          <div class="snap-note${liveNotes.has(key(n.id)) ? '' : ' is-gone'}">
+            <span class="t">${esc(n.title || 'Untitled note')}</span>
+            ${liveNotes.has(key(n.id))
+              ? '<span class="snap-ok">present</span>'
+              : `<button class="btn sm ghost" data-restore="${esc(key(n.id))}">Restore</button>`}
+          </div>`).join('')}
+      </div>`;
+
+    body.querySelector('[data-dl]').onclick = () => download(row.dataset.name, blob);
+    body.querySelectorAll('[data-restore]').forEach((b) => { b.onclick = () => arm(b, snap); });
+  }
+
+  function download(name, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Two-step instead of confirm(): a native dialog freezes the whole page for
+  // anyone driving the portal through the browser extension.
+  function arm(btn, snap) {
+    if (btn.dataset.armed !== '1') {
+      btn.dataset.armed = '1';
+      btn.textContent = 'Sure?';
+      btn.classList.remove('ghost');
+      setTimeout(() => {
+        if (btn.dataset.armed === '1') {
+          btn.dataset.armed = '';
+          btn.textContent = 'Restore';
+          btn.classList.add('ghost');
+        }
+      }, 4000);
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Restoring…';
+    doRestore(btn, snap);
+  }
+
+  async function doRestore(btn, snap) {
+    const id = btn.dataset.restore;
+    const note = (snap.notes || []).find((n) => key(n.id) === id);
+    if (!note) { btn.textContent = 'Not in file'; return; }
+
+    // notes.html renders strictly folder-by-folder, so a note whose folder is
+    // also gone would come back invisible. Match the snapshot's folder by name,
+    // recreating it if it has been deleted too, and fall back to the first
+    // existing folder rather than leaving the note unreachable.
+    let folderId = null;
+    const snapFolder = (snap.note_folders || []).find((f) => key(f.id) === key(note.folder_id));
+    const { data: liveFolders } = await supabase.from('note_folders').select('id, name');
+    if (snapFolder) {
+      const match = (liveFolders || []).find((f) => f.name === snapFolder.name);
+      if (match) {
+        folderId = match.id;
+      } else {
+        const { data: made } = await supabase.from('note_folders')
+          .insert({ name: snapFolder.name }).select('id').single();
+        folderId = made?.id ?? null;
+      }
+    }
+    if (folderId == null) folderId = liveFolders?.[0]?.id ?? null;
+
+    // notes.id is `generated always as identity`, so this comes back as a new
+    // note rather than reoccupying the old id. Restoring is additive — it can
+    // never overwrite something that is still there.
+    const { data: made, error } = await supabase.from('notes').insert({
+      folder_id: folderId,
+      title: note.title,
+      content: note.content,
+      meeting_date: note.meeting_date ?? null,
+      tags: note.tags ?? [],
+      icon: note.icon ?? null,
+      color: note.color ?? null,
+    }).select('id').single();
+
+    if (error) {
+      btn.disabled = false;
+      btn.textContent = 'Failed';
+      btn.title = error.message;
+      return;
+    }
+
+    const att = (snap.note_attendees || []).filter((a) => key(a.note_id) === id);
+    if (att.length) {
+      await supabase.from('note_attendees')
+        .insert(att.map((a) => ({ note_id: made.id, user_id: a.user_id })));
+    }
+
+    btn.outerHTML = '<span class="snap-ok">restored</span>';
+    liveNotes = null;   // present/missing counts on other snapshots are now stale
   }
 
   async function load() {
