@@ -14,11 +14,11 @@
 <body>
 <div class="loading" id="loading">Loading notes…</div>
 <script type="module">
-  import { requireOfficer } from '/app/shared/guard.js';
+  import { requireOfficerPage } from '/app/shared/guard.js';
   import { renderShell } from '/app/shared/shell.js';
   import { supabase } from '/app/shared/supabase.js';
 
-  const ctx = await requireOfficer();
+  const ctx = await requireOfficerPage();
   document.getElementById('loading').remove();
   const page = renderShell(ctx, 'Notes');
 

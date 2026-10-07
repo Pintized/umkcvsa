@@ -1,7 +1,7 @@
 // Renders the app chrome (sidebar + topbar) for signed-in pages and
 // wires up theme toggle + logout. Replaces the legacy PHP partials
 // (sidebar.php, topbar.php, theme-toggle.php).
-import { isOfficer, logout } from './guard.js';
+import { canOpenOfficerPage, logout } from './guard.js';
 import { supabase } from './supabase.js';
 
 // Custom line-icon set (stroke inherits link color; gold dot accents)
@@ -167,7 +167,10 @@ function animateStats(root) {
 }
 
 export function renderShell(ctx, pageTitle) {
-  const officer = isOfficer(ctx.roles);
+  // Interns get a cut-down Officer section rather than none at all —
+  // canOpenOfficerPage decides per link, so the rail matches exactly what
+  // the guard and RLS will actually allow.
+  const officerLinks = OFFICER_LINKS.filter((l) => canOpenOfficerPage(l.href, ctx.roles));
   const lang = ctx.profile?.language || 'en';
   const isAdmin = ctx.roles.includes('admin');
   const pages = ctx.pages || {};
@@ -190,7 +193,7 @@ export function renderShell(ctx, pageTitle) {
         <nav>
           <div class="nav-label">${tr(lang, 'Member')}</div>
           ${vis(MEMBER_LINKS).map(l => navLink(mk(l))).join('')}
-          ${officer ? `<div class="nav-label">${tr(lang, 'Officer')}</div>${vis(OFFICER_LINKS).map(l => navLink(mk(l), true)).join('')}` : ''}
+          ${officerLinks.length ? `<div class="nav-label">${tr(lang, 'Officer')}</div>${vis(officerLinks).map(l => navLink(mk(l), true)).join('')}` : ''}
           ${ctx.roles.includes('admin') ? `<div class="nav-label">${tr(lang, 'Admin')}</div>${ADMIN_LINKS.map(l => navLink({ ...l, label: tr(lang, l.label) }, true)).join('')}` : ''}
           <div class="nav-label">${tr(lang, 'Settings')}</div>
           ${vis(SETTINGS_LINKS).map(l => navLink(mk(l))).join('')}
