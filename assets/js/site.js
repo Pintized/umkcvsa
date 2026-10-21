@@ -44,9 +44,16 @@
     var sess = key && JSON.parse(localStorage.getItem(key));
     if (sess && (sess.refresh_token || (sess.expires_at && sess.expires_at * 1000 > Date.now()))) {
       document.querySelectorAll('a.login').forEach(function (a) {
-        a.textContent = 'Account Portal';
         a.href = '/app/';
+        // Hand the new label to i18n rather than writing it straight in:
+        // setting textContent here would be overwritten the moment someone
+        // flipped the language, and re-tagging keeps the two in step. The
+        // stashed English has to go too, or the toggle would restore "Login".
+        a.setAttribute('data-i18n', 'nav.portal');
+        a.removeAttribute('data-i18n-en');
+        a.textContent = 'Account Portal';
       });
+      if (window.VSA_I18N) window.VSA_I18N.apply(window.VSA_I18N.current());
     }
   } catch (e) {}
 })();

@@ -32,34 +32,36 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.6 19.4c0-3 2.4-4.9 5.4-4.9s5.4 1.9 5.4 4.9"/><circle cx="16.8" cy="9.4" r="2.5"/><path d="M16.5 14.4c2.5.4 3.9 2 3.9 4.4"/></svg>
     </a>
   </div>
-  <div class="lang"><span>EN</span> | <span>VN</span></div>
+  <div class="lang">
+    <button data-lang="en" id="lang-en">EN</button>|<button data-lang="vi" id="lang-vi">VN</button>
+  </div>
 </div>
 
 <nav class="site-nav">
   <a class="brand" href="/"><img class="brand-logo" src="/assets/img/logo.png" alt="UMKC VSA logo">UMKC VSA</a>
   <div class="navlinks">
-    <a href="/">HOME</a>
+    <a href="/" data-i18n="nav.home">HOME</a>
     <div class="has-sub">
-      <a href="/about/">ABOUT</a>
+      <a href="/about/" data-i18n="nav.about">ABOUT</a>
       <div class="sub">
-        <a href="/about/">About Us</a>
-        <a href="/about/partners/">Partners &amp; Sponsors</a>
-        <a href="/about/news/">News</a>
-        <a href="/about/gallery/">Gallery</a>
-        <a href="/about/constitution/">Constitution</a>
+        <a href="/about/" data-i18n="nav.aboutUs">About Us</a>
+        <a href="/about/partners/" data-i18n="nav.partners">Partners &amp; Sponsors</a>
+        <a href="/about/news/" data-i18n="nav.news">News</a>
+        <a href="/about/gallery/" data-i18n="nav.gallery">Gallery</a>
+        <a href="/about/constitution/" data-i18n="nav.constitution">Constitution</a>
       </div>
     </div>
-    <a href="/eboard/" class="active">E-BOARD</a>
-    <a href="/merch/">MERCHANDISE</a>
-    <a href="/contact/">CONTACT</a>
+    <a href="/eboard/" class="active" data-i18n="nav.eboard">E-BOARD</a>
+    <a href="/merch/" data-i18n="nav.merch">MERCHANDISE</a>
+    <a href="/contact/" data-i18n="nav.contact">CONTACT</a>
   </div>
-  <a class="login" href="/app/login">Login</a>
+  <a class="login" href="/app/login" data-i18n="nav.login">Login</a>
   <button class="nav-burger" aria-label="Menu">☰</button>
 </nav>
 
 <header class="page-hero">
-  <h1>Meet the E-Board</h1>
-  <p style="margin-top:16px">The dedicated student leaders who keep our community thriving year-round.</p>
+  <h1 data-i18n="eboard.h1">Meet the E-Board</h1>
+  <p data-i18n="eboard.sub" style="margin-top:16px">The dedicated student leaders who keep our community thriving year-round.</p>
 </header>
 
 <section class="section">
@@ -72,15 +74,16 @@
   <div class="footer-cols">
     <div class="footer-col">
       <div class="footer-brand"><img class="footer-icon" src="/assets/img/logo.png" alt="UMKC VSA logo"><span class="brand-name">UMKC VSA</span></div>
-      <p>Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
+      <p data-i18n="foot.blurb">Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
     </div>
-    <div class="footer-col"><h4>Quick Links</h4><a href="/about/">About</a><a href="/eboard/">E-Board</a><a href="/merch/">Merchandise</a><a href="/about/gallery/">Gallery</a></div>
-    <div class="footer-col"><h4>Contact</h4><p>support@umkcvsa.org</p><p>Student Union Building Room 302</p></div>
-    <div class="footer-col"><h4>Follow Us</h4><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@vsaumkc" target="_blank">TikTok</a><a href="https://discord.gg/KAF8CZSdBN" target="_blank">Discord</a><a href="https://facebook.com/umkcvsa" target="_blank">Facebook</a><a href="https://roogroups.umkc.edu/feeds?type=club&amp;type_id=35764&amp;tab=home" target="_blank">RooGroups</a></div>
+    <div class="footer-col"><h4 data-i18n="foot.quick">Quick Links</h4><a href="/about/" data-i18n="foot.about">About</a><a href="/eboard/" data-i18n="foot.eboard">E-Board</a><a href="/merch/" data-i18n="foot.merch">Merchandise</a><a href="/about/gallery/" data-i18n="foot.gallery">Gallery</a></div>
+    <div class="footer-col"><h4 data-i18n="foot.contact">Contact</h4><p>support@umkcvsa.org</p><p data-i18n="foot.room">Student Union Building Room 302</p></div>
+    <div class="footer-col"><h4 data-i18n="foot.follow">Follow Us</h4><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@vsaumkc" target="_blank">TikTok</a><a href="https://discord.gg/KAF8CZSdBN" target="_blank">Discord</a><a href="https://facebook.com/umkcvsa" target="_blank">Facebook</a><a href="https://roogroups.umkc.edu/feeds?type=club&amp;type_id=35764&amp;tab=home" target="_blank">RooGroups</a></div>
   </div>
-  <div class="footer-bar">&copy; 2026 UMKC VSA. All rights reserved. &middot; <a href="/terms/" style="color:var(--gold)">Terms</a> &middot; <a href="/privacy/" style="color:var(--gold)">Privacy</a></div>
+  <div class="footer-bar" data-i18n="foot.bar">&copy; 2026 UMKC VSA. All rights reserved. &middot; <a href="/terms/" style="color:var(--gold)">Terms</a> &middot; <a href="/privacy/" style="color:var(--gold)">Privacy</a></div>
 </footer>
 
+<script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/site.js"></script>
 <script type="module">
 // Roster is managed from the portal's Admin > E-Board page
