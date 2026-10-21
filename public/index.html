@@ -44,29 +44,29 @@
     </a>
   </div>
   <div class="lang">
-    <button id="lang-en" class="on">EN</button>|<button id="lang-vi">VN</button>
+    <button data-lang="en" id="lang-en">EN</button>|<button data-lang="vi" id="lang-vi">VN</button>
   </div>
 </div>
 
 <nav class="site-nav">
   <a class="brand" href="/"><img class="brand-logo" src="/assets/img/logo.png" alt="UMKC VSA logo">UMKC VSA</a>
   <div class="navlinks">
-    <a href="/" class="active">HOME</a>
+    <a href="/" class="active" data-i18n="nav.home">HOME</a>
     <div class="has-sub">
-      <a href="/about/">ABOUT</a>
+      <a href="/about/" data-i18n="nav.about">ABOUT</a>
       <div class="sub">
-        <a href="/about/">About Us</a>
-        <a href="/about/partners/">Partners &amp; Sponsors</a>
-        <a href="/about/news/">News</a>
-        <a href="/about/gallery/">Gallery</a>
-        <a href="/about/constitution/">Constitution</a>
+        <a href="/about/" data-i18n="nav.aboutUs">About Us</a>
+        <a href="/about/partners/" data-i18n="nav.partners">Partners &amp; Sponsors</a>
+        <a href="/about/news/" data-i18n="nav.news">News</a>
+        <a href="/about/gallery/" data-i18n="nav.gallery">Gallery</a>
+        <a href="/about/constitution/" data-i18n="nav.constitution">Constitution</a>
       </div>
     </div>
-    <a href="/eboard/">E-BOARD</a>
-    <a href="/merch/">MERCHANDISE</a>
-    <a href="/contact/">CONTACT</a>
+    <a href="/eboard/" data-i18n="nav.eboard">E-BOARD</a>
+    <a href="/merch/" data-i18n="nav.merch">MERCHANDISE</a>
+    <a href="/contact/" data-i18n="nav.contact">CONTACT</a>
   </div>
-  <a class="login" href="/app/login">Login</a>
+  <a class="login" href="/app/login" data-i18n="nav.login">Login</a>
   <button class="nav-burger" aria-label="Menu">☰</button>
 </nav>
 
@@ -91,14 +91,14 @@
     </div>
     <div class="countdown-box" id="countdown" style="display:none">
       <div>
-        <div class="cd-label">Next event</div>
+        <div class="cd-label" data-i18n="home.nextEvent">Next event</div>
         <div class="cd-event" id="cd-event"></div>
       </div>
       <div class="cd-units">
-        <div class="cd-unit"><div class="n" id="cd-d">0</div><div class="u">days</div></div>
-        <div class="cd-unit"><div class="n" id="cd-h">0</div><div class="u">hrs</div></div>
-        <div class="cd-unit"><div class="n" id="cd-m">0</div><div class="u">min</div></div>
-        <div class="cd-unit"><div class="n" id="cd-s">0</div><div class="u">sec</div></div>
+        <div class="cd-unit"><div class="n" id="cd-d">0</div><div class="u" data-i18n="home.cd.days">days</div></div>
+        <div class="cd-unit"><div class="n" id="cd-h">0</div><div class="u" data-i18n="home.cd.hrs">hrs</div></div>
+        <div class="cd-unit"><div class="n" id="cd-m">0</div><div class="u" data-i18n="home.cd.min">min</div></div>
+        <div class="cd-unit"><div class="n" id="cd-s">0</div><div class="u" data-i18n="home.cd.sec">sec</div></div>
       </div>
     </div>
   </header>
@@ -106,74 +106,74 @@
   <div class="hero-divider" aria-hidden="true"></div>
 
   <div class="block tight" id="announce-sec" style="display:none">
-    <div class="overline fx">Announcements</div>
+    <div class="overline fx" data-i18n="home.announcements">Announcements</div>
     <div class="announce-grid" id="announcements"></div>
   </div>
 
   <div class="block">
     <div style="display:flex; gap:56px; align-items:center; flex-wrap:wrap">
       <div class="fx fx-left" style="flex:1.1; min-width:280px">
-        <div class="overline">Who we are</div>
-        <h2 class="statement">Culture, community,<br>and a <span class="g">place to belong</span>.</h2>
-        <p class="lead">The Vietnamese Student Association is an independent nonprofit organization promoting Vietnamese art and culture — connecting students and communities who share an appreciation for Vietnam's rich traditions and contemporary creativity.</p>
-        <a class="btn ghost" href="/about/" style="margin-top:24px">Our Story</a>
+        <div class="overline" data-i18n="home.who">Who we are</div>
+        <h2 class="statement" data-i18n="home.whoH">Culture, community,<br>and a <span class="g">place to belong</span>.</h2>
+        <p class="lead" data-i18n="home.whoP">The Vietnamese Student Association is an independent nonprofit organization promoting Vietnamese art and culture — connecting students and communities who share an appreciation for Vietnam's rich traditions and contemporary creativity.</p>
+        <a class="btn ghost" href="/about/" style="margin-top:24px" data-i18n="home.ourStory">Our Story</a>
       </div>
       <div class="ph fx fx-right" style="flex:1; min-width:280px; height:340px">
         <img class="ph-logo" src="/assets/img/logo.png" alt="">
-        <div class="ph-cap">Photo coming soon</div>
+        <div class="ph-cap" data-i18n="home.photoSoon">Photo coming soon</div>
       </div>
     </div>
   </div>
 
   <div class="block" id="video-sec" style="display:none">
-    <div class="overline fx">The Reveal</div>
+    <div class="overline fx" data-i18n="home.reveal">The Reveal</div>
     <h2 class="statement fx" id="video-title">Meet Your New E-Board · 2026–27</h2>
     <div class="video-frame fx fx-scale" style="margin-top:34px"><div class="vf-inner" id="video-holder"></div></div>
   </div>
 
   <div class="block" id="stats-sec">
     <div class="counter-row">
-      <div class="fx"><div class="num" data-count id="st-members">0</div><div class="label">Members</div></div>
-      <div class="fx"><div class="num" data-count id="st-events">0</div><div class="label">Events Hosted</div></div>
-      <div class="fx"><div class="num" data-count id="st-photos">0</div><div class="label">Photos Captured</div></div>
-      <div class="fx"><div class="num">2015</div><div class="label">Established</div></div>
+      <div class="fx"><div class="num" data-count id="st-members">0</div><div class="label" data-i18n="home.stat.members">Members</div></div>
+      <div class="fx"><div class="num" data-count id="st-events">0</div><div class="label" data-i18n="home.stat.events">Events Hosted</div></div>
+      <div class="fx"><div class="num" data-count id="st-photos">0</div><div class="label" data-i18n="home.stat.photos">Photos Captured</div></div>
+      <div class="fx"><div class="num">2015</div><div class="label" data-i18n="home.stat.est">Established</div></div>
     </div>
   </div>
 
   <div class="block head-mid">
-    <div class="overline fx">What's next</div>
-    <h2 class="statement fx">Pull up. <span class="g">You're invited.</span></h2>
+    <div class="overline fx" data-i18n="home.next">What's next</div>
+    <h2 class="statement fx" data-i18n="home.nextH">Pull up. <span class="g">You're invited.</span></h2>
     <div class="event-grid" id="events" style="margin-top:34px"></div>
   </div>
 
   <div class="block head-mid" id="gstrip-sec" style="display:none">
-    <div class="overline fx">Recent moments</div>
-    <h2 class="statement fx">Nights we <span class="g">won't forget</span>.</h2>
+    <div class="overline fx" data-i18n="home.moments">Recent moments</div>
+    <h2 class="statement fx" data-i18n="home.momentsH">Nights we <span class="g">won't forget</span>.</h2>
     <div class="gstrip fx" id="gstrip" style="margin-top:34px"></div>
-    <p style="margin-top:22px"><a class="btn ghost" href="/about/gallery/">View the Gallery</a></p>
+    <p style="margin-top:22px"><a class="btn ghost" href="/about/gallery/" data-i18n="home.viewGallery">View the Gallery</a></p>
   </div>
 
   <div class="block head-mid">
-    <div class="overline fx">Join us</div>
-    <h2 class="statement fx">Two minutes to <span class="g">belong</span>.</h2>
+    <div class="overline fx" data-i18n="home.join">Join us</div>
+    <h2 class="statement fx" data-i18n="home.joinH">Two minutes to <span class="g">belong</span>.</h2>
     <div class="steps" style="margin-top:52px">
-      <div class="step fx"><h3>Sign Up</h3><p>Create your free member account — no fees, everyone welcome.</p></div>
-      <div class="step fx"><h3>Show Up</h3><p>Come to a meeting or event. Free food, good people, zero pressure.</p></div>
-      <div class="step fx"><h3>Level Up</h3><p>Earn VND for showing up and redeem them for real rewards & merch.</p></div>
+      <div class="step fx"><h3 data-i18n="home.step1H">Sign Up</h3><p data-i18n="home.step1P">Create your free member account — no fees, everyone welcome.</p></div>
+      <div class="step fx"><h3 data-i18n="home.step2H">Show Up</h3><p data-i18n="home.step2P">Come to a meeting or event. Free food, good people, zero pressure.</p></div>
+      <div class="step fx"><h3 data-i18n="home.step3H">Level Up</h3><p data-i18n="home.step3P">Earn VND for showing up and redeem them for real rewards & merch.</p></div>
     </div>
-    <p style="text-align:center; margin-top:40px"><a class="btn fx" href="/app/signup">Create Your Account</a></p>
+    <p style="text-align:center; margin-top:40px"><a class="btn fx" href="/app/signup" data-i18n="home.createAccount">Create Your Account</a></p>
   </div>
 
   <div class="block" id="sponsor-sec" style="display:none; text-align:center">
-    <div class="overline fx" style="justify-content:center">Our Sponsors</div>
-    <h2 class="statement fx">Powered by <span class="g">people who believe</span>.</h2>
+    <div class="overline fx" style="justify-content:center" data-i18n="home.sponsors">Our Sponsors</div>
+    <h2 class="statement fx" data-i18n="home.sponsorsH">Powered by <span class="g">people who believe</span>.</h2>
     <div class="sponsor-row" id="sponsors"></div>
   </div>
 
   <div class="finale">
-    <h2 class="statement fx">Rep the <span class="g">culture</span>.</h2>
-    <p class="fx">Exclusive VSA apparel and accessories — wear your pride.</p>
-    <a class="btn ghost fx" href="/merch/">Browse the Merchandise</a>
+    <h2 class="statement fx" data-i18n="home.finaleH">Rep the <span class="g">culture</span>.</h2>
+    <p class="fx" data-i18n="home.finaleP">Exclusive VSA apparel and accessories — wear your pride.</p>
+    <a class="btn ghost fx" href="/merch/" data-i18n="home.browseMerch">Browse the Merchandise</a>
   </div>
 
 </main>
@@ -182,15 +182,16 @@
   <div class="footer-cols">
     <div class="footer-col">
       <div class="footer-brand"><img class="footer-icon" src="/assets/img/logo.png" alt="UMKC VSA logo"><span class="brand-name">UMKC VSA</span></div>
-      <p>Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
+      <p data-i18n="foot.blurb">Dedicated to promoting Vietnamese art and culture, connecting students and communities through education, events, and shared appreciation for Vietnam's rich heritage.</p>
     </div>
-    <div class="footer-col"><h4>Quick Links</h4><a href="/about/">About</a><a href="/eboard/">E-Board</a><a href="/merch/">Merchandise</a><a href="/about/gallery/">Gallery</a></div>
-    <div class="footer-col"><h4>Contact</h4><p>support@umkcvsa.org</p><p>Student Union Building Room 302</p></div>
-    <div class="footer-col"><h4>Follow Us</h4><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@vsaumkc" target="_blank">TikTok</a><a href="https://discord.gg/KAF8CZSdBN" target="_blank">Discord</a><a href="https://facebook.com/umkcvsa" target="_blank">Facebook</a><a href="https://roogroups.umkc.edu/feeds?type=club&amp;type_id=35764&amp;tab=home" target="_blank">RooGroups</a></div>
+    <div class="footer-col"><h4 data-i18n="foot.quick">Quick Links</h4><a href="/about/" data-i18n="foot.about">About</a><a href="/eboard/" data-i18n="foot.eboard">E-Board</a><a href="/merch/" data-i18n="foot.merch">Merchandise</a><a href="/about/gallery/" data-i18n="foot.gallery">Gallery</a></div>
+    <div class="footer-col"><h4 data-i18n="foot.contact">Contact</h4><p>support@umkcvsa.org</p><p data-i18n="foot.room">Student Union Building Room 302</p></div>
+    <div class="footer-col"><h4 data-i18n="foot.follow">Follow Us</h4><a href="https://www.instagram.com/umkc_vsa" target="_blank">Instagram</a><a href="https://www.tiktok.com/@vsaumkc" target="_blank">TikTok</a><a href="https://discord.gg/KAF8CZSdBN" target="_blank">Discord</a><a href="https://facebook.com/umkcvsa" target="_blank">Facebook</a><a href="https://roogroups.umkc.edu/feeds?type=club&amp;type_id=35764&amp;tab=home" target="_blank">RooGroups</a></div>
   </div>
-  <div class="footer-bar">&copy; 2026 UMKC VSA. All rights reserved. &middot; <a href="/terms/" style="color:var(--gold)">Terms</a> &middot; <a href="/privacy/" style="color:var(--gold)">Privacy</a></div>
+  <div class="footer-bar" data-i18n="foot.bar">&copy; 2026 UMKC VSA. All rights reserved. &middot; <a href="/terms/" style="color:var(--gold)">Terms</a> &middot; <a href="/privacy/" style="color:var(--gold)">Privacy</a></div>
 </footer>
 
+<script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/site.js"></script>
 <script>
 // ---- scroll progress + ambient parallax ----
@@ -267,25 +268,6 @@
   window.__fxScan();
 })();
 
-// ---- EN / VN toggle ----
-(function () {
-  var translations = {
-    en: { heroTitle: "UMKC", heroSubtitle: "Vietnamese Student Association", heroText: "Become a part of our vibrant community.", joinButton: "JOIN US", loginButton: "Member Login" },
-    vi: { heroTitle: "UMKC", heroSubtitle: "Hội Sinh Viên Việt Nam", heroText: "Hãy trở thành một phần của cộng đồng sôi động của chúng tôi.", joinButton: "THAM GIA", loginButton: "Đăng Nhập" }
-  };
-  function setLanguage(lang) {
-    var t = translations[lang] || translations.en;
-    document.querySelectorAll('[data-i18n]').forEach(function (el) {
-      if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n];
-    });
-    document.getElementById('lang-en').classList.toggle('on', lang === 'en');
-    document.getElementById('lang-vi').classList.toggle('on', lang === 'vi');
-    try { localStorage.setItem('vsa-lang', lang); } catch (e) {}
-  }
-  document.getElementById('lang-en').onclick = function () { setLanguage('en'); };
-  document.getElementById('lang-vi').onclick = function () { setLanguage('vi'); };
-  try { if (localStorage.getItem('vsa-lang') === 'vi') setLanguage('vi'); } catch (e) {}
-})();
 </script>
 <script type="module">
 import { supabase } from '/app/shared/supabase.js';
