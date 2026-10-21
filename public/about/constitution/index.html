@@ -136,6 +136,24 @@
   .c-article-body p, .c-list li { color:#222; }
 }
 </style>
+<script>
+// The dictionary only loads at the end of the body, so by default the English
+// paints first and visibly flips to Vietnamese. This runs before any of the
+// body exists and hides the content — but only for visitors who have actually
+// chosen Vietnamese, so an English visitor is never held back by a line of it.
+// visibility (not display) keeps the layout, so the reveal doesn't reflow.
+// The timer is the important part: if i18n.js is blocked, 404s or throws,
+// this still lets the page through rather than leaving someone a blank screen.
+(function () {
+  try {
+    if (localStorage.getItem('vsa-lang') !== 'vi') return;
+    var h = document.documentElement;
+    h.lang = 'vi';
+    h.className += ' i18n-wait';
+    setTimeout(function () { h.className = h.className.replace(/\bi18n-wait\b/, ''); }, 1200);
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 

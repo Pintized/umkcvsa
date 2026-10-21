@@ -192,6 +192,10 @@
       b.classList.toggle('on', b.getAttribute('data-lang') === lang);
     });
 
+    // reveal whatever the <head> snippet held back
+    document.documentElement.className =
+      document.documentElement.className.replace(/\bi18n-wait\b/, '');
+
     window.__vsaLang = lang;
     try { localStorage.setItem(KEY, lang); } catch (e) {}
     window.dispatchEvent(new CustomEvent('vsa:lang', { detail: lang }));
