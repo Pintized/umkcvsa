@@ -82,6 +82,11 @@ a { text-decoration: none; color: inherit; }
 .topbar .socials { display: flex; align-items: center; gap: 14px; }
 .topbar .socials a { display: inline-flex; opacity: .8; transition: opacity .2s, transform .2s; }
 .topbar .socials a:hover { opacity: 1; transform: translateY(-1px); }
+/* Set by the inline snippet in <head> and cleared by i18n.js once the page
+   has been translated. Only ever present for a visitor reading in Vietnamese,
+   and only for the few milliseconds between first paint and the swap. */
+html.i18n-wait body { visibility: hidden; }
+
 .topbar .lang button {
   background: none; border: none; color: var(--muted);
   font-size: 13px; cursor: pointer; padding: 0 2px;
